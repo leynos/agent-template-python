@@ -1,7 +1,7 @@
 # {{ project_name }}
 
-Utilities for Crockford Base32 and msgspec integration.
+Example package generated from this Copier template.
 
 {% if use_rust %}
-This build includes a Rust extension for improved performance.
+This variant includes a small Rust extension.
 {% endif %}

@@ -7,4 +7,3 @@ It offers two flavours:
 2. **Python with Rust** – includes a PyO3 extension.
 
 Run `copier copy` and answer the prompts to generate a project.
-Consult `docs/` for architectural notes on the Rust variant.

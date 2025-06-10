@@ -5,7 +5,7 @@ description = "{{ project_name }} package"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-dependencies = ["msgspec"]
+dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff", "pyright"]
