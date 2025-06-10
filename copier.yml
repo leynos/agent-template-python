@@ -1,0 +1,17 @@
+_subdirectory: template
+_min_version: '7.0'
+
+project_name:
+  type: str
+  default: my_project
+  help: 'Project name'
+
+package_name:
+  type: str
+  default: "{{ project_name.replace('-', '_') }}"
+  help: 'Python import package name'
+
+use_rust:
+  type: bool
+  default: false
+  help: 'Include Rust implementation via PyO3'

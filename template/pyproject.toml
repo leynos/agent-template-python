@@ -1,0 +1,32 @@
+[project]
+name = "{{ project_name }}"
+version = "0.1.0"
+description = "{{ project_name }} package"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "pyright"]
+
+[tool.pyright]
+pythonVersion = "3.13"
+strict = true
+include = ["{{ package_name }}"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.uv]
+package = true
+
+{% if use_rust %}
+[build-system]
+requires = ["maturin>=1.5"]
+build-backend = "maturin"
+{% else %}
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+{% endif %}
