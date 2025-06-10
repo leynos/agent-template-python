@@ -86,21 +86,21 @@ When implementing changes, adhere to the following testing procedures:
   * Ensure the refactoring adheres to the testing guidelines (behavioral tests pass before and after, unit tests added for new units).
   * Ensure the refactoring commit itself passes all quality gates.
 
-## Rust Development Guidelines
+## Rust Specific Guidance
 
-This repository is written in part using Rust and uses Cargo for building and dependency management. Contributors should follow these best practices when working on the project:
+This repository is written in Rust and uses Cargo for building and dependency management. Contributors should follow these best practices when working on the project:
 
-1. **Run `cargo fmt` and `cargo clippy`** before committing to ensure consistent code style and catch common mistakes.
-2. **Write unit tests** for new functionality. Run `cargo test` in both the root crate and the `validator` crate.
-3. **Document public APIs** using Rustdoc comments (`///`) so documentation can be generated with `cargo doc`.
-4. **Prefer immutable data** and avoid unnecessary `mut` bindings.
-5. **Handle errors with the `Result` type** instead of panicking where feasible.
-6. **Use explicit version ranges** in `Cargo.toml` and keep dependencies up-to-date.
-7. **Avoid unsafe code** unless absolutely necessary and document any usage clearly.
-8. **Keep functions small and focused**; if a function grows too large, consider splitting it into helpers.
-9. **Commit messages should be descriptive**, explaining what was changed and why.
-10. **Check for `TODO` comments** and convert them into issues if more work is required.
-11. **Validate Markdown Mermaid diagrams** with `nixie <paths>` before submitting documentation changes.
+* Run `cargo fmt`, `cargo clippy -- -D warnings`, and `cargo test` before committing.
+* Clippy warnings MUST be disallowed.
+* Where a function is too long, extract meaningfully named helper functions adhering to separation of concerns and CQRS.
+* Where a function has too many parameters, group related parameters in meaningfully named structs.
+* Where a function is returning a large error consider using `Arc` to reduce the amount of data returned.
+* Write unit and behavioural tests for new functionality. Run both before and after making any change.
+* Document public APIs using Rustdoc comments (`///`) so documentation can be generated with cargo doc.
+* Prefer immutable data and avoid unnecessary `mut` bindings.
+* Handle errors with the `Result` type instead of panicking where feasible.
+* Use explicit version ranges in `Cargo.toml` and keep dependencies up-to-date.
+* Avoid `unsafe` code unless absolutely necessary and document any usage clearly.
 
 These practices will help maintain a high-quality codebase and make collaboration easier.
 
