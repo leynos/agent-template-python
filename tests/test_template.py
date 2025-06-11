@@ -11,6 +11,15 @@ from pytest_copier.plugin import CopierFixture, CopierProject
 def build_package(project: CopierProject) -> None:
     """Install the generated package in editable mode."""
     project.run(f"{sys.executable} -m pip install -e .")
+    project.run(
+        f"{sys.executable} - <<'PY'\n"
+        "import importlib, site, pathlib\n"
+        "sp = site.getsitepackages()[0]\n"
+        "for p in pathlib.Path(sp).glob('*.pth'):\n"
+        "    site.addsitedir(str(pathlib.Path(p.read_text().strip()).parent))\n"
+        "importlib.invalidate_caches()\n"
+        "PY"
+    )
 
 
 def check_static(project: CopierProject) -> None:
