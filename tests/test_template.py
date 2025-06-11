@@ -64,3 +64,22 @@ def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
 
     pkg = import_package("rust_pkg")
     assert pkg.hello() == "hello from Rust"
+
+
+def test_rust_template_custom_package(copier: CopierFixture, tmp_path: Path) -> None:
+    """Ensure templating uses the provided package name."""
+    proj = copier.copy(
+        tmp_path / "rust_custom",
+        project_name="RustProj",
+        package_name="custom_pkg",
+        use_rust=True,
+    )
+    build_package(proj)
+    check_static(proj)
+
+    assert (proj / "rust_extension").exists()
+    text = (proj / "pyproject.toml").read_text()
+    assert "custom_pkg" in text
+
+    pkg = import_package("custom_pkg")
+    assert pkg.hello() == "hello from Rust"

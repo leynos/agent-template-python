@@ -27,8 +27,8 @@ requires = ["maturin>=1.5"]
 build-backend = "maturin"
 [tool.maturin]
 manifest-path = "rust_extension/Cargo.toml"
-python-source = "rust_pkg"
-module-name = "rust_pkg._rust_pkg_rs"
+python-source = "{{ package_name }}"
+module-name = "{{ package_name }}._{{ package_name }}_rs"
 python-packages = ["{{ package_name }}"]
 {% else %}
 [build-system]
