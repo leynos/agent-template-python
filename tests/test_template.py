@@ -11,15 +11,14 @@ from pytest_copier.plugin import CopierFixture, CopierProject
 def build_package(project: CopierProject) -> None:
     """Install the generated package in editable mode."""
     project.run(f"{sys.executable} -m pip install -e .")
-    project.run(
-        f"{sys.executable} - <<'PY'\n"
-        "import importlib, site, pathlib\n"
-        "sp = site.getsitepackages()[0]\n"
-        "for p in pathlib.Path(sp).glob('*.pth'):\n"
-        "    site.addsitedir(str(pathlib.Path(p.read_text().strip()).parent))\n"
-        "importlib.invalidate_caches()\n"
-        "PY"
-    )
+    import importlib
+    import site
+    import pathlib
+
+    sp = site.getsitepackages()[0]
+    for p in pathlib.Path(sp).glob("*.pth"):
+        site.addsitedir(str(pathlib.Path(p.read_text().strip()).parent))
+    importlib.invalidate_caches()
 
 
 def check_static(project: CopierProject) -> None:
@@ -41,6 +40,10 @@ def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
     build_package(proj)
     check_static(proj)
 
+    assert not (proj / "rust_extension").exists()
+    assert not (proj / "docs").exists()
+    assert "maturin" not in (proj / "pyproject.toml").read_text()
+
     pkg = import_package("pure_pkg")
     assert pkg.hello() == "hello from Python"
 
@@ -54,6 +57,10 @@ def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
     )
     build_package(proj)
     check_static(proj)
+
+    assert (proj / "rust_extension").exists()
+    assert (proj / "docs" / "rust-extension.md").exists()
+    assert "maturin" in (proj / "pyproject.toml").read_text()
 
     pkg = import_package("rust_pkg")
     assert pkg.hello() == "hello from Rust"
