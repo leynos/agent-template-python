@@ -53,10 +53,12 @@ When implementing changes, adhere to the following testing procedures:
     * **Linting:** Passes lint checks (`biome check .` or integrated editor linting).
     * **Formatting:** Adheres to formatting standards (`biome check --apply .` or integrated editor formatting).
     * **TypeScript Compilation:** Compiles successfully without TypeScript errors (`tsc --noEmit`).
+  {% if use_rust %}
   * For Rust files:
     * **Testing:** Passes all relevant unit and behavioral tests according to the guidelines above.
     * **Linting:** Passes lint checks (`cargo clippy` or integrated editor linting).
     * **Formatting:** Adheres to formatting standards (`cargo fmt` or integrated editor formatting).
+  {% endif %}
   * For Markdown files (`.md` only):
     * **Linting:** Passes lint checks (`markdownlint filename.md` or integrated editor linting).
     * **Mermaid diagrams:** Passes validation using nixie (`nixie filename.md`)
@@ -86,6 +88,8 @@ When implementing changes, adhere to the following testing procedures:
   * Ensure the refactoring adheres to the testing guidelines (behavioral tests pass before and after, unit tests added for new units).
   * Ensure the refactoring commit itself passes all quality gates.
 
+{% if use_rust %}
+
 ## Rust Specific Guidance
 
 This repository is written in Rust and uses Cargo for building and dependency management. Contributors should follow these best practices when working on the project:
@@ -103,6 +107,7 @@ This repository is written in Rust and uses Cargo for building and dependency ma
 * Avoid `unsafe` code unless absolutely necessary and document any usage clearly.
 
 These practices will help maintain a high-quality codebase and make collaboration easier.
+{% endif %}
 
 ## Python Development Guidelines
 
