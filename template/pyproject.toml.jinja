@@ -7,8 +7,13 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = []
 
-[project.optional-dependencies]
-dev = ["pytest", "ruff", "pyright"]
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+    "pyright",
+    "pytest-timeout",
+]
 
 [tool.pyright]
 pythonVersion = "3.13"
@@ -49,11 +54,32 @@ per-file-ignores = {"**/test_*.py" = ["S101"]}
 
 [tool.ruff.lint.flake8-import-conventions]
 # Declare the banned `from` imports.
-banned-from = ["typing", "datetime", "collections.abc", "dataclasses"]
+banned-from = [
+    "typing",
+    "datetime",
+    "collections.abc",
+    "dataclasses",
+    "enum",
+    "unittest.mock",
+]
+
+[tool.ruff.lint.flake8-import-conventions.aliases]
+# Declare the default aliases.
+altair = "alt"
+"matplotlib.pyplot" = "plt"
+numpy = "np"
+pandas = "pd"
+seaborn = "sns"
+scipy = "sp"
+"collections.abc" = "cabc"
+datetime = "dt"
+unittest.mock = "mock"
 
 [tool.pytest.ini_options]
 # Ensure asyncio fixtures create a new event loop for each test
 asyncio_default_fixture_loop_scope = "function"
+# Tests automatically killed after seconds elapsed
+timeout = 30
 
 [tool.uv]
 package = true
