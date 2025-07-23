@@ -49,6 +49,14 @@ select = [
     "FURB",
     "B",
     "RUF",
+    "LOG",
+    "Q",
+    "PT",
+    "RSE",
+    "PERF",
+    "TRY",
+    "D",
+    "ANN",
 ]
 per-file-ignores = {"**/test_*.py" = ["S101"]}
 
@@ -73,7 +81,9 @@ seaborn = "sns"
 scipy = "sp"
 "collections.abc" = "cabc"
 datetime = "dt"
-unittest.mock = "mock"
+"unittest.mock" = "mock"
+"msgspec.json" = "msjson"
+typing = "typ"
 
 [tool.pytest.ini_options]
 # Ensure asyncio fixtures create a new event loop for each test
