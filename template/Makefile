@@ -8,14 +8,15 @@ VENV_TOOLS = pytest
 	markdownlint nixie test typecheck $(TOOLS) $(VENV_TOOLS)
 
 .DEFAULT_GOAL := all
-
 all: build check-fmt test typecheck
 
-build: uv ## Build virtual-env and install deps
-	uv venv
-	uv sync --group dev
+.venv: pyproject.toml
+	UV_CACHE_DIR=.uv-cache uv venv --clear
 
-build-release: ## Build artefacts (sdist & wheel)
+build: uv .venv ## Build virtual-env and install deps
+	UV_CACHE_DIR=.uv-cache uv sync --group dev
+
+build-release: build ## Build artefacts (sdist & wheel)
 	python -m build --sdist --wheel
 
 clean: ## Remove build artifacts
@@ -70,8 +71,7 @@ markdownlint: $(MDLINT) ## Lint Markdown files
 	  -not -path './.venv/*' -print0 | xargs -0 $(MDLINT)
 
 nixie: $(NIXIE) ## Validate Mermaid diagrams
-	find . -type f -name '*.md' \
-	  -not -path './.venv/*' -print0 | xargs -0 $(NIXIE)
+	nixie --no-sandbox
 
 test: build uv pytest ## Run tests
 	uv run pytest -v
