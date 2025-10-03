@@ -12,8 +12,9 @@
 
 ## Documentation Maintenance
 
-*   **Reference:** Use the markdown files within the `docs/` directory as a knowledge base and source of truth for project requirements, dependency choices, and architectural decisions.
-*   **Update:** When new decisions are made, requirements change, libraries are added/removed, or architectural patterns evolve, **proactively update** the relevant file(s) in the `docs/` directory to reflect the latest state. Ensure the documentation remains accurate and current.
+* **Reference:** Use the markdown files within the `docs/` directory as a knowledge base and source of truth for project requirements, dependency choices, and architectural decisions.
+* **Update:** When new decisions are made, requirements change, libraries are added/removed, or architectural patterns evolve, **proactively update** the relevant file(s) in the `docs/` directory to reflect the latest state. Ensure the documentation remains accurate and current.
+* **Style:** All documentation must adhere to the [documentation style guide](docs/documentation-style-guide.md).
 
 ## Guidelines for Code Changes & Testing
 
@@ -23,16 +24,21 @@ When implementing changes, adhere to the following testing procedures:
   * Implement unit tests covering all new code units (functions, components, classes). Implement tests **before** implementing the unit.
   * Implement behavioral tests that verify the end-to-end behavior of the new feature from a user interaction perspective.
   * Ensure both unit and behavioral tests pass before considering the functionality complete.
+  * Ensure that new functionality is clearly documented in the [users' guide](docs/users-guide.md).
+  * Ensure that any design decisions made are recorded in the relevant design document.
 * **Bug Fixes:**
   * Before fixing the bug, write a new test (unit or behavioral, whichever is most appropriate) that specifically targets and reproduces the bug. This test should initially fail.
   * Implement the bug fix.
   * Verify that the new test now passes, along with all existing tests.
+  * Ensure that any design decisions made are recorded in the relevant design document.
 * **Modifying Existing Functionality:**
   * Identify the existing behavioral and unit tests relevant to the functionality being changed.
   * **First, modify the tests** to reflect the new requirements or behavior.
   * Run the tests; they should now fail.
   * Implement the code changes to the functionality.
   * Verify that the modified tests (and all other existing tests) now pass.
+  * Ensure that revised functionality is clearly documented in the [users' guide](docs/users-guide.md).
+  * Ensure that any design decisions made are recorded in the relevant design document.
 * **Refactoring:**
   * Identify or create a behavioral test that covers the functionality being refactored. Ensure this test passes **before** starting the refactor.
   * Perform the refactoring (e.g., extracting logic into a new unit).
@@ -44,15 +50,10 @@ When implementing changes, adhere to the following testing procedures:
 * **Atomicity:** Aim for small, focused, atomic changes. Each change (and subsequent commit) should represent a single logical unit of work.
 * **Quality Gates:** Before considering a change complete or proposing a commit, ensure it meets the following criteria:
   * For Python files:
-    * **Testing:** Passes all relevant unit and behavioral tests according to the guidelines above.
-    * **Linting:** Passes lint checks (`ruff check` or integrated editor linting).
-    * **Formatting:** Adheres to formatting standards (`ruff format` or integrated editor formatting).
-    * **Typechecking:** Passes type checking (`pyright` or integrated editor type checking).
-  * For TypeScript files:
-    * **Testing:** Passes all relevant unit and behavioral tests according to the guidelines above.
-    * **Linting:** Passes lint checks (`biome check .` or integrated editor linting).
-    * **Formatting:** Adheres to formatting standards (`biome check --apply .` or integrated editor formatting).
-    * **TypeScript Compilation:** Compiles successfully without TypeScript errors (`tsc --noEmit`).
+    * **Testing:** Passes all relevant unit and behavioral tests according to the guidelines above (run `make test` to verify).
+    * **Linting:** Passes lint checks (`make lint`).
+    * **Formatting:** Adheres to formatting standards (run `make check-fmt` to verify, use `make fmt` to apply formatting).
+    * **Typechecking:** Passes type checking (`make typecheck`).
   {% if use_rust %}
   * For Rust files:
     * **Testing:** Passes all relevant unit and behavioral tests according to the guidelines above.
@@ -60,8 +61,8 @@ When implementing changes, adhere to the following testing procedures:
     * **Formatting:** Adheres to formatting standards (`cargo fmt` or integrated editor formatting).
   {% endif %}
   * For Markdown files (`.md` only):
-    * **Linting:** Passes lint checks (`markdownlint filename.md` or integrated editor linting).
-    * **Mermaid diagrams:** Passes validation using nixie (`nixie filename.md`)
+    * **Linting:** Passes lint checks (`make markdownlint` or integrated editor linting).
+    * **Mermaid diagrams:** Passes validation using nixie (`make nixie`)
 * **Committing:**
   * Only changes that meet all the quality gates above should be committed.
   * Write clear, descriptive commit messages summarizing the change, following these formatting guidelines:
@@ -119,3 +120,9 @@ For Python development, refer to the detailed guidelines in the `.rules/` direct
 * [Python Project Configuration](.rules/python-pyproject.md) - pyproject.toml and packaging
 * [Python Return Patterns](.rules/python-return.md) - Function return conventions
 * [Python Typing](.rules/python-typing.md) - Type annotation best practices
+* [Python Typing](.rules/python-typing.md) - Type annotation best practices
+
+Additional docs:
+
+* [Scripting Standards](docs/scripting-standards.md) - Guidance for writing
+  robust scripts
