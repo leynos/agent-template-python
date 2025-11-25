@@ -60,10 +60,14 @@ select = [
     "C90",
     "PLR",
 ]
-ignore = ["D203", "D213"]
+extend-ignore = [
+    "D203",  # Conflicts with D211; prefer enforcing no blank line before class docstring.
+    "D213",  # Conflicts with D212; keep summary on the first line.
+]
+
 [tool.ruff.lint.per-file-ignores]
-"**/test_*.py" = ["S101", "PLR0913"]
-"tests/steps/*.py" = ["S101", "PLR0913"]
+"**/test_*.py" = ["S101", "PLR0913", "PLR2004"]
+"tests/steps/*.py" = ["S101", "PLR0913", "PLR2004"]
 
 [tool.ruff.lint.flake8-import-conventions]
 # Declare the banned `from` imports.
