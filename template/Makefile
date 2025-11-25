@@ -1,6 +1,6 @@
-MDLINT ?= $(shell which markdownlint-cli2)
-NIXIE ?= $(shell which nixie)
-MDFORMAT_ALL ?= $(shell which mdformat-all)
+MDLINT ?= markdownlint-cli2
+NIXIE ?= nixie
+MDFORMAT_ALL ?= mdformat-all
 TOOLS = $(MDFORMAT_ALL) ruff ty $(MDLINT) $(NIXIE) uv
 VENV_TOOLS = pytest
 UV_ENV = UV_CACHE_DIR=.uv-cache UV_TOOL_DIR=.uv-tools
@@ -35,7 +35,7 @@ define ensure_tool
 endef
 
 define ensure_tool_venv
-	$(UV_ENV) @uv run which $(1) >/dev/null 2>&1 || { \
+	@$(UV_ENV) uv run which $(1) >/dev/null 2>&1 || { \
 	  printf "Error: '%s' is required in the virtualenv, but is not installed\n" "$(1)" >&2; \
 	  exit 1; \
 	}
@@ -76,7 +76,7 @@ nixie: $(NIXIE) ## Validate Mermaid diagrams
 	$(NIXIE) --no-sandbox
 
 test: build uv $(VENV_TOOLS) ## Run tests
-	$(UV_ENV) run pytest -v -n auto
+	$(UV_ENV) uv run pytest -v -n auto
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | \
