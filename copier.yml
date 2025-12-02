@@ -15,3 +15,8 @@ use_rust:
   type: bool
   default: false
   help: 'Include Rust implementation via PyO3'
+
+python_version:
+  type: str
+  default: "3.10"
+  help: Minimum supported Python version
