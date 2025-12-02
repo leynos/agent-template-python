@@ -132,6 +132,6 @@ module-name = "{{ package_name }}._{{ package_name }}_rs"
 python-packages = ["{{ package_name }}"]
 {% else %}
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 {% endif %}
