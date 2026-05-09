@@ -190,6 +190,9 @@ def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
     assert not (proj / "docs" / "rust-extension.md").exists(), (
         "Rust documentation should not be generated for Python-only template"
     )
+    assert (proj / "docs" / "documentation-style-guide.md").exists(), (
+        "Python-only template should include shared documentation guidance"
+    )
     assert "maturin" not in (proj / "pyproject.toml").read_text(encoding="utf-8"), (
         "maturin should not be in pyproject.toml for Python-only template"
     )

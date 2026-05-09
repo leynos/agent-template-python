@@ -1,0 +1,10 @@
+"""Tests for the public package API."""
+
+from __future__ import annotations
+
+import {{ package_name }}
+
+
+def test_hello_uses_configured_backend() -> None:
+    """Return the expected greeting for this generated project."""
+    assert {{ package_name }}.hello() == "{% if use_rust %}hello from Rust{% else %}hello from Python{% endif %}"

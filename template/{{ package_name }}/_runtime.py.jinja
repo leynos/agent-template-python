@@ -1,0 +1,18 @@
+from __future__ import annotations
+{% if use_rust %}
+import importlib
+import typing as typ
+
+if typ.TYPE_CHECKING:
+    import collections.abc as cabc
+
+PACKAGE_NAME = "{{ package_name }}"
+
+try:  # pragma: no cover - Rust optional
+    rust = importlib.import_module(f"._{PACKAGE_NAME}_rs", package=__package__)
+    hello = typ.cast("cabc.Callable[[], str]", rust.hello)
+except ModuleNotFoundError:  # pragma: no cover - Python fallback
+    from .pure import hello as hello
+{%- else %}
+from .pure import hello as hello
+{%- endif %}
