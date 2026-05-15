@@ -34,8 +34,8 @@ WHITAKER_INSTALLER_REV ?= f768c2e53c47df13658af1168a67851d388750bf
 WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
 {% endif %}
 
-.PHONY: help all clean build build-release lint fmt check-fmt \
-        markdownlint nixie test typecheck $(TOOLS) $(VENV_TOOLS){% if use_rust %} whitaker{% endif %}
+.PHONY: help all clean build build-release lint lint-python fmt check-fmt \
+        markdownlint nixie test typecheck $(TOOLS) $(VENV_TOOLS){% if use_rust %} lint-rust whitaker{% endif %}
 
 .DEFAULT_GOAL := all
 
@@ -112,10 +112,14 @@ check-fmt: build ## Verify formatting
 {% endif %}
 	# mdformat-all doesn't currently do checking
 
-lint: build{% if use_rust %} whitaker{% endif %} ## Run linters
+lint: lint-python{% if use_rust %} lint-rust{% endif %} ## Run linters
+
+lint-python: build ## Run Python linters
 	$(UV_ENV) $(UV) run ruff check $(PYTHON_TARGETS)
 	$(PYLINT) $(PYLINT_TARGETS)
 {% if use_rust %}
+
+lint-rust: build whitaker ## Run Rust linters
 	RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --no-deps --manifest-path $(RUST_CRATE_DIR)/Cargo.toml
 	$(CARGO) clippy $(CLIPPY_FLAGS)
 	cd $(RUST_CRATE_DIR) && PATH="$(USER_BIN_PATH):$(PATH)" RUSTFLAGS="$(RUST_FLAGS)" $(WHITAKER) --all -- $(WHITAKER_CARGO_FLAGS)

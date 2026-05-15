@@ -101,11 +101,9 @@ def require_act() -> None:
         pytest.skip(f"docker-compatible runtime is unavailable:\n{runtime.stderr}")
 
 
-def assert_ci_exercised_expected_steps(logs: str, *, use_rust: bool) -> None:
-    """Assert the workflow reached the expected Python and Rust test steps."""
-    saw_coverage = False
-    saw_python = False
-    saw_rust = not use_rust
+def iter_json_log_events(logs: str) -> list[dict[str, object]]:
+    """Return JSON events from an act log stream."""
+    events: list[dict[str, object]] = []
     for line in logs.splitlines():
         if not line.lstrip().startswith("{"):
             continue
@@ -113,19 +111,31 @@ def assert_ci_exercised_expected_steps(logs: str, *, use_rust: bool) -> None:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if isinstance(event, dict):
+            events.append(event)
+    return events
+
+
+def event_text(event: dict[str, object], *keys: str) -> str:
+    """Return the first non-empty event field as text."""
+    for key in keys:
+        value = event.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def assert_ci_exercised_expected_steps(logs: str, *, use_rust: bool) -> None:
+    """Assert the workflow reached the expected Python and Rust test steps."""
+    saw_coverage = False
+    saw_python = False
+    saw_rust = not use_rust
+    for event in iter_json_log_events(logs):
         output = str(
-            event.get("Output")
-            or event.get("output")
-            or event.get("message")
-            or event.get("msg")
-            or ""
+            event_text(event, "Output", "output", "message", "msg")
         )
         step = str(
-            event.get("name")
-            or event.get("step_name")
-            or event.get("Step")
-            or event.get("step")
-            or ""
+            event_text(event, "name", "step_name", "Step", "step")
         )
         in_coverage_step = GENERATE_COVERAGE_STEP in step
         saw_coverage = saw_coverage or (
