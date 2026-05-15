@@ -1,9 +1,10 @@
 # Local validation of GitHub Actions with act and pytest (black-box)
 
-This guide focuses on **pre-CI smoke/integration testing** of a workflow using
-`act` and `pytest`, treating the workflow as a **black box**. The assertions
-target artefacts, workspace side effects, and structured logs. Host-side
-command interception is intentionally avoided; containers execute in isolation.
+This guide focuses on **pre-Continuous Integration (CI) smoke/integration
+testing** of a workflow using `act` and `pytest`, treating the workflow as a
+**black box**. The assertions target artefacts, workspace side effects, and
+structured logs. Host-side command interception is intentionally avoided;
+containers execute in isolation.
 
 ## TL;DR
 
@@ -12,7 +13,7 @@ command interception is intentionally avoided; containers execute in isolation.
 - Integration-test the **workflow** locally via `act`, from a `pytest` harness.
 - Assert on **artefacts**, **file outputs**, and **logs** (using `act --json`).
 - Treat results as pre-CI confidence; certify on GitHub runners for
-  permissions/OIDC parity.
+  permissions/OpenID Connect (OIDC) parity.
 
 ## Prerequisites
 
@@ -162,8 +163,8 @@ def test_workflow_produces_expected_artefact_and_logs(tmp_path: Path) -> None:
 ## Record -> replay -> verify (closing the loop)
 
 `cmd-mox` complements this harness when a workflow drives helper scripts that
-shell out to external CLIs. The tooling follows a record, replay, and verify
-loop:
+shell out to external command-line interfaces (CLIs). The tooling follows a
+record, replay, and verify loop:
 
 1. **Record** a golden trace with passthrough spies.
 
@@ -227,7 +228,7 @@ loop:
 
 - **Runner parity:** `act` images are close, not identical, to `ubuntu-latest`.
 - **Permissions/OIDC:** token scopes, OIDC federation, and GitHub-provided
-  credentials cannot be faithfully validated locally; rely on GH runners.
+  credentials cannot be faithfully validated locally; rely on GitHub runners.
 - **Service containers & networking:** usually fine but can diverge under load
   or with subtle DNS/health-check timing.
 
@@ -235,8 +236,8 @@ loop:
 
 1. **Local fast loop:** unit tests -> `act` black-box tests via `pytest`.
 2. **Authoritative CI:** run the same workflow on GitHub-hosted runners.
-3. **End-to-end (privileged paths):** GH-only with least-privilege tokens; gate
-   behind labels/paths.
+3. **End-to-end (privileged paths):** GitHub-only with least-privilege tokens;
+   gate behind labels/paths.
 
 This arrangement provides tight feedback for workflow correctness and
 orchestration logic, without pretending local containers are perfect stand-ins

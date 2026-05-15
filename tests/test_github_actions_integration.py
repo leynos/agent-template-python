@@ -13,6 +13,16 @@ from pytest_copier.plugin import CopierFixture, CopierProject
 
 EVENT = Path(__file__).parent / "fixtures" / "pull_request.event.json"
 ACT_IMAGE = "ubuntu-latest=catthehacker/ubuntu:act-latest"
+GENERATE_COVERAGE_STEP = "Test and Measure Coverage"
+
+
+def container_info_command() -> list[str] | None:
+    """Return the available container runtime info command."""
+    if shutil.which("docker") is not None:
+        return ["docker", "info"]
+    if shutil.which("podman") is not None:
+        return ["podman", "info"]
+    return None
 
 
 def docker_environment() -> dict[str, str]:
@@ -75,19 +85,20 @@ def require_act() -> None:
         pytest.skip("set RUN_ACT_VALIDATION=1 to run act workflow validation")
     if shutil.which("act") is None:
         pytest.skip("act is not installed")
-    if shutil.which("docker") is None:
+    info_command = container_info_command()
+    if info_command is None:
         pytest.skip("docker-compatible container runtime is not installed")
     env = docker_environment()
-    docker = subprocess.run(
-        ["docker", "info"],
+    runtime = subprocess.run(
+        info_command,
         env=env,
         text=True,
         capture_output=True,
         check=False,
         timeout=30,
     )
-    if docker.returncode != 0:
-        pytest.skip(f"docker-compatible runtime is unavailable:\n{docker.stderr}")
+    if runtime.returncode != 0:
+        pytest.skip(f"docker-compatible runtime is unavailable:\n{runtime.stderr}")
 
 
 def assert_ci_exercised_expected_steps(logs: str, *, use_rust: bool) -> None:
@@ -102,17 +113,35 @@ def assert_ci_exercised_expected_steps(logs: str, *, use_rust: bool) -> None:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
-        output = (
+        output = str(
             event.get("Output")
             or event.get("output")
             or event.get("message")
             or event.get("msg")
             or ""
         )
-        step = event.get("Step") or event.get("step") or ""
-        saw_coverage = saw_coverage or "Test and Measure Coverage" in step
-        saw_python = saw_python or "pytest" in output or "run_python.py" in output
-        saw_rust = saw_rust or "cargo" in output or "run_rust.py" in output
+        step = str(
+            event.get("name")
+            or event.get("step_name")
+            or event.get("Step")
+            or event.get("step")
+            or ""
+        )
+        in_coverage_step = GENERATE_COVERAGE_STEP in step
+        saw_coverage = saw_coverage or (
+            in_coverage_step and ("coverage.xml" in output or "Current coverage" in output)
+        )
+        saw_python = saw_python or (
+            in_coverage_step and ("run_python.py" in output or "pytest -v" in output)
+        )
+        saw_rust = saw_rust or (
+            in_coverage_step
+            and (
+                "run_rust.py" in output
+                or "cargo nextest" in output
+                or "cargo llvm-cov" in output
+            )
+        )
 
     assert saw_coverage, f"coverage action step was not observed:\n{logs}"
     assert saw_python, f"Python tests were not observed:\n{logs}"

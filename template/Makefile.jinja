@@ -53,7 +53,7 @@ build-release: ## Build artefacts (sdist & wheel)
 clean: ## Remove build artifacts
 	rm -rf build dist *.egg-info \
 	  .mypy_cache .pytest_cache .coverage coverage.* \
-	  lcov.info htmlcov .venv{% if use_rust %} $(RUST_CRATE_DIR)/target{% endif %}
+	  lcov.info htmlcov .venv .uv-cache .uv-tools{% if use_rust %} $(RUST_CRATE_DIR)/target{% endif %}
 	find . -type d -name '__pycache__' -print0 | xargs -0 -r rm -rf
 
 define ensure_tool
