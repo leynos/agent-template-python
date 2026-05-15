@@ -10,8 +10,9 @@ TOOLS = $(MDFORMAT_ALL) $(MDLINT)
 VENV_TOOLS = pytest
 UV_ENV = PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 UV_CACHE_DIR=.uv-cache UV_TOOL_DIR=.uv-tools
 PYTEST_XDIST_WORKERS ?= auto
+PYTHON_TARGETS ?= {{ package_name }} tests
 PYLINT_PYTHON ?= pypy
-PYLINT_TARGETS ?= {{ package_name }} tests
+PYLINT_TARGETS ?= $(PYTHON_TARGETS)
 PYLINT_PYPY_SHIM_REF ?= 726d09f968b4d729ee4b29c71fc732e744854f3b
 PYLINT_PYPY_SHIM = git+https://github.com/leynos/pylint-pypy-shim.git@$(PYLINT_PYPY_SHIM_REF)
 PYLINT = $(UV_ENV) $(UV) tool run --python $(PYLINT_PYTHON) --from '$(PYLINT_PYPY_SHIM)' pylint-pypy
@@ -22,10 +23,12 @@ RUST_FLAGS ?=
 RUST_FLAGS := -D warnings $(RUST_FLAGS)
 RUSTDOC_FLAGS ?=
 RUSTDOC_FLAGS := -D warnings $(RUSTDOC_FLAGS)
-CARGO_FLAGS ?= --manifest-path rust_extension/Cargo.toml --all-targets --all-features
+RUST_CRATE_DIR ?= rust_extension
+CARGO_FLAGS ?= --manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all-targets --all-features
 CLIPPY_FLAGS ?= $(CARGO_FLAGS) -- $(RUST_FLAGS)
 TEST_FLAGS ?= $(CARGO_FLAGS)
 TEST_CMD := $(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test)
+WHITAKER_CARGO_FLAGS ?= --all-targets --all-features
 WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
 {% endif %}
 
@@ -48,7 +51,7 @@ build-release: ## Build artefacts (sdist & wheel)
 clean: ## Remove build artifacts
 	rm -rf build dist *.egg-info \
 	  .mypy_cache .pytest_cache .coverage coverage.* \
-	  lcov.info htmlcov .venv{% if use_rust %} rust_extension/target{% endif %}
+	  lcov.info htmlcov .venv{% if use_rust %} $(RUST_CRATE_DIR)/target{% endif %}
 	find . -type d -name '__pycache__' -print0 | xargs -0 -r rm -rf
 
 define ensure_tool
@@ -78,32 +81,32 @@ $(VENV_TOOLS): ## Verify required CLI tools in venv
 endif
 
 fmt: build $(MDFORMAT_ALL) ## Format sources
-	$(UV_ENV) $(UV) run ruff format
-	$(UV_ENV) $(UV) run ruff check --select I --fix
+	$(UV_ENV) $(UV) run ruff format $(PYTHON_TARGETS)
+	$(UV_ENV) $(UV) run ruff check --select I --fix $(PYTHON_TARGETS)
 {% if use_rust %}
-	$(CARGO) fmt --manifest-path rust_extension/Cargo.toml --all
+	$(CARGO) fmt --manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all
 {% endif %}
 	$(MDFORMAT_ALL)
 
 check-fmt: build ## Verify formatting
-	$(UV_ENV) $(UV) run ruff format --check
+	$(UV_ENV) $(UV) run ruff format --check $(PYTHON_TARGETS)
 {% if use_rust %}
-	$(CARGO) fmt --manifest-path rust_extension/Cargo.toml --all -- --check
+	$(CARGO) fmt --manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all -- --check
 {% endif %}
 	# mdformat-all doesn't currently do checking
 
 lint: build ## Run linters
-	$(UV_ENV) $(UV) run ruff check
+	$(UV_ENV) $(UV) run ruff check $(PYTHON_TARGETS)
 	$(PYLINT) $(PYLINT_TARGETS)
 {% if use_rust %}
-	RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --no-deps --manifest-path rust_extension/Cargo.toml
+	RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --no-deps --manifest-path $(RUST_CRATE_DIR)/Cargo.toml
 	$(CARGO) clippy $(CLIPPY_FLAGS)
-	PATH="$(USER_BIN_PATH):$(PATH)" RUSTFLAGS="$(RUST_FLAGS)" $(WHITAKER) --all -- $(CARGO_FLAGS)
+	cd $(RUST_CRATE_DIR) && PATH="$(USER_BIN_PATH):$(PATH)" RUSTFLAGS="$(RUST_FLAGS)" $(WHITAKER) --all -- $(WHITAKER_CARGO_FLAGS)
 {% endif %}
 
 typecheck: build ## Run typechecking
 	$(UV_ENV) $(UV) run ty --version
-	$(UV_ENV) $(UV) run ty check
+	$(UV_ENV) $(UV) run ty check $(PYTHON_TARGETS)
 
 markdownlint: $(MDLINT) ## Lint Markdown files
 	env -u NO_COLOR $(MDLINT) '**/*.md'
@@ -117,7 +120,7 @@ test: build $(VENV_TOOLS) ## Run tests
 {% if use_rust %}
 	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(BUILD_JOBS)
 ifneq ($(TEST_CMD),test)
-	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) test --doc --manifest-path rust_extension/Cargo.toml --all-features
+	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) test --doc --manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all-features
 endif
 {% endif %}
 

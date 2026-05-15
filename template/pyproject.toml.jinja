@@ -80,6 +80,7 @@ extend-ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["RUF067"]
 "**/test_*.py" = ["S101", "PLR0913", "PLR0917", "PLR2004", "PLR6301"]
 "tests/steps/*.py" = ["S101", "PLR0913", "PLR0917", "PLR2004", "PLR6301"]
 
@@ -289,11 +290,14 @@ requires = ["maturin>=1.13.3,<2"]
 build-backend = "maturin"
 [tool.maturin]
 manifest-path = "rust_extension/Cargo.toml"
-python-source = "{{ package_name }}"
+python-source = "."
 module-name = "{{ package_name }}._{{ package_name }}_rs"
 python-packages = ["{{ package_name }}"]
 {% else %}
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["{{ package_name }}"]
 {% endif %}

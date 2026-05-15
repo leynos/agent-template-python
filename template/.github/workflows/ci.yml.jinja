@@ -11,6 +11,9 @@ jobs:
     env:
       CS_ACCESS_TOKEN: ${{ "{{" }} secrets.CS_ACCESS_TOKEN {{ "}}" }}
       CODESCENE_CLI_SHA256: ${{ "{{" }} vars.CODESCENE_CLI_SHA256 {{ "}}" }}
+      {% if use_rust %}
+      WHITAKER_INSTALLER_REV: f768c2e53c47df13658af1168a67851d388750bf
+      {% endif %}
     steps:
       - name: Check out repository
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
@@ -23,9 +26,26 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
 
+      {% if use_rust %}
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - name: Install Rust lint and test tools
+        run: |
+          cargo install cargo-nextest --locked
+          cargo install --locked \
+            --git https://github.com/leynos/whitaker \
+            --rev "${WHITAKER_INSTALLER_REV}" \
+            whitaker-installer
+          whitaker-installer --cranelift
+
+      {% endif %}
       - name: Install CLI tools
         run: |
-          for tool in mbake ty ruff; do uv tool install ${tool}; done
+          for tool in mbake; do uv tool install ${tool}; done
           npm install -g markdownlint-cli2
 
       - name: Validate Makefile

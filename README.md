@@ -10,12 +10,13 @@ Run `copier copy` and answer the prompts to generate a project.
 
 ## Running Tests
 
-The test suite relies on the `pytest-copier` plugin and uses `ruff` and `pyright`
-for linting and type checking. Ensure these tools are installed before running
-`pytest`:
+The test suite relies on the `pytest-copier` plugin and renders generated
+projects that run Ruff, Pylint through the PyPy shim, `ty`, pytest, and, when the
+Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust tests. Ensure
+these tools are available before running `pytest`:
 
 ```bash
-pip install pytest-copier ruff pyright
+pip install pytest-copier
 ```
 
 You can also run `scripts/setup_test_deps.sh` to install them automatically.

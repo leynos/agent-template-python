@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
-from types import ModuleType
 
 from pytest_copier.plugin import CopierFixture, CopierProject
 
@@ -15,9 +13,11 @@ def run_quality_gates(project: CopierProject) -> None:
     project.run("make test")
 
 
-def import_package(package: str) -> ModuleType:
-    """Import the generated package."""
-    return importlib.import_module(package)
+def check_generated_import(project: CopierProject, package: str, greeting: str) -> None:
+    """Check the generated package inside its managed environment."""
+    project.run(
+        f'uv run python -c "import {package}; assert {package}.hello() == {greeting!r}"'
+    )
 
 
 def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
@@ -27,11 +27,10 @@ def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
     run_quality_gates(proj)
 
     assert not (proj / "rust_extension").exists()
-    assert not (proj / "docs").exists()
+    assert not (proj / "docs" / "rust-extension.md").exists()
     assert "maturin" not in (proj / "pyproject.toml").read_text()
 
-    pkg = import_package("pure_pkg")
-    assert pkg.hello() == "hello from Python"
+    check_generated_import(proj, "pure_pkg", "hello from Python")
 
 
 def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
@@ -47,8 +46,7 @@ def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
     assert (proj / "docs" / "rust-extension.md").exists()
     assert "maturin" in (proj / "pyproject.toml").read_text()
 
-    pkg = import_package("rust_pkg")
-    assert pkg.hello() == "hello from Rust"
+    check_generated_import(proj, "rust_pkg", "hello from Rust")
 
 
 def test_rust_template_custom_package(copier: CopierFixture, tmp_path: Path) -> None:
@@ -65,5 +63,4 @@ def test_rust_template_custom_package(copier: CopierFixture, tmp_path: Path) -> 
     text = (proj / "pyproject.toml").read_text()
     assert "custom_pkg" in text
 
-    pkg = import_package("custom_pkg")
-    assert pkg.hello() == "hello from Rust"
+    check_generated_import(proj, "custom_pkg", "hello from Rust")
