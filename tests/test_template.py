@@ -26,9 +26,15 @@ def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
     )
     run_quality_gates(proj)
 
-    assert not (proj / "rust_extension").exists()
-    assert not (proj / "docs" / "rust-extension.md").exists()
-    assert "maturin" not in (proj / "pyproject.toml").read_text()
+    assert not (
+        proj / "rust_extension"
+    ).exists(), "rust_extension directory should not exist for Python-only template"
+    assert not (
+        proj / "docs" / "rust-extension.md"
+    ).exists(), "Rust documentation should not be generated for Python-only template"
+    assert (
+        "maturin" not in (proj / "pyproject.toml").read_text()
+    ), "maturin should not be in pyproject.toml for Python-only template"
 
     check_generated_import(proj, "pure_pkg", "hello from Python")
 
@@ -42,9 +48,15 @@ def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
     )
     run_quality_gates(proj)
 
-    assert (proj / "rust_extension").exists()
-    assert (proj / "docs" / "rust-extension.md").exists()
-    assert "maturin" in (proj / "pyproject.toml").read_text()
+    assert (
+        proj / "rust_extension"
+    ).exists(), "rust_extension directory should exist for Rust template"
+    assert (
+        proj / "docs" / "rust-extension.md"
+    ).exists(), "Rust documentation should be generated for Rust template"
+    assert (
+        "maturin" in (proj / "pyproject.toml").read_text()
+    ), "maturin should be in pyproject.toml for Rust template"
 
     check_generated_import(proj, "rust_pkg", "hello from Rust")
 
@@ -59,8 +71,12 @@ def test_rust_template_custom_package(copier: CopierFixture, tmp_path: Path) -> 
     )
     run_quality_gates(proj)
 
-    assert (proj / "rust_extension").exists()
+    assert (
+        proj / "rust_extension"
+    ).exists(), "rust_extension directory should exist for custom package Rust template"
     text = (proj / "pyproject.toml").read_text()
-    assert "custom_pkg" in text
+    assert (
+        "custom_pkg" in text
+    ), "custom package name should appear in pyproject.toml"
 
     check_generated_import(proj, "custom_pkg", "hello from Rust")

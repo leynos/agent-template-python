@@ -18,6 +18,7 @@ PYLINT_PYPY_SHIM = git+https://github.com/leynos/pylint-pypy-shim.git@$(PYLINT_P
 PYLINT = $(UV_ENV) $(UV) tool run --python $(PYLINT_PYTHON) --from '$(PYLINT_PYPY_SHIM)' pylint-pypy
 {% if use_rust %}
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(wildcard $(USER_CARGO)),cargo)
+CARGO_AVAILABLE := $(shell command -v $(CARGO) 2>/dev/null)
 BUILD_JOBS ?=
 RUST_FLAGS ?=
 RUST_FLAGS := -D warnings $(RUST_FLAGS)
@@ -27,7 +28,7 @@ RUST_CRATE_DIR ?= rust_extension
 CARGO_FLAGS ?= --manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all-targets --all-features
 CLIPPY_FLAGS ?= $(CARGO_FLAGS) -- $(RUST_FLAGS)
 TEST_FLAGS ?= $(CARGO_FLAGS)
-TEST_CMD := $(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test)
+TEST_CMD := $(if $(CARGO_AVAILABLE),$(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test),)
 WHITAKER_CARGO_FLAGS ?= --all-targets --all-features
 WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
 {% endif %}
@@ -118,6 +119,10 @@ nixie: ## Validate Mermaid diagrams
 test: build $(VENV_TOOLS) ## Run tests
 	$(UV_ENV) $(UV) run pytest -v -n $(PYTEST_XDIST_WORKERS)
 {% if use_rust %}
+	@test -n "$(CARGO_AVAILABLE)" || { \
+	  printf "Error: cargo is required for Rust tests, but '%s' was not found on PATH\n" "$(CARGO)" >&2; \
+	  exit 1; \
+	}
 	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(BUILD_JOBS)
 ifneq ($(TEST_CMD),test)
 	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) test --doc --manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all-features

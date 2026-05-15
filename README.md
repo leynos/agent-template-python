@@ -11,9 +11,13 @@ Run `copier copy` and answer the prompts to generate a project.
 ## Running Tests
 
 The test suite relies on the `pytest-copier` plugin and renders generated
-projects that run Ruff, Pylint through the PyPy shim, `ty`, pytest, and, when the
-Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust tests. Ensure
-these tools are available before running `pytest`:
+projects that run Ruff, Pylint via a PyPy-backed runner, `ty`, pytest, and, when
+the Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust tests.
+
+Install the `pytest-copier` test dependency before running this repository's
+`pytest` suite. Generated projects install and run their own tooling, including
+Ruff, Pylint via PyPy, `ty`, pytest, and, when Rust is enabled, Clippy, Whitaker,
+and nextest.
 
 ```bash
 pip install pytest-copier

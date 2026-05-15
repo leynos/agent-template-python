@@ -34,6 +34,15 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Cache Rust lint and test tools
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2
+        with:
+          cache-directories: |
+            ~/.cargo/bin/cargo-nextest
+            ~/.cargo/bin/whitaker-installer
+            ~/.local/bin/whitaker
+            ~/.local/share/whitaker
+
       - name: Install Rust lint and test tools
         run: |
           cargo install --locked \
