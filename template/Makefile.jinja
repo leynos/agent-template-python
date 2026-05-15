@@ -30,11 +30,12 @@ CLIPPY_FLAGS ?= $(CARGO_FLAGS) -- $(RUST_FLAGS)
 TEST_FLAGS ?= $(CARGO_FLAGS)
 TEST_CMD := $(if $(CARGO_AVAILABLE),$(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test),)
 WHITAKER_CARGO_FLAGS ?= --all-targets --all-features
+WHITAKER_INSTALLER_REV ?= f768c2e53c47df13658af1168a67851d388750bf
 WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
 {% endif %}
 
 .PHONY: help all clean build build-release lint fmt check-fmt \
-        markdownlint nixie test typecheck $(TOOLS) $(VENV_TOOLS)
+        markdownlint nixie test typecheck $(TOOLS) $(VENV_TOOLS){% if use_rust %} whitaker{% endif %}
 
 .DEFAULT_GOAL := all
 
@@ -81,6 +82,21 @@ $(VENV_TOOLS): ## Verify required CLI tools in venv
 	$(call ensure_tool_venv,$@)
 endif
 
+{% if use_rust %}
+whitaker: ## Install Whitaker when the generated Rust lint target needs it
+	@if ! command -v $(WHITAKER) >/dev/null 2>&1; then \
+	  test -n "$(CARGO_AVAILABLE)" || { \
+	    printf "Error: cargo is required to install Whitaker, but '%s' was not found on PATH\n" "$(CARGO)" >&2; \
+	    exit 1; \
+	  }; \
+	  $(CARGO) install --locked \
+	    --git https://github.com/leynos/whitaker \
+	    --rev "$(WHITAKER_INSTALLER_REV)" \
+	    whitaker-installer; \
+	  whitaker-installer --cranelift; \
+	fi
+
+{% endif %}
 fmt: build $(MDFORMAT_ALL) ## Format sources
 	$(UV_ENV) $(UV) run ruff format $(PYTHON_TARGETS)
 	$(UV_ENV) $(UV) run ruff check --select I --fix $(PYTHON_TARGETS)
@@ -96,7 +112,7 @@ check-fmt: build ## Verify formatting
 {% endif %}
 	# mdformat-all doesn't currently do checking
 
-lint: build ## Run linters
+lint: build{% if use_rust %} whitaker{% endif %} ## Run linters
 	$(UV_ENV) $(UV) run ruff check $(PYTHON_TARGETS)
 	$(PYLINT) $(PYLINT_TARGETS)
 {% if use_rust %}
