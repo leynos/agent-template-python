@@ -12,6 +12,7 @@ dev = [
     "pytest",
     "ruff",
     "pyright",
+    "ty",
     "pytest-timeout",
     "pytest-xdist",
 ]
@@ -19,6 +20,7 @@ dev = [
 [tool.ruff]
 line-length = 88
 preview = true
+target-version = "py{{ python_version.replace('.', '') }}"
 
 [tool.ruff.lint]
 select = [
@@ -43,7 +45,6 @@ select = [
     "DTZ",      # require strict timezone manipulation with datetime
     "FBT",      # detect boolean traps
     "N",        # enforce naming conventions, e.g. ClassName vs function_name
-    "EM",
     "FURB",
     "B",
     "RUF",
@@ -79,8 +80,8 @@ extend-ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"**/test_*.py" = ["S101", "PLR0913", "PLR2004"]
-"tests/steps/*.py" = ["S101", "PLR0913", "PLR2004"]
+"**/test_*.py" = ["S101", "PLR0913", "PLR0917", "PLR2004", "PLR6301"]
+"tests/steps/*.py" = ["S101", "PLR0913", "PLR0917", "PLR2004", "PLR6301"]
 
 [tool.ruff.lint.flake8-import-conventions]
 # Declare the banned `from` imports.
@@ -108,6 +109,47 @@ datetime = "dt"
 "msgspec.json" = "msjson"
 typing = "typ"
 
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.AbstractSet".msg = "Use collections.abc.Set instead of deprecated typing generics."
+"typing.AsyncContextManager".msg = "Use contextlib.AbstractAsyncContextManager instead of deprecated typing generics."
+"typing.AsyncGenerator".msg = "Use collections.abc.AsyncGenerator instead of deprecated typing generics."
+"typing.AsyncIterable".msg = "Use collections.abc.AsyncIterable instead of deprecated typing generics."
+"typing.AsyncIterator".msg = "Use collections.abc.AsyncIterator instead of deprecated typing generics."
+"typing.Awaitable".msg = "Use collections.abc.Awaitable instead of deprecated typing generics."
+"typing.Callable".msg = "Use collections.abc.Callable instead of deprecated typing generics."
+"typing.ChainMap".msg = "Use collections.ChainMap instead of deprecated typing generics."
+"typing.Collection".msg = "Use collections.abc.Collection instead of deprecated typing generics."
+"typing.Container".msg = "Use collections.abc.Container instead of deprecated typing generics."
+"typing.ContextManager".msg = "Use contextlib.AbstractContextManager instead of deprecated typing generics."
+"typing.Coroutine".msg = "Use collections.abc.Coroutine instead of deprecated typing generics."
+"typing.Counter".msg = "Use collections.Counter instead of deprecated typing generics."
+"typing.DefaultDict".msg = "Use collections.defaultdict instead of deprecated typing generics."
+"typing.Deque".msg = "Use collections.deque instead of deprecated typing generics."
+"typing.Dict".msg = "Use dict instead of deprecated typing generics."
+"typing.FrozenSet".msg = "Use frozenset instead of deprecated typing generics."
+"typing.Generator".msg = "Use collections.abc.Generator instead of deprecated typing generics."
+"typing.ItemsView".msg = "Use collections.abc.ItemsView instead of deprecated typing generics."
+"typing.Iterable".msg = "Use collections.abc.Iterable instead of deprecated typing generics."
+"typing.Iterator".msg = "Use collections.abc.Iterator instead of deprecated typing generics."
+"typing.KeysView".msg = "Use collections.abc.KeysView instead of deprecated typing generics."
+"typing.List".msg = "Use list instead of deprecated typing generics."
+"typing.Mapping".msg = "Use collections.abc.Mapping instead of deprecated typing generics."
+"typing.Match".msg = "Use re.Match instead of deprecated typing generics."
+"typing.MutableMapping".msg = "Use collections.abc.MutableMapping instead of deprecated typing generics."
+"typing.MutableSequence".msg = "Use collections.abc.MutableSequence instead of deprecated typing generics."
+"typing.MutableSet".msg = "Use collections.abc.MutableSet instead of deprecated typing generics."
+"typing.OrderedDict".msg = "Use collections.OrderedDict instead of deprecated typing generics."
+"typing.Pattern".msg = "Use re.Pattern instead of deprecated typing generics."
+"typing.Reversible".msg = "Use collections.abc.Reversible instead of deprecated typing generics."
+"typing.Sequence".msg = "Use collections.abc.Sequence instead of deprecated typing generics."
+"typing.Set".msg = "Use set instead of deprecated typing generics."
+"typing.Tuple".msg = "Use tuple instead of deprecated typing generics."
+"typing.Type".msg = "Use type instead of deprecated typing generics."
+"typing.ValuesView".msg = "Use collections.abc.ValuesView instead of deprecated typing generics."
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
 [tool.ruff.lint.mccabe]
 max-complexity = 8
 
@@ -115,6 +157,124 @@ max-complexity = 8
 max-args = 4
 max-bool-expr = 2
 max-locals = 10
+
+[tool.pylint.main]
+recursive = true
+max-module-lines = 400
+
+[tool.pylint.design]
+max-args = 4
+max-locals = 20
+max-statements = 70
+max-positional-arguments = 4
+
+[tool.pylint."messages control"]
+disable = [
+    "all",
+    # Managed PyPy can lag the requested CPython syntax; keep the PyPy-backed
+    # pass useful on files it can parse.
+    "syntax-error",
+]
+enable = [
+    "logging-unsupported-format",
+    "logging-format-truncated",
+    "logging-too-many-args",
+    "logging-too-few-args",
+    "logging-not-lazy",
+    "logging-format-interpolation",
+    "logging-fstring-interpolation",
+    "bare-name-capture-pattern",
+    "invalid-match-args-definition",
+    "too-many-positional-sub-patterns",
+    "multiple-class-sub-patterns",
+    "match-class-bind-self",
+    "match-class-positional-attributes",
+    "consider-merging-isinstance",
+    "too-many-nested-blocks",
+    "simplifiable-if-statement",
+    "redefined-argument-from-local",
+    "no-else-return",
+    "consider-using-ternary",
+    "trailing-comma-tuple",
+    "stop-iteration-return",
+    "simplify-boolean-expression",
+    "inconsistent-return-statements",
+    "useless-return",
+    "consider-swap-variables",
+    "consider-using-join",
+    "consider-using-in",
+    "consider-using-get",
+    "chained-comparison",
+    "consider-using-dict-comprehension",
+    "consider-using-set-comprehension",
+    "simplifiable-if-expression",
+    "no-else-raise",
+    "unnecessary-comprehension",
+    "consider-using-sys-exit",
+    "no-else-break",
+    "no-else-continue",
+    "super-with-arguments",
+    "simplifiable-condition",
+    "condition-evals-to-constant",
+    "consider-using-generator",
+    "use-a-generator",
+    "consider-using-min-builtin",
+    "consider-using-max-builtin",
+    "consider-using-with",
+    "unnecessary-dict-index-lookup",
+    "use-list-literal",
+    "use-dict-literal",
+    "unnecessary-list-index-lookup",
+    "use-yield-from",
+    "unnecessary-negation",
+    "consider-using-enumerate",
+    "consider-iterating-dictionary",
+    "consider-using-dict-items",
+    "use-maxsplit-arg",
+    "use-sequence-for-iteration",
+    "consider-using-f-string",
+    "use-implicit-booleaness-not-len",
+    "use-implicit-booleaness-not-comparison",
+    "use-implicit-booleaness-not-comparison-to-string",
+    "unnecessary-dunder-call",
+    "unnecessary-ellipsis",
+    "invalid-envvar-value",
+    "singledispatch-method",
+    "singledispatchmethod-function",
+    "bad-open-mode",
+    "boolean-datetime",
+    "redundant-unittest-assert",
+    "bad-thread-instantiation",
+    "shallow-copy-environ",
+    "invalid-envvar-default",
+    "subprocess-popen-preexec-fn",
+    "subprocess-run-check",
+    "unspecified-encoding",
+    "forgotten-debug-statement",
+    "method-cache-max-size-none",
+    "deprecated-method",
+    "deprecated-argument",
+    "deprecated-class",
+    "deprecated-decorator",
+    "deprecated-attribute",
+    "too-many-lines",
+    "trailing-whitespace",
+    "missing-final-newline",
+    "trailing-newlines",
+    "superfluous-parens",
+    "mixed-line-endings",
+    "unexpected-line-ending-format",
+    "modified-iterating-dict",
+    "modified-iterating-set",
+    "modified-iterating-list",
+    "too-many-public-methods",
+    "too-many-branches",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-statements",
+    "too-many-boolean-expressions",
+    "too-many-positional-arguments",
+]
 
 [tool.pytest.ini_options]
 # Tests automatically killed after seconds elapsed
@@ -125,7 +285,7 @@ package = true
 
 {% if use_rust %}
 [build-system]
-requires = ["maturin>=1.5"]
+requires = ["maturin>=1.13.3,<2"]
 build-backend = "maturin"
 [tool.maturin]
 manifest-path = "rust_extension/Cargo.toml"

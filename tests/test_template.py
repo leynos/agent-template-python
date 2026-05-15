@@ -1,31 +1,18 @@
 from __future__ import annotations
 
 import importlib
-import sys
 from pathlib import Path
 from types import ModuleType
 
 from pytest_copier.plugin import CopierFixture, CopierProject
 
 
-def build_package(project: CopierProject) -> None:
-    """Install the generated package in editable mode."""
-    project.run(f"{sys.executable} -m pip install -e .")
-    import importlib
-    import site
-    import pathlib
-
-    sp = site.getsitepackages()[0]
-    for p in pathlib.Path(sp).glob("*.pth"):
-        site.addsitedir(str(pathlib.Path(p.read_text().strip()).parent))
-    importlib.invalidate_caches()
-
-
-def check_static(project: CopierProject) -> None:
-    """Run lint and type checks on the project."""
-    project.run("ruff format --check .")
-    project.run("ruff check .")
-    project.run("pyright")
+def run_quality_gates(project: CopierProject) -> None:
+    """Run the generated project's public quality gates."""
+    project.run("make check-fmt")
+    project.run("make lint")
+    project.run("make typecheck")
+    project.run("make test")
 
 
 def import_package(package: str) -> ModuleType:
@@ -37,8 +24,7 @@ def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
     proj = copier.copy(
         tmp_path / "pure", project_name="Pure", package_name="pure_pkg", use_rust=False
     )
-    build_package(proj)
-    check_static(proj)
+    run_quality_gates(proj)
 
     assert not (proj / "rust_extension").exists()
     assert not (proj / "docs").exists()
@@ -55,8 +41,7 @@ def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
         package_name="rust_pkg",
         use_rust=True,
     )
-    build_package(proj)
-    check_static(proj)
+    run_quality_gates(proj)
 
     assert (proj / "rust_extension").exists()
     assert (proj / "docs" / "rust-extension.md").exists()
@@ -74,8 +59,7 @@ def test_rust_template_custom_package(copier: CopierFixture, tmp_path: Path) -> 
         package_name="custom_pkg",
         use_rust=True,
     )
-    build_package(proj)
-    check_static(proj)
+    run_quality_gates(proj)
 
     assert (proj / "rust_extension").exists()
     text = (proj / "pyproject.toml").read_text()

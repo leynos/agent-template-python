@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import importlib
+import typing as typ
+
 PACKAGE_NAME = "{{ package_name }}"
 
 try:  # pragma: no cover - Rust optional
-    rust = __import__(f"_{PACKAGE_NAME}_rs")
-    hello = rust.hello  # type: ignore[attr-defined]
+    rust = importlib.import_module(f"._{PACKAGE_NAME}_rs", package=__name__)
+    hello = typ.cast("typ.Callable[[], str]", rust.hello)
 except ModuleNotFoundError:  # pragma: no cover - Python fallback
     from .pure import hello
 

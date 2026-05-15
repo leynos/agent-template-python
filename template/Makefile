@@ -1,9 +1,33 @@
 MDLINT ?= markdownlint-cli2
 NIXIE ?= nixie
 MDFORMAT_ALL ?= mdformat-all
-TOOLS = $(MDFORMAT_ALL) ruff ty $(MDLINT) uv
+export PATH := $(HOME)/.local/bin:$(HOME)/.bun/bin:$(PATH)
+UV ?= $(shell command -v uv 2>/dev/null || printf '%s/.local/bin/uv' "$$HOME")
+USER_CARGO := $(HOME)/.cargo/bin/cargo
+USER_WHITAKER := $(HOME)/.local/bin/whitaker
+USER_BIN_PATH := $(HOME)/.cargo/bin:$(HOME)/.local/bin:$(HOME)/.bun/bin
+TOOLS = $(MDFORMAT_ALL) $(MDLINT)
 VENV_TOOLS = pytest
-UV_ENV = UV_CACHE_DIR=.uv-cache UV_TOOL_DIR=.uv-tools
+UV_ENV = PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 UV_CACHE_DIR=.uv-cache UV_TOOL_DIR=.uv-tools
+PYTEST_XDIST_WORKERS ?= auto
+PYLINT_PYTHON ?= pypy
+PYLINT_TARGETS ?= {{ package_name }} tests
+PYLINT_PYPY_SHIM_REF ?= 726d09f968b4d729ee4b29c71fc732e744854f3b
+PYLINT_PYPY_SHIM = git+https://github.com/leynos/pylint-pypy-shim.git@$(PYLINT_PYPY_SHIM_REF)
+PYLINT = $(UV_ENV) $(UV) tool run --python $(PYLINT_PYTHON) --from '$(PYLINT_PYPY_SHIM)' pylint-pypy
+{% if use_rust %}
+CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(wildcard $(USER_CARGO)),cargo)
+BUILD_JOBS ?=
+RUST_FLAGS ?=
+RUST_FLAGS := -D warnings $(RUST_FLAGS)
+RUSTDOC_FLAGS ?=
+RUSTDOC_FLAGS := -D warnings $(RUSTDOC_FLAGS)
+CARGO_FLAGS ?= --manifest-path rust_extension/Cargo.toml --all-targets --all-features
+CLIPPY_FLAGS ?= $(CARGO_FLAGS) -- $(RUST_FLAGS)
+TEST_FLAGS ?= $(CARGO_FLAGS)
+TEST_CMD := $(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test)
+WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
+{% endif %}
 
 .PHONY: help all clean build build-release lint fmt check-fmt \
         markdownlint nixie test typecheck $(TOOLS) $(VENV_TOOLS)
@@ -13,10 +37,10 @@ UV_ENV = UV_CACHE_DIR=.uv-cache UV_TOOL_DIR=.uv-tools
 all: build check-fmt lint typecheck test
 
 .venv: pyproject.toml
-	$(UV_ENV) uv venv --clear
+	$(UV_ENV) $(UV) venv --clear
 
-build: uv .venv ## Build virtual-env and install deps
-	$(UV_ENV) uv sync --group dev
+build: .venv ## Build virtual-env and install deps
+	$(UV_ENV) $(UV) sync --group dev
 
 build-release: ## Build artefacts (sdist & wheel)
 	python -m build --sdist --wheel
@@ -24,7 +48,7 @@ build-release: ## Build artefacts (sdist & wheel)
 clean: ## Remove build artifacts
 	rm -rf build dist *.egg-info \
 	  .mypy_cache .pytest_cache .coverage coverage.* \
-	  lcov.info htmlcov .venv
+	  lcov.info htmlcov .venv{% if use_rust %} rust_extension/target{% endif %}
 	find . -type d -name '__pycache__' -print0 | xargs -0 -r rm -rf
 
 define ensure_tool
@@ -35,7 +59,7 @@ define ensure_tool
 endef
 
 define ensure_tool_venv
-	@$(UV_ENV) uv run which $(1) >/dev/null 2>&1 || { \
+	@$(UV_ENV) $(UV) run which $(1) >/dev/null 2>&1 || { \
 	  printf "Error: '%s' is required in the virtualenv, but is not installed\n" "$(1)" >&2; \
 	  exit 1; \
 	}
@@ -53,31 +77,49 @@ $(VENV_TOOLS): ## Verify required CLI tools in venv
 	$(call ensure_tool_venv,$@)
 endif
 
-fmt: ruff $(MDFORMAT_ALL) ## Format sources
-	ruff format
-	ruff check --select I --fix
+fmt: build $(MDFORMAT_ALL) ## Format sources
+	$(UV_ENV) $(UV) run ruff format
+	$(UV_ENV) $(UV) run ruff check --select I --fix
+{% if use_rust %}
+	$(CARGO) fmt --manifest-path rust_extension/Cargo.toml --all
+{% endif %}
 	$(MDFORMAT_ALL)
 
-check-fmt: ruff ## Verify formatting
-	ruff format --check
+check-fmt: build ## Verify formatting
+	$(UV_ENV) $(UV) run ruff format --check
+{% if use_rust %}
+	$(CARGO) fmt --manifest-path rust_extension/Cargo.toml --all -- --check
+{% endif %}
 	# mdformat-all doesn't currently do checking
 
-lint: ruff ## Run linters
-	ruff check
+lint: build ## Run linters
+	$(UV_ENV) $(UV) run ruff check
+	$(PYLINT) $(PYLINT_TARGETS)
+{% if use_rust %}
+	RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --no-deps --manifest-path rust_extension/Cargo.toml
+	$(CARGO) clippy $(CLIPPY_FLAGS)
+	PATH="$(USER_BIN_PATH):$(PATH)" RUSTFLAGS="$(RUST_FLAGS)" $(WHITAKER) --all -- $(CARGO_FLAGS)
+{% endif %}
 
-typecheck: build ty ## Run typechecking
-	ty --version
-	ty check
+typecheck: build ## Run typechecking
+	$(UV_ENV) $(UV) run ty --version
+	$(UV_ENV) $(UV) run ty check
 
 markdownlint: $(MDLINT) ## Lint Markdown files
-	$(MDLINT) '**/*.md'
+	env -u NO_COLOR $(MDLINT) '**/*.md'
 
 nixie: ## Validate Mermaid diagrams
 	$(call ensure_tool,nixie)
 	$(NIXIE) --no-sandbox
 
-test: build uv $(VENV_TOOLS) ## Run tests
-	$(UV_ENV) uv run pytest -v -n auto
+test: build $(VENV_TOOLS) ## Run tests
+	$(UV_ENV) $(UV) run pytest -v -n $(PYTEST_XDIST_WORKERS)
+{% if use_rust %}
+	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(BUILD_JOBS)
+ifneq ($(TEST_CMD),test)
+	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) test --doc --manifest-path rust_extension/Cargo.toml --all-features
+endif
+{% endif %}
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | \
