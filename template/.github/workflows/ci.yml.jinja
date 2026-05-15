@@ -13,6 +13,8 @@ jobs:
       CODESCENE_CLI_SHA256: ${{ "{{" }} vars.CODESCENE_CLI_SHA256 {{ "}}" }}
       {% if use_rust %}
       WHITAKER_INSTALLER_REV: f768c2e53c47df13658af1168a67851d388750bf
+      CARGO_TERM_COLOR: always
+      BUILD_PROFILE: debug
       {% endif %}
     steps:
       - name: Check out repository
@@ -28,14 +30,12 @@ jobs:
 
       {% if use_rust %}
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+        uses: leynos/shared-actions/.github/actions/setup-rust@d400b079fb6a8fa92f7e7b6c57f3d1c92a4b2d54
         with:
           toolchain: stable
-          components: clippy, rustfmt
 
       - name: Install Rust lint and test tools
         run: |
-          cargo install cargo-nextest --locked
           cargo install --locked \
             --git https://github.com/leynos/whitaker \
             --rev "${WHITAKER_INSTALLER_REV}" \
@@ -63,21 +63,15 @@ jobs:
       - name: Run typechecker
         run: make typecheck
 
-      - name: Run tests with coverage
-        run: |
-          uv pip install slipcover pytest-forked
-          uv run python -m slipcover \
-            --source=./{{ package_name }} \
-            --omit="*/unittests/*,*/.venv/*" \
-            --branch \
-            --out coverage.xml \
-            -m pytest --forked -v
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+      - name: Test and Measure Coverage
+        uses: leynos/shared-actions/.github/actions/generate-coverage@d400b079fb6a8fa92f7e7b6c57f3d1c92a4b2d54
         with:
-          name: coverage
-          path: coverage.xml
+          output-path: coverage.xml
+          format: cobertura
+          artefact-name-suffix: {{ package_name | lower | replace("_", "-") }}
+          {% if use_rust %}
+          cargo-manifest: rust_extension/Cargo.toml
+          {% endif %}
 
       - name: Install CodeScene Coverage CLI
         if: env.CS_ACCESS_TOKEN != ''
