@@ -3,26 +3,17 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from pathlib import Path
 
 import pytest
 from pytest_copier.plugin import CopierFixture, CopierProject
 
+from tests.utilities import container_daemon_socket, docker_environment
+
 EVENT = Path(__file__).parent / "fixtures" / "pull_request.event.json"
 ACT_IMAGE = "ubuntu-latest=catthehacker/ubuntu:act-latest"
 GENERATE_COVERAGE_STEP = "Test and Measure Coverage"
-
-
-def docker_environment() -> dict[str, str]:
-    """Return an environment that points act at a usable container socket."""
-    env = os.environ.copy()
-    user_podman_socket = Path(f"/run/user/{os.getuid()}/podman/podman.sock")
-    if "DOCKER_HOST" not in env and user_podman_socket.exists():
-        env["DOCKER_HOST"] = f"unix://{user_podman_socket}"
-    return env
-
 
 def prepare_git_repository(project: CopierProject) -> None:
     """Initialise the rendered project as a git repository for act."""
@@ -55,8 +46,8 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
         "--json",
         "-b",
     ]
-    docker_host = env.get("DOCKER_HOST")
-    if docker_host:
+    docker_host = container_daemon_socket(env)
+    if docker_host is not None:
         command.extend(["--container-daemon-socket", docker_host])
     completed = subprocess.run(
         command,

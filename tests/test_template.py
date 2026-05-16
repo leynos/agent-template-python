@@ -44,7 +44,7 @@ def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
         proj / "docs" / "rust-extension.md"
     ).exists(), "Rust documentation should not be generated for Python-only template"
     assert (
-        "maturin" not in (proj / "pyproject.toml").read_text()
+        "maturin" not in (proj / "pyproject.toml").read_text(encoding="utf-8")
     ), "maturin should not be in pyproject.toml for Python-only template"
     makefile = read_generated_file(proj, "Makefile")
     assert_common_make_targets(makefile)
@@ -69,7 +69,7 @@ def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
         proj / "docs" / "rust-extension.md"
     ).exists(), "Rust documentation should be generated for Rust template"
     assert (
-        "maturin" in (proj / "pyproject.toml").read_text()
+        "maturin" in (proj / "pyproject.toml").read_text(encoding="utf-8")
     ), "maturin should be in pyproject.toml for Rust template"
     makefile = read_generated_file(proj, "Makefile")
     assert_common_make_targets(makefile)
@@ -94,7 +94,7 @@ def test_rust_template_custom_package(copier: CopierFixture, tmp_path: Path) -> 
     assert (
         proj / "rust_extension"
     ).exists(), "rust_extension directory should exist for custom package Rust template"
-    text = (proj / "pyproject.toml").read_text()
+    text = (proj / "pyproject.toml").read_text(encoding="utf-8")
     assert (
         "custom_pkg" in text
     ), "custom package name should appear in pyproject.toml"
