@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -14,15 +13,6 @@ from pytest_copier.plugin import CopierFixture, CopierProject
 EVENT = Path(__file__).parent / "fixtures" / "pull_request.event.json"
 ACT_IMAGE = "ubuntu-latest=catthehacker/ubuntu:act-latest"
 GENERATE_COVERAGE_STEP = "Test and Measure Coverage"
-
-
-def container_info_command() -> list[str] | None:
-    """Return the available container runtime info command."""
-    if shutil.which("docker") is not None:
-        return ["docker", "info"]
-    if shutil.which("podman") is not None:
-        return ["podman", "info"]
-    return None
 
 
 def docker_environment() -> dict[str, str]:
@@ -64,9 +54,10 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
         str(artifact_dir),
         "--json",
         "-b",
-        "--container-daemon-socket",
-        env.get("DOCKER_HOST", ""),
     ]
+    docker_host = env.get("DOCKER_HOST")
+    if docker_host:
+        command.extend(["--container-daemon-socket", docker_host])
     completed = subprocess.run(
         command,
         cwd=project.path,
@@ -77,28 +68,6 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
         timeout=1200,
     )
     return completed.returncode, f"{completed.stdout}\n{completed.stderr}"
-
-
-def require_act() -> None:
-    """Skip local workflow validation when act or containers are unavailable."""
-    if os.environ.get("RUN_ACT_VALIDATION") != "1":
-        pytest.skip("set RUN_ACT_VALIDATION=1 to run act workflow validation")
-    if shutil.which("act") is None:
-        pytest.skip("act is not installed")
-    info_command = container_info_command()
-    if info_command is None:
-        pytest.skip("docker-compatible container runtime is not installed")
-    env = docker_environment()
-    runtime = subprocess.run(
-        info_command,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-        timeout=30,
-    )
-    if runtime.returncode != 0:
-        pytest.skip(f"docker-compatible runtime is unavailable:\n{runtime.stderr}")
 
 
 def iter_json_log_events(logs: str) -> list[dict[str, object]]:
@@ -177,52 +146,42 @@ def assert_act_result(project: CopierProject, code: int, logs: str, *, use_rust:
     assert code == 0, logs
 
 
+@pytest.mark.parametrize(
+    ("name", "package", "use_rust", "artifact_dir"),
+    [
+        ("ActPure", "act_pure", False, "pure-artifacts"),
+        ("ActRust", "act_rust", True, "rust-artifacts"),
+    ],
+)
 @pytest.mark.act
-def test_python_only_workflow_runs_with_shared_coverage_action(
-    copier: CopierFixture, tmp_path: Path
+def test_generated_workflow_runs_with_shared_coverage_action(
+    act_ready: None,
+    copier: CopierFixture,
+    tmp_path: Path,
+    name: str,
+    package: str,
+    use_rust: bool,
+    artifact_dir: str,
 ) -> None:
-    """Validate the Python-only generated CI workflow through act."""
-    require_act()
+    """Validate the generated CI workflow through act."""
     project = copier.copy(
-        tmp_path / "act-pure",
-        project_name="ActPure",
-        package_name="act_pure",
-        use_rust=False,
+        tmp_path / package,
+        project_name=name,
+        package_name=package,
+        use_rust=use_rust,
     )
     prepare_git_repository(project)
 
-    code, logs = run_act(project, artifact_dir=tmp_path / "pure-artifacts")
+    code, logs = run_act(project, artifact_dir=tmp_path / artifact_dir)
 
-    assert (
-        "leynos/shared-actions/.github/actions/generate-coverage"
-        in (
-            project / ".github" / "workflows" / "ci.yml"
-        ).read_text()
-    ), "Python-only workflow should use the shared generate-coverage action"
-    assert_act_result(project, code, logs, use_rust=False)
-
-
-@pytest.mark.act
-def test_rust_extension_workflow_runs_with_shared_coverage_action(
-    copier: CopierFixture, tmp_path: Path
-) -> None:
-    """Validate the Rust-extension generated CI workflow through act."""
-    require_act()
-    project = copier.copy(
-        tmp_path / "act-rust",
-        project_name="ActRust",
-        package_name="act_rust",
-        use_rust=True,
+    workflow = (project / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
     )
-    prepare_git_repository(project)
-
-    code, logs = run_act(project, artifact_dir=tmp_path / "rust-artifacts")
-
-    workflow = (project / ".github" / "workflows" / "ci.yml").read_text()
     assert (
         "leynos/shared-actions/.github/actions/generate-coverage" in workflow
-    ), "Rust workflow should use the shared generate-coverage action"
-    assert (
-        "cargo-manifest: rust_extension/Cargo.toml" in workflow
-    ), "Rust workflow should pass the Rust extension manifest to coverage"
-    assert_act_result(project, code, logs, use_rust=True)
+    ), "Generated workflow should use the shared generate-coverage action"
+    if use_rust:
+        assert (
+            "cargo-manifest: rust_extension/Cargo.toml" in workflow
+        ), "Rust workflow should pass the Rust extension manifest to coverage"
+    assert_act_result(project, code, logs, use_rust=use_rust)
