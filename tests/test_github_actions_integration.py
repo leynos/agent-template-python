@@ -160,7 +160,9 @@ def assert_ci_exercised_expected_steps(logs: str, *, use_rust: bool) -> None:
 
 def assert_act_result(project: CopierProject, code: int, logs: str, *, use_rust: bool) -> None:
     """Assert the workflow passed, allowing only a known act composite-output bug."""
-    assert (project / "coverage.xml").exists()
+    assert (
+        project / "coverage.xml"
+    ).exists(), "act workflow should write coverage.xml in the generated project"
     assert_ci_exercised_expected_steps(logs, use_rust=use_rust)
     if code == 0:
         return
@@ -191,9 +193,12 @@ def test_python_only_workflow_runs_with_shared_coverage_action(
 
     code, logs = run_act(project, artifact_dir=tmp_path / "pure-artifacts")
 
-    assert "leynos/shared-actions/.github/actions/generate-coverage" in (
-        project / ".github" / "workflows" / "ci.yml"
-    ).read_text()
+    assert (
+        "leynos/shared-actions/.github/actions/generate-coverage"
+        in (
+            project / ".github" / "workflows" / "ci.yml"
+        ).read_text()
+    ), "Python-only workflow should use the shared generate-coverage action"
     assert_act_result(project, code, logs, use_rust=False)
 
 
@@ -214,6 +219,10 @@ def test_rust_extension_workflow_runs_with_shared_coverage_action(
     code, logs = run_act(project, artifact_dir=tmp_path / "rust-artifacts")
 
     workflow = (project / ".github" / "workflows" / "ci.yml").read_text()
-    assert "leynos/shared-actions/.github/actions/generate-coverage" in workflow
-    assert "cargo-manifest: rust_extension/Cargo.toml" in workflow
+    assert (
+        "leynos/shared-actions/.github/actions/generate-coverage" in workflow
+    ), "Rust workflow should use the shared generate-coverage action"
+    assert (
+        "cargo-manifest: rust_extension/Cargo.toml" in workflow
+    ), "Rust workflow should pass the Rust extension manifest to coverage"
     assert_act_result(project, code, logs, use_rust=True)

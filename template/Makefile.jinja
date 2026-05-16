@@ -133,7 +133,7 @@ markdownlint: $(MDLINT) ## Lint Markdown files
 	env -u NO_COLOR $(MDLINT) '**/*.md'
 
 nixie: ## Validate Mermaid diagrams
-	$(call ensure_tool,nixie)
+	$(call ensure_tool,$(NIXIE))
 	$(NIXIE) --no-sandbox
 
 test: build $(VENV_TOOLS) ## Run tests
