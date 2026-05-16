@@ -7,14 +7,6 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
-def _is_relative_to(path: Path, parent: Path) -> bool:
-    try:
-        path.relative_to(parent)
-    except ValueError:
-        return False
-    return True
-
-
 def _resolved_socket_from_docker_host(
     docker_host: str, allowed_dirs: tuple[Path, ...]
 ) -> Path | None:
@@ -27,15 +19,19 @@ def _resolved_socket_from_docker_host(
         return None
     if not socket_path.exists():
         return None
-    if not any(_is_relative_to(socket_path, allowed_dir) for allowed_dir in allowed_dirs):
+    if not any(socket_path.is_relative_to(allowed_dir) for allowed_dir in allowed_dirs):
         return None
     return socket_path
 
 
 def _user_podman_socket() -> Path | None:
-    socket_path = Path(f"/run/user/{os.getuid()}/podman/podman.sock").resolve()
-    if socket_path.exists():
-        return socket_path
+    socket_path = Path(f"/run/user/{os.getuid()}/podman/podman.sock")
+    if not socket_path.exists():
+        return None
+    resolved = socket_path.resolve()
+    expected_prefix = Path(f"/run/user/{os.getuid()}").resolve()
+    if resolved.is_relative_to(expected_prefix):
+        return resolved
     return None
 
 
