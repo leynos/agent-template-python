@@ -6,10 +6,10 @@ Accepted.
 
 ## Context
 
-Generated projects need one public local gate that is simple to run, while still
-keeping Python and Rust tooling independently understandable. The template also
-needs generated GitHub Actions workflows to match the local gate closely enough
-that failures are predictable.
+Generated projects must include one public local gate that is simple to run and
+preserve independent clarity for Python and Rust tooling, and the template
+should generate GitHub Actions workflows that closely match the local gate so
+failures are predictable.
 
 ## Decision
 

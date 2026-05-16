@@ -9,10 +9,7 @@ from pytest_copier.plugin import CopierFixture, CopierProject
 
 def run_quality_gates(project: CopierProject) -> None:
     """Run the generated project's public quality gates."""
-    project.run("make check-fmt")
-    project.run("make lint")
-    project.run("make typecheck")
-    project.run("make test")
+    project.run("make all")
 
 
 def check_generated_import(project: CopierProject, package: str, greeting: str) -> None:
