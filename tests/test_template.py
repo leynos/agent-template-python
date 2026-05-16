@@ -21,7 +21,7 @@ def check_generated_import(project: CopierProject, package: str, greeting: str) 
 
 def read_generated_file(project: CopierProject, relative_path: str) -> str:
     """Read a generated file as UTF-8 text."""
-    return (project / relative_path).read_text()
+    return (project / relative_path).read_text(encoding="utf-8")
 
 
 def assert_common_make_targets(makefile: str) -> None:
