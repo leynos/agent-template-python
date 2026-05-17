@@ -41,13 +41,22 @@ WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHIT
 
 all: build check-fmt lint typecheck test
 
+define ensure_uv
+	@command -v $(UV) >/dev/null 2>&1 || { \
+	  printf "Error: uv is required, but '%s' was not found or is not executable\n" "$(UV)" >&2; \
+	  exit 1; \
+	}
+endef
+
 .venv: pyproject.toml
+	$(call ensure_uv)
 	$(UV_ENV) $(UV) venv --clear
 
 build: .venv ## Build virtual-env and install deps
 	$(UV_ENV) $(UV) sync --group dev
 
 build-release: ## Build artefacts (sdist & wheel)
+	$(call ensure_uv)
 	$(UV_ENV) $(UV) run python -m build --sdist --wheel
 
 clean: ## Remove build artifacts
@@ -78,7 +87,7 @@ endif
 
 ifneq ($(strip $(VENV_TOOLS)),)
 .PHONY: $(VENV_TOOLS)
-$(VENV_TOOLS): ## Verify required CLI tools in venv
+$(VENV_TOOLS): build ## Verify required CLI tools in venv
 	$(call ensure_tool_venv,$@)
 endif
 
