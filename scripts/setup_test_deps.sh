@@ -3,4 +3,4 @@
 # Generated projects install their own linting and type-checking dependencies.
 set -euo pipefail
 
-pip install pytest-copier
+pip install pytest-copier syrupy

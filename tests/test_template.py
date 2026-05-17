@@ -26,6 +26,7 @@ import shlex
 from pathlib import Path
 
 from pytest_copier.plugin import CopierFixture, CopierProject
+from syrupy.assertion import SnapshotAssertion
 
 
 def run_quality_gates(project: CopierProject) -> None:
@@ -150,6 +151,49 @@ def assert_common_make_targets(makefile: str) -> None:
     assert "lint-python: build" in makefile, "Makefile should expose lint-python"
     assert "lint: lint-python" in makefile, "lint should delegate to lint-python"
     assert ".uv-cache .uv-tools" in makefile, "clean should remove uv state dirs"
+
+
+def test_python_only_help_output_snapshot(
+    copier: CopierFixture, tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
+    """Validate the generated Python-only help output.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    snapshot
+        Syrupy snapshot assertion fixture for stable parent-repository output
+        checks.
+
+    Returns
+    -------
+    None
+        The test passes when ``make help`` matches the stored snapshot.
+
+    Raises
+    ------
+    AssertionError
+        Raised when generated help output differs from the stored snapshot.
+
+    Examples
+    --------
+    Refresh the help-output snapshot after intentional Makefile help changes::
+
+        python -m pytest \
+          tests/test_template.py::test_python_only_help_output_snapshot \
+          --snapshot-update
+    """
+    project = copier.copy(
+        tmp_path / "help",
+        project_name="Help",
+        package_name="help_pkg",
+        use_rust=False,
+    )
+
+    assert project.run("make help") == snapshot
 
 
 def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:

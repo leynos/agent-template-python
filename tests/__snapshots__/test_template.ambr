@@ -1,0 +1,19 @@
+# serializer version: 1
+# name: test_python_only_help_output_snapshot
+  '''
+  Available targets:
+    build                Build virtual-env and install deps
+    build-release        Build artefacts (sdist & wheel)
+    clean                Remove build artifacts
+    fmt                  Format sources
+    check-fmt            Verify formatting
+    lint                 Run linters
+    lint-python          Run Python linters
+    typecheck            Run typechecking
+    markdownlint         Lint Markdown files
+    nixie                Validate Mermaid diagrams
+    test                 Run tests
+    help                 Show available targets
+  
+  '''
+# ---
