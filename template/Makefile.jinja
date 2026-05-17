@@ -83,6 +83,13 @@ $(VENV_TOOLS): ## Verify required CLI tools in venv
 endif
 
 {% if use_rust %}
+define ensure_cargo
+	@test -n "$(CARGO_AVAILABLE)" || { \
+	  printf "Error: cargo is required for Rust targets, but '%s' was not found on PATH\n" "$(CARGO)" >&2; \
+	  exit 1; \
+	}
+endef
+
 whitaker: ## Install Whitaker when the generated Rust lint target needs it
 	@if ! command -v $(WHITAKER) >/dev/null 2>&1; then \
 	  test -n "$(CARGO_AVAILABLE)" || { \
@@ -101,6 +108,7 @@ fmt: build $(MDFORMAT_ALL) ## Format sources
 	$(UV_ENV) $(UV) run ruff format $(PYTHON_TARGETS)
 	$(UV_ENV) $(UV) run ruff check --select I --fix $(PYTHON_TARGETS)
 {% if use_rust %}
+	$(call ensure_cargo)
 	$(CARGO) fmt --manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all
 {% endif %}
 	$(MDFORMAT_ALL)
@@ -108,6 +116,7 @@ fmt: build $(MDFORMAT_ALL) ## Format sources
 check-fmt: build ## Verify formatting
 	$(UV_ENV) $(UV) run ruff format --check $(PYTHON_TARGETS)
 {% if use_rust %}
+	$(call ensure_cargo)
 	$(CARGO) fmt --manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all -- --check
 {% endif %}
 	# mdformat-all doesn't currently do checking
@@ -120,6 +129,7 @@ lint-python: build ## Run Python linters
 {% if use_rust %}
 
 lint-rust: build whitaker ## Run Rust linters
+	$(call ensure_cargo)
 	RUSTDOCFLAGS="$(RUSTDOC_FLAGS)" $(CARGO) doc --no-deps --manifest-path $(RUST_CRATE_DIR)/Cargo.toml
 	$(CARGO) clippy $(CLIPPY_FLAGS)
 	cd $(RUST_CRATE_DIR) && PATH="$(USER_BIN_PATH):$(PATH)" RUSTFLAGS="$(RUST_FLAGS)" $(WHITAKER) --all -- $(WHITAKER_CARGO_FLAGS)
