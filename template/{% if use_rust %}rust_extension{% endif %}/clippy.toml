@@ -1,0 +1,7 @@
+# Align with CodeScene's ceiling.
+cognitive-complexity-threshold = 9
+too-many-arguments-threshold = 4
+too-many-lines-threshold = 70
+excessive-nesting-threshold = 4
+
+allow-expect-in-tests = true

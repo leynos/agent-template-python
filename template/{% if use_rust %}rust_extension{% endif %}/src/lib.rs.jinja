@@ -1,12 +1,30 @@
+//! Native extension module for `{{ project_name }}`.
+
 use pyo3::prelude::*;
 
 #[pyfunction]
+#[expect(
+    clippy::missing_const_for_fn,
+    reason = "PyO3 pyfunction entry points cannot be const functions."
+)]
 fn hello() -> &'static str {
     "hello from Rust"
 }
 
 #[pymodule]
-fn _{{ package_name }}_rs(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(hello, m)?)?;
+fn _{{ package_name }}_rs(module: &Bound<'_, PyModule>) -> PyResult<()> {
+    module.add_function(wrap_pyfunction!(hello, module)?)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    //! Tests for the native extension stub.
+
+    use super::hello;
+
+    #[test]
+    fn returns_rust_greeting() {
+        assert_eq!(hello(), "hello from Rust");
+    }
 }

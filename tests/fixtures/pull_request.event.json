@@ -1,0 +1,14 @@
+{
+  "pull_request": {
+    "number": 1,
+    "head": {
+      "ref": "import-lints"
+    }
+  },
+  "repository": {
+    "full_name": "leynos/agent-template-python"
+  },
+  "sender": {
+    "login": "local-validation"
+  }
+}

@@ -1,3 +1,5 @@
+"""Pure Python implementation for the package stub."""
+
 from __future__ import annotations
 
 
