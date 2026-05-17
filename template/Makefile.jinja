@@ -48,7 +48,7 @@ build: .venv ## Build virtual-env and install deps
 	$(UV_ENV) $(UV) sync --group dev
 
 build-release: ## Build artefacts (sdist & wheel)
-	python -m build --sdist --wheel
+	$(UV_ENV) $(UV) run python -m build --sdist --wheel
 
 clean: ## Remove build artifacts
 	rm -rf build dist *.egg-info \
@@ -93,7 +93,7 @@ whitaker: ## Install Whitaker when the generated Rust lint target needs it
 	    --git https://github.com/leynos/whitaker \
 	    --rev "$(WHITAKER_INSTALLER_REV)" \
 	    whitaker-installer; \
-	  whitaker-installer --cranelift; \
+	  PATH="$(HOME)/.cargo/bin:$$PATH" whitaker-installer --cranelift; \
 	fi
 
 {% endif %}
