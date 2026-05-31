@@ -498,6 +498,7 @@ def test_generated_tooling_contracts(
     project.run("uv tool run mbake validate Makefile")
 
     pyproject = parse_toml_file(project / "pyproject.toml")
+    agents = read_generated_text(project / "AGENTS.md")
     makefile = read_generated_text(project / "Makefile")
     ci_workflow = read_generated_text(project / ".github" / "workflows" / "ci.yml")
     release_workflow = read_generated_text(
@@ -515,6 +516,7 @@ def test_generated_tooling_contracts(
 
     assert_generated_tooling_contracts(
         package_name=package_name,
+        agents=agents,
         pyproject=pyproject,
         makefile=makefile,
         ci_workflow=ci_workflow,
@@ -593,6 +595,7 @@ def test_generated_github_workflows_match_act_validation_contract(
 def assert_generated_tooling_contracts(
     *,
     package_name: str,
+    agents: str,
     pyproject: dict[str, Any],
     makefile: str,
     ci_workflow: str,
@@ -608,6 +611,7 @@ def assert_generated_tooling_contracts(
         pyproject=pyproject,
         use_rust=use_rust,
     )
+    assert_agents_contracts(agents)
     assert_makefile_contracts(makefile=makefile, use_rust=use_rust)
     assert_ci_workflow_contracts(ci_workflow=ci_workflow, use_rust=use_rust)
     assert_release_workflow_contracts(
@@ -668,9 +672,31 @@ def assert_pyproject_contracts(
         )
 
 
+def assert_agents_contracts(agents: str) -> None:
+    """Assert generated assistant guidance documents act-enabled testing."""
+    assert "make test WITH_ACT=1" in agents, (
+        "expected generated AGENTS.md to document act-enabled test runs"
+    )
+    assert "RUN_ACT_VALIDATION=1" in agents, (
+        "expected generated AGENTS.md to describe the pytest act environment"
+    )
+
+
 def assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     """Assert generated Makefile contracts for both template variants."""
     assert_common_make_targets(makefile)
+    assert "WITH_ACT ?= 0" in makefile, (
+        "expected generated Makefile to default act validation off"
+    )
+    assert "ACT_TEST_ENV =" in makefile, (
+        "expected generated Makefile to map WITH_ACT to pytest environment"
+    )
+    assert "RUN_ACT_VALIDATION=1" in makefile, (
+        "expected generated Makefile to enable act validation for pytest"
+    )
+    assert "$(UV_ENV) $(ACT_TEST_ENV) $(UV) run pytest" in makefile, (
+        "expected generated test target to include the act test environment"
+    )
     assert "PYTHON_TARGETS ?=" in makefile, (
         "expected generated Makefile to define Python target selection"
     )

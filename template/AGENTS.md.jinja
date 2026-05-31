@@ -69,6 +69,9 @@
   - Formatting is correct and validated.
 - **For Python files:**
   - **Testing:** Passes all relevant unit and behavioural tests (`make test`).
+    Use `make test WITH_ACT=1` when local GitHub Actions workflow validation
+    should run through `act`; this sets `RUN_ACT_VALIDATION=1` for the pytest
+    invocation.
   - **Linting:** Passes lint checks (`make lint`).
   - **Formatting:** Adheres to formatting standards (`make check-fmt`; use
     `make fmt` to apply fixes).
