@@ -277,6 +277,107 @@ async def run_checks():
 asyncio.run(run_checks())
 ```
 
+#### Task lifetime and `asyncio.gather`
+
+When multiple async commands run concurrently, each task's lifetime must be
+bounded by the enclosing coroutine. Await the tasks with `asyncio.gather`, or
+with `asyncio.TaskGroup` on Python 3.11 and later, so background command work
+cannot escape the calling coroutine.
+
+```python
+import asyncio
+from cuprum import Catalogue, sh
+
+CATALOGUE = Catalogue.from_programs("cargo", "python")
+
+async def run_all():
+    with sh.scoped(CATALOGUE):
+        cargo = sh.make("cargo")
+        python = sh.make("python")
+        results = await asyncio.gather(
+            cargo("check", "--all-targets").run(),
+            python("-m", "pytest", "--tb=short").run(),
+            return_exceptions=True,
+        )
+    return results
+```
+
+`return_exceptions=True` prevents a single task failure from cancelling sibling
+tasks. Callers must inspect each result individually.
+
+#### Cancellation handling
+
+`asyncio.CancelledError` is not suppressed by Cuprum. If a task running `run()`
+is cancelled, for example by a timeout or external signal, the coroutine raises
+`CancelledError` as normal. Authors must not catch `CancelledError` silently.
+
+```python
+async def check_with_timeout():
+    with sh.scoped(CATALOGUE):
+        cargo = sh.make("cargo")
+        try:
+            result = await asyncio.wait_for(
+                cargo("build", "--release").run(), timeout=120.0
+            )
+        except asyncio.TimeoutError:
+            # Handle or re-raise; do not swallow CancelledError
+            raise
+    return result
+```
+
+#### Error propagation
+
+`run()` returns a `CommandResult` and does not raise on non-zero exit codes.
+Subprocess errors are propagated as field values such as `exit_code` and
+`stderr`, not as exceptions. Callers must check `result.exit_code` explicitly.
+The exceptions raised are those from the Python event loop itself, such as
+`CancelledError` and `TimeoutError`, or from catalogue violations such as
+`UnknownProgramError`.
+
+#### Catalogue safety across concurrent tasks
+
+A `Catalogue` instance is safe to share across concurrent tasks because it is
+read-only after construction. `sh.scoped(CATALOGUE)` is a context manager that
+binds the catalogue for the current execution scope. Authors must not mutate the
+catalogue inside a concurrent task. Construct the catalogue once at module level
+and re-use it.
+
+#### Concurrent testing patterns with cmd-mox
+
+Concurrent async script paths use the same catalogue and scoped context in tests
+as they do in production code. `cmd-mox` intercepts at the catalogue boundary
+regardless of whether `run()` or `run_sync()` is used.
+
+```python
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_concurrent_commands_all_succeed(mock_catalogue):
+    mock_catalogue.register("cargo", exit_code=0, stdout="ok\n")
+    mock_catalogue.register("python", exit_code=0, stdout="passed\n")
+
+    results = await run_all()  # function under test
+
+    assert all(r.exit_code == 0 for r in results)
+
+
+@pytest.mark.asyncio
+async def test_gather_continues_after_one_failure(mock_catalogue):
+    mock_catalogue.register("cargo", exit_code=1, stderr="error\n")
+    mock_catalogue.register("python", exit_code=0, stdout="passed\n")
+
+    results = await run_all()
+
+    exit_codes = [r.exit_code for r in results]
+    assert 1 in exit_codes
+    assert 0 in exit_codes
+```
+
+The `mock_catalogue` fixture replaces the real `CATALOGUE`. Authors must inject
+it via a parameter or monkeypatch rather than relying on the module-level
+constant directly.
+
 ## pathlib: robust path manipulation
 
 ### Project roots, joins, and ensuring directories
