@@ -166,17 +166,22 @@ project:
   meaningfully named structs.
 - Where a function is returning a large error, consider using `Arc` to reduce
   the amount of data returned.
-- Ensure that new features are validated with unit tests using `rstest` and
-  behavioural tests using `rstest-bdd` where applicable. Cover happy paths,
-  unhappy paths, and relevant edge cases.
+- Ensure that new features are validated with unit and behavioural tests before
+  release. For Python work, use `pytest` and `pytest-bdd` respectively. For
+  Rust work, use `rstest` and `rstest-bdd`. Cover happy paths, unhappy paths,
+  and relevant edge cases.
 - Add end-to-end tests where a change affects externally observable workflows,
   integration contracts, persistence, command-line behaviour, network boundaries,
   user interface flows, or other system-level behaviour.
-- Use property tests with `proptest` or a bounded model checker with `kani` when a
-  change introduces an invariant over ranges of inputs, states, orderings, or
-  transitions.
-- Use exhaustive proof with `verus` for introduced lemmas or contractual business
-  logic. Proofs should be substantive, rigorous, and well-founded.
+- Use snapshot tests with `syrupy` where output format consistency is required by
+  requirements.
+- Use property tests with `hypothesis` or `CrossHair` when a change introduces an
+  invariant over ranges of inputs, states, orderings, or transitions. For Rust
+  code, use `proptest` or a bounded model checker such as `kani` when a
+  Rust extension is in scope.
+- For Rust extensions, use exhaustive proof with `verus` for introduced lemmas or
+  contractual business logic. Proofs should be substantive, rigorous, and
+  well-founded.
 - Run relevant unit, behavioural, property, model-checking, proof, and
   end-to-end suites before and after each change.
 - Every module **must** begin with a module level (`//!`) comment explaining the
@@ -222,14 +227,15 @@ project:
 
 ### Testing
 
-- Use `rstest` fixtures for shared setup.
-- Replace duplicated tests with `#[rstest(...)]` parameterized cases.
+- Use `pytest` fixtures for shared setup in Python work. Use `rstest` fixtures for
+  shared setup in Rust work.
+- Replace duplicated tests with `#[rstest(...)]` parameterized cases in Rust and
+  equivalent fixture-driven parameterisation in Python.
 - Prefer `mockall` for ad hoc mocks and stubs.
 - For testing reliant on environment variables, use dependency injection and the
-  `mockable` crate where feasible.
-- If mockable cannot be used, environment mutations in tests must be wrapped in
-  shared guards in `test_utils` or `test_helpers`. Use shared mutexes and avoid
-  direct environment mutation.
+  `mockable` crate where feasible. If mockable cannot be used, environment
+  mutations in tests must be wrapped in shared guards in `test_utils` or
+  `test_helpers`. Use shared mutexes and avoid direct environment mutation.
 
 ### Dependency management
 
