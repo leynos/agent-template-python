@@ -196,6 +196,65 @@ def test_python_only_help_output_snapshot(
     assert project.run("make help") == snapshot
 
 
+def test_python_only_pure_module_snapshot(
+    copier: CopierFixture, tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
+    """Validate the rendered pure-Python implementation module formatting.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    snapshot
+        Syrupy snapshot assertion fixture for stable generated file contents.
+
+    Returns
+    -------
+    None
+        The test passes when the generated pure module matches the snapshot.
+    """
+    project = copier.copy(
+        tmp_path / "pure-module",
+        project_name="PureModule",
+        package_name="pure_module_pkg",
+        use_rust=False,
+    )
+
+    assert read_generated_file(project, "pure_module_pkg/pure.py") == snapshot
+
+
+def test_rust_pure_module_snapshot(
+    copier: CopierFixture, tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
+    """Validate the rendered Rust-enabled fallback module formatting.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    snapshot
+        Syrupy snapshot assertion fixture for stable generated file contents.
+
+    Returns
+    -------
+    None
+        The test passes when the generated Rust fallback module matches the
+        snapshot.
+    """
+    project = copier.copy(
+        tmp_path / "rust-module",
+        project_name="RustModule",
+        package_name="rust_module_pkg",
+        use_rust=True,
+    )
+
+    assert read_generated_file(project, "rust_module_pkg/pure.py") == snapshot
+
+
 def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
     """Validate the Python-only rendered project variant.
 
