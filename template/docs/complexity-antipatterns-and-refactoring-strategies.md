@@ -653,7 +653,7 @@ behaviour—common culprits for bugs and increased cognitive load in imperative
 code.[^26]
 
 Examples include using Structured Query Language for database queries—
-specifying the desired dataset rather than the retrieval algorithm[^34]—or
+specifying the desired dataset rather than the retrieval algorithm[^26]—or
 employing functional programming constructs like `map`, `filter`, and `reduce`
 on collections instead of writing explicit loops. Refactoring imperative code
 to a declarative style can start small, perhaps by converting a loop that
