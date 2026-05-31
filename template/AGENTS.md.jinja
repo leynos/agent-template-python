@@ -316,17 +316,16 @@ project:
 - Use dashes (`-`) for list bullets.
 - Use GitHub-flavoured Markdown footnotes (`[^1]`) for references and footnotes.
 
-{% if use_rust %}
-
 ## Project documentation
 
+Record design decisions in the design document. Where a decision is substantive,
+record it in an ADR document following the documentation style guide, then
+reference that ADR from the design document.
+
 Update `docs/users-guide.md` for any change to application behaviour or user
-interface that users should know about.
-
-Record design decisions in the design document. For substantive decisions, create
-an ADR and reference it from the design document.
-
-{% endif %}
+interface that users should know about. Document internally facing interfaces
+or practices in the relevant component architecture document. Document internally
+facing conventions or practices in `docs/developers-guide.md`.
 
 ## Python development guidelines
 
