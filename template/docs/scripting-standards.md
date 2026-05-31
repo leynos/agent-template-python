@@ -1,6 +1,6 @@
 # Scripting standards
 
-Project scripts must prioritise clarity, reproducibility, and testability. The
+Project scripts must prioritize clarity, reproducibility, and testability. The
 baseline tooling is Python and the [`uv`](https://github.com/astral-sh/uv)
 launcher so that scripts remain dependency‑self‑contained and easy to execute
 in Continuous Integration (CI) or locally.
@@ -13,7 +13,7 @@ as a default.
 
 - Environment‑first configuration without glue. Cyclopts reads environment
   variables with a defined prefix (for example, `INPUT_`) and maps them to
-  parameters directly. Bash argument assembly and bespoke parsing can be
+  parameters directly. Bash argument assembly, and bespoke parsing, can be
   removed.
 - Typed lists and paths from env. Parameters annotated as `list[str]` or
   `list[pathlib.Path]` are populated from whitespace‑ or delimiter‑separated
@@ -31,9 +31,10 @@ as a default.
 - Target Python 3.13 for all new scripts. Older versions may only be used when
   integration constraints require them, and any exception must be documented
   inline.
-- Each script starts with an `uv` script block so runtime and dependency
-  expectations travel with the file. Prefer the shebang `#!/usr/bin/env -S uv
-  run python` followed by the metadata block shown in the example below.
+- Each script starts with an `uv` script block, so runtime and dependency
+  expectations travel with the file. Prefer the shebang
+  `#!/usr/bin/env -S uv run python` followed by the metadata block shown in the
+  example below.
 - External processes are invoked via [`plumbum`](https://plumbum.readthedocs.io)
   to provide structured command execution rather than ad‑hoc shell strings.
 - File‑system interactions use `pathlib.Path`. Higher‑level operations (for
@@ -82,7 +83,7 @@ Employ Cyclopts when a script requires parameters, particularly under CI with
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Annotated
+from typing import Annotated
 
 import cyclopts
 from cyclopts import App, Parameter
@@ -101,9 +102,9 @@ def main(
     version: Annotated[str, Parameter(required=True)],
 
     # Optional scalars
-    package_name: Optional[str] = None,
-    target: Optional[str] = None,
-    outdir: Optional[Path] = None,
+    package_name: str | None = None,
+    target: str | None = None,
+    outdir: Path | None = None,
     dry_run: bool = False,
 
     # Lists (whitespace/newline separated by default)
@@ -145,7 +146,7 @@ Guidance:
   must remain available, add an alias:
 
   ```python
-  package_name: Annotated[Optional[str], Parameter(aliases=["--name"])] = None
+  package_name: Annotated[str | None, Parameter(aliases=["--name"])] = None
   ```
 
 - Where a specific delimiter is required for an environment list (for example,
@@ -158,15 +159,15 @@ Guidance:
 - Per‑parameter environment names can be pinned for backwards compatibility:
 
   ```python
-  config_out: Annotated[Optional[Path], Parameter(env_var="INPUT_CONFIG_PATH")] = None
+  config_out: Annotated[Path | None, Parameter(env_var="INPUT_CONFIG_PATH")] = None
   ```
 
-## plumbum: command calling and pipelines
+## Plumbum: command calling and pipelines
 
 ### Basics: command calls, capturing output, handling failures
 
 ```python
-from __future__ annotations
+from __future__ import annotations  # Enables postponed annotation evaluation
 from plumbum import local
 from plumbum.cmd import git, grep
 
@@ -177,7 +178,7 @@ last_commit = git["--no-pager", "log", "-1", "--pretty=%H"]().strip()
 rc, out, err = git["status"].run(retcode=None)
 if rc != 0:
     # handle gracefully; err is available for logging
-    ...
+    …
 
 # Pipelines via the | operator
 shortlog = (git["--no-pager", "log", "--oneline"] | grep["fix"])()
@@ -227,23 +228,23 @@ assert out.splitlines() == ["1.2.3", "2.0.0"]
 count = (git["--no-pager", "log", "--oneline"] | grep["chore"] | wc["-l"])().strip()
 ```
 
-## pathlib: robust path manipulation
+## Pathlib: robust path manipulation
 
 ### Project roots, joins, and ensuring directories
 
 ```python
-from __future__ import annotations
+from __future__ import annotations  # Enables postponed annotation evaluation
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DIST = PROJECT_ROOT / "dist"
 (DIST / "artifacts").mkdir(parents=True, exist_ok=True)
 
-# Portable joins and normalisation
+# Portable joins and normalization
 cfg = PROJECT_ROOT.joinpath("config", "release.toml").resolve()
 ```
 
-### Reading / writing files and atomic updates
+### Reading and writing files and atomic updates
 
 ```python
 from pathlib import Path
@@ -281,7 +282,7 @@ except FileNotFoundError:
     pass
 ```
 
-## Cyclopts + plumbum + pathlib together (reference script)
+## Cyclopts + Plumbum + Pathlib together (reference script)
 
 ```python
 #!/usr/bin/env -S uv run python
@@ -292,7 +293,7 @@ except FileNotFoundError:
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Optional, Annotated
+from typing import Annotated
 
 import cyclopts
 from cyclopts import App, Parameter
@@ -307,7 +308,7 @@ def main(
     bin_name: Annotated[str, Parameter(required=True)],
     version: Annotated[str, Parameter(required=True)],
     formats: list[str] | None = None,
-    outdir: Optional[Path] = None,
+    outdir: Path | None = None,
     dry_run: bool = False,
 ):
     project_root = Path(__file__).resolve().parents[1]
@@ -440,24 +441,24 @@ def test_spy_and_record(cmd_mox, monkeypatch, tmp_path):
 
 - Scripts must be idempotent. Re‑running should converge state without
   destructive side effects. Guard conditions (for example, checking the secrets
-  manager for existing secrets) should precede writes or rotations.
+  manager to confirm existing secrets) should precede writes or rotations.
 - Pure functions that accept configuration objects are preferred over global
-  state so that tests can exercise logic deterministically.
-- Exit codes should follow UNIX conventions: `0` for success, non‑zero for
-  actionable failures. Human‑friendly error messages should highlight
-  remediation steps.
+  state, so tests can exercise logic deterministically.
+- Exit codes should follow Portable Operating System Interface (POSIX)
+  conventions: `0` for success, non-zero for actionable failures.
+  Human-friendly error messages should highlight remediation steps.
 - Dependencies must remain minimal. Any new package should be added to the `uv`
   block and the rationale documented within the script or companion tests.
 
 ## Migration guidance (Typer → Cyclopts)
 
 1. Dependencies: replace Typer with Cyclopts in the script’s `uv` block.
-2. Entry point: replace `app = typer.Typer(...)` with `app = App(...)` and
+2. Entry point: replace `app = typer.Typer(…)` with `app = App(…)` and
    configure `Env("INPUT_", command=False)` where environment variables are
    authoritative in CI.
-3. Parameters: replace `typer.Option(...)` with annotations and
-   `Parameter(...)`. Mark required options with `required=True`. Map any
-   non‑matching environment names via `env_var=...`.
+3. Parameters: replace `typer.Option(…)` with annotations and
+   `Parameter(…)`. Mark required options with `required=True`. Map any
+   non‑matching environment names via `env_var=…`.
 4. Lists: remove custom split/trim code. Use list‑typed parameters; add
    `env_var_split=","` where a non‑whitespace delimiter is required.
 5. Compatibility: retain legacy flag names using `aliases=["--old-name"]`.
