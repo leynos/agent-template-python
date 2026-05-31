@@ -14,16 +14,19 @@ The test suite relies on the `pytest-copier` plugin and renders generated
 projects that run Ruff, Pylint via a PyPy-backed runner, `ty`, pytest, and, when
 the Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust tests.
 
-Install the `pytest-copier` test dependency before running this repository's
-`pytest` suite. Generated projects install and run their own tooling, including
-Ruff, Pylint via PyPy, `ty`, pytest, and, when Rust is enabled, Clippy, Whitaker,
-and nextest.
+Run the parent template tests through the repository `Makefile`. The `test`
+target uses `uvx` to provide `pytest-copier`, `PyYAML`, and `syrupy` without a
+manually managed virtual environment:
 
 ```bash
-pip install pytest-copier
+make test
 ```
 
-You can also run `scripts/setup_test_deps.sh` to install them automatically.
+Generated projects install and run their own tooling, including Ruff, Pylint via
+PyPy, `ty`, pytest, and, when Rust is enabled, Clippy, Whitaker, and nextest.
+
+You can also run `scripts/setup_test_deps.sh` to install parent test
+dependencies into the current Python environment manually.
 
 ## Generated Quality Gate Flow
 
