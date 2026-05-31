@@ -1,22 +1,5 @@
 # serializer version: 1
-# name: test_python_only_help_output_snapshot
-  '''
-  Available targets:
-    build                Build virtual-env and install deps
-    build-release        Build artefacts (sdist & wheel)
-    clean                Remove build artifacts
-    fmt                  Format sources
-    check-fmt            Verify formatting
-    lint                 Run linters
-    lint-python          Run Python linters
-    typecheck            Run typechecking
-    markdownlint         Lint Markdown files
-    nixie                Validate Mermaid diagrams
-    test                 Run tests
-    help                 Show available targets
-  '''
-# ---
-# name: test_python_only_pure_module_snapshot
+# name: test_pure_module_snapshot[pure-module-PureModule-pure_module_pkg-False]
   '''
   """Pure Python implementation for the generated package.
   
@@ -37,7 +20,7 @@
   
   '''
 # ---
-# name: test_rust_pure_module_snapshot
+# name: test_pure_module_snapshot[rust-module-RustModule-rust_module_pkg-True]
   '''
   """Pure Python implementation for the generated package.
   
@@ -57,5 +40,22 @@
       """Return a friendly greeting from Python."""
       return "hello from Python"
   
+  '''
+# ---
+# name: test_python_only_help_output_snapshot
+  '''
+  Available targets:
+    build                Build virtual-env and install deps
+    build-release        Build artefacts (sdist & wheel)
+    clean                Remove build artifacts
+    fmt                  Format sources
+    check-fmt            Verify formatting
+    lint                 Run linters
+    lint-python          Run Python linters
+    typecheck            Run typechecking
+    markdownlint         Lint Markdown files
+    nixie                Validate Mermaid diagrams
+    test                 Run tests
+    help                 Show available targets
   '''
 # ---
