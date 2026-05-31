@@ -253,7 +253,8 @@ project:
 
 - **Mandate caret requirements for all dependencies.** All crate versions in
   `Cargo.toml` must use semver-compatible caret requirements (for example,
-  `some-crate = "1.2.3"`). This enables safe minor and patch updates.
+  `some-crate = "1.2.3"`, which is equivalent to `^1.2.3`). This enables safe
+  minor and patch updates.
 - **Prohibit unstable version specifiers.** Wildcards (`*`) and open-ended
   inequalities (`>=`) are forbidden. Tilde requirements (`~`) may only be used
   with explicit rationale.
