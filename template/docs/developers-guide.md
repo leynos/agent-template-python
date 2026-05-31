@@ -4,17 +4,18 @@ This guide explains the contributor workflow for the generated project.
 
 ## Local workflow
 
-Use `make all` as the public entrypoint for formatting, linting, typechecking,
-and tests. Use narrower Make targets when investigating a specific failure, then
-return to the aggregate gate before treating the change as complete.
+The public entrypoint for formatting, linting, typechecking, and tests is
+`make all`. Narrower Make targets may be invoked when investigating a specific
+failure, and changes should be reconciled with the aggregate gate before being
+considered complete.
 
 ## Automation scripts
 
-Before adding or updating helper scripts, read
-[Scripting standards](scripting-standards.md). New and updated scripts should
-use `Cyclopts` for command-line interfaces, `cuprum` for typed and
-catalogue-bound external command execution, `pathlib` for filesystem paths, and
-`cmd-mox` when tests need to mock external executables.
+The [Scripting standards](scripting-standards.md) document provides guidance for
+adding or updating helper scripts. New and updated scripts are expected to use
+`Cyclopts` for command-line interfaces, `cuprum` for typed and catalogue-bound
+external command execution, `pathlib` for filesystem paths, and `cmd-mox` for
+tests that mock external executables.
 
 Script changes should update the scripting guide when they introduce a new
 convention, command catalogue, testing pattern, or operational expectation that
@@ -47,6 +48,7 @@ actions under `.github/`.
 - `.github/dependabot.yml` enables dependency update pull requests for GitHub
   Actions and Python packages. Rust-enabled projects also receive Cargo updates.
 
-Configure `CS_ACCESS_TOKEN` when CodeScene coverage upload is required. Keep
-`CODESCENE_CLI_SHA256` populated with the refresh workflow so CI can verify the
-downloaded CodeScene installer before upload.
+The `CS_ACCESS_TOKEN` secret must be configured when CodeScene coverage upload
+is required. The `CODESCENE_CLI_SHA256` variable should be populated using the
+refresh workflow, so CI can verify the downloaded CodeScene installer before
+upload.
