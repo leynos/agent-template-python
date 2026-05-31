@@ -25,6 +25,7 @@ from __future__ import annotations
 import shlex
 from pathlib import Path
 
+import pytest
 from pytest_copier.plugin import CopierFixture, CopierProject
 from syrupy.assertion import SnapshotAssertion
 
@@ -194,6 +195,56 @@ def test_python_only_help_output_snapshot(
     )
 
     assert project.run("make help") == snapshot
+
+
+@pytest.mark.parametrize(
+    ("target_dir", "project_name", "package_name", "use_rust"),
+    [
+        ("pure-module", "PureModule", "pure_module_pkg", False),
+        ("rust-module", "RustModule", "rust_module_pkg", True),
+    ],
+)
+def test_pure_module_snapshot(
+    copier: CopierFixture,
+    tmp_path: Path,
+    snapshot: SnapshotAssertion,
+    target_dir: str,
+    project_name: str,
+    package_name: str,
+    use_rust: bool,
+) -> None:
+    """Validate the rendered pure implementation module formatting.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    snapshot
+        Syrupy snapshot assertion fixture for stable generated file contents.
+    target_dir
+        Temporary project directory name for the rendered variant.
+    project_name
+        Project name answer passed to Copier.
+    package_name
+        Package name answer passed to Copier.
+    use_rust
+        Whether the rendered variant includes the optional Rust extension.
+
+    Returns
+    -------
+    None
+        The test passes when the generated pure module matches the snapshot.
+    """
+    project = copier.copy(
+        tmp_path / target_dir,
+        project_name=project_name,
+        package_name=package_name,
+        use_rust=use_rust,
+    )
+
+    assert read_generated_file(project, f"{package_name}/pure.py") == snapshot
 
 
 def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
