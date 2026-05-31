@@ -60,10 +60,10 @@
 
 - **Atomicity:** Aim for small, focused, atomic changes. Each change (and
   subsequent commit) should represent a single logical unit of work.
-- **Quality gates:** Before considering a change complete or proposing a commit,
-  ensure all of the following are met:
-  - New functionality or behaviour changes are fully validated by relevant unit and
-    behavioural tests.
+- **Quality gates:** Before considering a change complete or proposing a
+  commit, ensure all of the following are met:
+  - New functionality or behaviour changes are fully validated by relevant unit
+    and behavioural tests.
   - Bug fixes include a failing test before the fix and a passing test afterward.
   - Code passes lint checks.
   - Formatting is correct and validated.
@@ -224,6 +224,7 @@ project:
       Self(id)
   }
   ```
+
 - Use NewTypes to model domain values and eliminate "integer soup". Reach for
   `newt-hype` when introducing many homogeneous wrappers that share behaviour.
   Add shims such as `From<&str>` and `AsRef<str>` for string-backed wrappers.
@@ -336,21 +337,25 @@ directory:
   conventions.
 - [Python context managers](.rules/python-context-managers.md) - Best practices
   for context managers.
-- [Python exceptions and logging](.rules/python-exception-design-raising-handling-and-logging.md) -
+- [Python exceptions and logging][python-exceptions] -
   Raising and handling exceptions and logging.
 - [Python generators](.rules/python-generators.md) - Generator and iterator
   patterns.
-- [Python project configuration](.rules/python-pyproject.md) - `pyproject.toml` and
-  packaging.
+- [Python project configuration](.rules/python-pyproject.md) -
+  `pyproject.toml` and packaging.
 - [Python return patterns](.rules/python-return.md) - Function return
   conventions.
 - [Python typing](.rules/python-typing.md) - Type annotation best practices.
+
+[python-exceptions]: .rules/python-exception-design-raising-handling-and-logging.md
 
 Additional docs:
 
 - [Scripting standards](docs/scripting-standards.md) - Guidance for writing
   robust scripts, including secure command execution via `cuprum`, catalogue
   allowlisting, and command mocking patterns with `cmd-mox`.
+- Before adding or updating helper scripts, read the scripting standards guide
+  and follow its `Cyclopts`, `cuprum`, `pathlib`, and `cmd-mox` conventions.
 
 ## Additional tooling
 
