@@ -31,11 +31,48 @@ The generated documentation should signpost
 authors find the `cuprum`, `Cyclopts`, `pathlib`, and `cmd-mox` conventions
 before adding automation.
 
+## Alternatives considered
+
+### Continue using plumbum with local conventions
+
+`plumbum` provides a simpler command API, but it does not make the allowed
+command set a first-class part of the script contract. A script can still
+construct new commands wherever `local[...]` is reachable, so command access
+depends on reviewer discipline rather than an explicit catalogue. Lightweight
+wrapper functions could reduce repetition, but they would recreate a partial
+allowlist without enforcing scoped command construction across the script.
+
+`plumbum` also makes observability a convention layered around command calls.
+Common logging, tracing, and command auditing would need bespoke wrappers, and
+those wrappers would be easy to bypass when a script author reaches directly for
+`local[...]` or an imported command object. That is acceptable for small private
+scripts, but it is a poor template default because generated projects inherit
+the convention without the local context that produced it.
+
+Finally, `plumbum` raises on non-zero exits by default. That can be convenient
+for short scripts, but it encourages exception-driven control flow for command
+results. The template's scripting guide instead expects command outcomes to be
+observable values that tests can assert directly with `cmd-mox`.
+
+### Use subprocess directly
+
+The standard library `subprocess` module avoids a dependency, but it leaves
+command allowlisting, argument construction, result handling, observability, and
+test-double integration to each script. That would make the template guidance
+longer and less consistent while still failing to provide a central enforcement
+point for external program access.
+
 ## Consequences
 
-`cuprum` makes allowed external programs explicit and keeps command execution
-observable and testable. Scripts no longer rely on exception-driven handling of
-non-zero command exits; they must check `CommandResult.exit_code` directly.
+`cuprum` introduces visible indirection through catalogues, scoped command
+construction, and optional hooks. The template accepts that cost because it
+makes allowed external programs explicit, gives generated projects a consistent
+place to attach logging or auditing, and keeps command results testable as data.
+
+Scripts no longer rely on exception-driven handling of non-zero command exits;
+they must check `CommandResult.exit_code` directly. This is slightly more
+verbose than `plumbum` for trivial calls, but it makes success and failure paths
+clear in both production scripts and tests that mock external executables.
 
 The template documentation now includes migration guidance for legacy
 `plumbum` usage, but the preferred path for new and updated scripts is
