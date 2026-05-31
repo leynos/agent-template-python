@@ -36,6 +36,7 @@ EVENT = Path(__file__).parent / "fixtures" / "pull_request.event.json"
 ACT_IMAGE = "ubuntu-latest=catthehacker/ubuntu:act-latest"
 GENERATE_COVERAGE_STEP = "Test and Measure Coverage"
 
+
 def prepare_git_repository(project: CopierProject) -> None:
     """Initialise a rendered project as a Git repository for act.
 
@@ -234,12 +235,8 @@ def assert_ci_exercised_expected_steps(logs: str, *, use_rust: bool) -> None:
     saw_python = False
     saw_rust = not use_rust
     for event in iter_json_log_events(logs):
-        output = str(
-            event_text(event, "Output", "output", "message", "msg")
-        )
-        step = str(
-            event_text(event, "name", "step_name", "Step", "step")
-        )
+        output = str(event_text(event, "Output", "output", "message", "msg"))
+        step = str(event_text(event, "name", "step_name", "Step", "step"))
         in_coverage_step = GENERATE_COVERAGE_STEP in step
         saw_coverage = saw_coverage or (
             in_coverage_step
@@ -296,9 +293,9 @@ def assert_act_result(
 
         assert_act_result(project, code, logs, use_rust=False)
     """
-    assert (
-        project / "coverage.xml"
-    ).exists(), "act workflow should write coverage.xml in the generated project"
+    assert (project / "coverage.xml").exists(), (
+        "act workflow should write coverage.xml in the generated project"
+    )
     assert_ci_exercised_expected_steps(logs, use_rust=use_rust)
     if code == 0:
         return
@@ -380,11 +377,11 @@ def test_generated_workflow_runs_with_shared_coverage_action(
     workflow = (project / ".github" / "workflows" / "ci.yml").read_text(
         encoding="utf-8"
     )
-    assert (
-        "leynos/shared-actions/.github/actions/generate-coverage" in workflow
-    ), "Generated workflow should use the shared generate-coverage action"
+    assert "leynos/shared-actions/.github/actions/generate-coverage" in workflow, (
+        "Generated workflow should use the shared generate-coverage action"
+    )
     if use_rust:
-        assert (
-            "cargo-manifest: rust_extension/Cargo.toml" in workflow
-        ), "Rust workflow should pass the Rust extension manifest to coverage"
+        assert "cargo-manifest: rust_extension/Cargo.toml" in workflow, (
+            "Rust workflow should pass the Rust extension manifest to coverage"
+        )
     assert_act_result(project, code, logs, use_rust=use_rust)

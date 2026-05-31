@@ -57,5 +57,6 @@
     nixie                Validate Mermaid diagrams
     test                 Run tests
     help                 Show available targets
+  
   '''
 # ---
