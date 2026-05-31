@@ -127,11 +127,11 @@
 
 - For Python work, use `pytest` for unit tests and `pytest-bdd` for behavioural
   tests. Cover happy paths, unhappy paths, and relevant edge cases.
+- Snapshot tests (using `insta`) should be provided where multivariant output
+  format consistency is relevant to the requirements.
 - Add end-to-end tests where a change affects externally observable workflows,
   integration contracts, persistence, command-line behaviour, network boundaries,
   user interface flows, or other system-level behaviour.
-- Use snapshot tests with `syrupy` where output format consistency is required by
-  requirements.
 - Use property tests with `hypothesis` or `CrossHair` when a change introduces an
   invariant over a range of inputs, states, orderings, or transitions.
 - Run relevant unit, behavioural, property, and end-to-end suites before and after
@@ -183,6 +183,8 @@ project:
 - Ensure that new features are validated with unit and behavioural tests before
   release using `rstest` and `rstest-bdd`. Cover happy paths, unhappy paths,
   and relevant edge cases.
+- For Rust: snapshot tests (using `insta`) should be provided where multivariant
+  output format consistency is relevant to the requirements.
 - Add end-to-end tests where a change affects externally observable workflows,
   integration contracts, persistence, command-line behaviour, network boundaries,
   user interface flows, or other system-level behaviour.
