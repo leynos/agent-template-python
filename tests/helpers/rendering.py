@@ -7,6 +7,8 @@ from pathlib import Path
 
 from pytest_copier.plugin import CopierFixture, CopierProject
 
+from tests.helpers.generated_files import read_generated_text
+
 
 def run_quality_gates(project: CopierProject) -> None:
     """Run the rendered project's public quality gate.
@@ -124,9 +126,7 @@ def read_generated_file(project: CopierProject, relative_path: str) -> str:
 
     Raises
     ------
-    FileNotFoundError
-        Raised when the requested generated file does not exist.
-    OSError
-        Raised when the file exists but cannot be read.
+    pytest.fail.Exception
+        Raised when the requested generated file cannot be read.
     """
-    return (project / relative_path).read_text(encoding="utf-8")
+    return read_generated_text(project / relative_path)

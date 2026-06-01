@@ -107,6 +107,7 @@ def assert_generated_tooling_contracts(
             use_rust=False,
         )
     """
+    parsed_ci_workflow = _parse_ci_workflow(ci_workflow)
     _assert_pyproject_contracts(
         package_name=package_name,
         pyproject=pyproject,
@@ -114,7 +115,11 @@ def assert_generated_tooling_contracts(
     )
     _assert_agents_contracts(agents)
     _assert_makefile_contracts(makefile=makefile, use_rust=use_rust)
-    _assert_ci_workflow_contracts(ci_workflow=ci_workflow, use_rust=use_rust)
+    _assert_ci_workflow_contracts(
+        parsed_ci_workflow=parsed_ci_workflow,
+        ci_workflow=ci_workflow,
+        use_rust=use_rust,
+    )
     _assert_release_workflow_contracts(
         release_workflow=release_workflow,
         use_rust=use_rust,
@@ -163,7 +168,7 @@ def assert_ci_coverage_action_contract(
             use_rust=True,
         )
     """
-    parsed_ci_workflow = parse_yaml_mapping(ci_workflow, "CI workflow")
+    parsed_ci_workflow = _parse_ci_workflow(ci_workflow)
     jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
     lint_test = require_mapping(jobs, "lint-test", "CI workflow jobs")
     steps = require_sequence(lint_test, "steps", "CI lint-test job")
@@ -200,6 +205,11 @@ def assert_ci_coverage_action_contract(
         assert "cargo-manifest" not in coverage_inputs, (
             "expected pure-Python variant to omit Rust coverage inputs"
         )
+
+
+def _parse_ci_workflow(ci_workflow: str) -> dict[str, Any]:
+    """Parse a generated CI workflow as a YAML mapping."""
+    return parse_yaml_mapping(ci_workflow, "CI workflow")
 
 
 def _assert_pyproject_contracts(
@@ -305,9 +315,21 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
         )
 
 
-def _assert_ci_workflow_contracts(*, ci_workflow: str, use_rust: bool) -> None:
-    """Assert generated CI workflow contracts."""
-    parsed_ci_workflow = parse_yaml_mapping(ci_workflow, "CI workflow")
+def _assert_ci_workflow_contracts(
+    *, parsed_ci_workflow: dict[str, Any], ci_workflow: str, use_rust: bool
+) -> None:
+    """Assert generated CI workflow contracts.
+
+    Parameters
+    ----------
+    parsed_ci_workflow : dict[str, Any]
+        Parsed generated CI workflow mapping.
+    ci_workflow : str
+        UTF-8 text of the generated CI workflow, used for string-level contract
+        assertions.
+    use_rust : bool
+        Whether the rendered variant includes the optional Rust extension.
+    """
     jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
     lint_test = require_mapping(jobs, "lint-test", "CI workflow jobs")
     steps = require_sequence(lint_test, "steps", "CI lint-test job")

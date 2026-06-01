@@ -36,6 +36,21 @@ If cargo is missing from the local environment, generated Rust test targets fail
 early with a clear error instead of falling through to an unusable `cargo`
 invocation.
 
+## Local GitHub Actions Validation
+
+The generated Makefile supports optional local workflow validation using
+[`act`](https://github.com/nektos/act). When `act` is installed and Docker is
+available, pass `WITH_ACT=1` to the `test` target:
+
+```bash
+make test WITH_ACT=1
+```
+
+This sets `RUN_ACT_VALIDATION=1` for the pytest invocation, enabling the
+act-based integration tests that run the generated CI workflow locally.
+Omitting `WITH_ACT` (or setting it to `0`) skips act validation; the rest of
+the test suite runs unchanged.
+
 ## Cleaning Local State
 
 Run `make clean` to remove local build and cache outputs, including `.venv`,

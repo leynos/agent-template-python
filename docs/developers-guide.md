@@ -50,3 +50,45 @@ Rust documentation output, maturin configuration, and cargo error messaging.
 The optional `act` tests run generated GitHub Actions workflows as black-box
 integration checks. Their parser separates structured-log handling from the
 domain assertions so workflow format details stay local to the adapter helpers.
+
+### Test Helper Modules
+
+Test helpers are organised under `tests/helpers/` into three modules, each with
+a distinct responsibility:
+
+**`tests/helpers/rendering.py`** — project rendering and command execution.
+
+- `render_project` wraps the `pytest-copier` fixture to render a temporary
+  project with explicit template answers.
+- `run_quality_gates` runs the generated `make all` target via the rendered
+  project wrapper.
+- `check_generated_import` imports the generated package through `uv run` and
+  asserts its `hello()` return value.
+- `read_generated_file` reads a file from the rendered project root as UTF-8
+  text, converting OS errors into `pytest.fail` exceptions.
+
+**`tests/helpers/generated_files.py`** — file parsing with assertion-focused
+error context.
+
+- `read_generated_text` reads a `Path` and converts `OSError` into
+  `pytest.fail`.
+- `parse_toml_file` reads and parses a TOML file, converting decode errors
+  into `pytest.fail`.
+- `parse_yaml_mapping` parses a YAML string and asserts the result is a
+  mapping.
+- `require_mapping` / `require_sequence` extract nested keys from a parsed
+  mapping, failing with a schema-path message when absent or the wrong type.
+
+**`tests/helpers/tooling_contracts.py`** — generated tooling contract
+assertions.
+
+- `assert_common_make_targets` validates Makefile targets shared by all
+  generated variants.
+- `assert_generated_tooling_contracts` is the single entry-point that
+  validates packaging configuration, AGENTS.md guidance, Makefile wiring, CI
+  and release workflow structure, and wheel workflow/action contracts.
+- `assert_ci_coverage_action_contract` validates the shared coverage action
+  step and its inputs, including optional Rust cargo-manifest inputs.
+
+All public helpers carry NumPy-style docstrings.  Internal helpers (prefixed
+`_`) are private to the module and not part of the test API.
