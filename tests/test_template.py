@@ -6,15 +6,6 @@ quality gates.  The tests are intended for repository-level validation: they
 verify generated files, Make targets, package imports, and Rust-specific output
 without requiring callers to inspect the rendered project tree manually.
 
-Typical usage is to run this module through pytest after changing template
-files, generated Makefile targets, or package layout:
-
-Examples
---------
-Run the generated-template checks directly::
-
-    python -m pytest tests/test_template.py -v
-
 The tests create temporary projects, install generated dependencies through the
 rendered ``make all`` target, and may download toolchain packages into the
 normal user caches used by those generated projects.
@@ -30,10 +21,7 @@ from syrupy.assertion import SnapshotAssertion
 
 from tests.helpers.generated_files import (
     parse_toml_file,
-    parse_yaml_mapping,
     read_generated_text,
-    require_mapping,
-    require_sequence,
 )
 from tests.helpers.rendering import (
     check_generated_import,
@@ -42,9 +30,9 @@ from tests.helpers.rendering import (
     run_quality_gates,
 )
 from tests.helpers.tooling_contracts import (
+    assert_ci_coverage_action_contract,
     assert_common_make_targets,
     assert_generated_tooling_contracts,
-    checkout_steps_disable_credentials,
 )
 
 
@@ -291,7 +279,28 @@ def test_generated_tooling_contracts(
     package_name: str,
     use_rust: bool,
 ) -> None:
-    """Generated variants expose the expected Python and optional Rust tooling."""
+    """Generated variants expose the expected Python and optional Rust tooling.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    target_dir
+        Temporary project directory name for the rendered variant.
+    project_name
+        Project name answer passed to Copier.
+    package_name
+        Package name answer passed to Copier.
+    use_rust
+        Whether the rendered variant includes the optional Rust extension.
+
+    Returns
+    -------
+    None
+        The test passes when the generated tooling contracts are satisfied.
+    """
     project = render_project(
         tmp_path / target_dir,
         copier,
@@ -349,7 +358,29 @@ def test_generated_github_workflows_match_act_validation_contract(
     package_name: str,
     use_rust: bool,
 ) -> None:
-    """Rendered workflows expose stable black-box inputs for act validation."""
+    """Rendered workflows expose stable black-box inputs for act validation.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    target_dir
+        Temporary project directory name for the rendered variant.
+    project_name
+        Project name answer passed to Copier.
+    package_name
+        Package name answer passed to Copier.
+    use_rust
+        Whether the rendered variant includes the optional Rust extension.
+
+    Returns
+    -------
+    None
+        The test passes when the generated CI coverage action contract matches
+        the act validation expectations.
+    """
     project = render_project(
         tmp_path / target_dir,
         copier,
@@ -358,41 +389,8 @@ def test_generated_github_workflows_match_act_validation_contract(
         use_rust=use_rust,
     )
     ci_workflow = read_generated_text(project / ".github" / "workflows" / "ci.yml")
-    parsed_ci_workflow = parse_yaml_mapping(ci_workflow, "CI workflow")
-    jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
-    lint_test = require_mapping(jobs, "lint-test", "CI workflow jobs")
-    steps = require_sequence(lint_test, "steps", "CI lint-test job")
-
-    assert checkout_steps_disable_credentials(steps), (
-        "expected CI checkout steps to disable credential persistence"
+    assert_ci_coverage_action_contract(
+        ci_workflow=ci_workflow,
+        package_name=package_name,
+        use_rust=use_rust,
     )
-    coverage_steps = [
-        step
-        for step in steps
-        if isinstance(step, dict) and step.get("name") == "Test and Measure Coverage"
-    ]
-    assert len(coverage_steps) == 1, "expected one shared coverage action step"
-    coverage_step = coverage_steps[0]
-    assert (
-        coverage_step.get("uses")
-        == "leynos/shared-actions/.github/actions/generate-coverage"
-        "@d400b079fb6a8fa92f7e7b6c57f3d1c92a4b2d54"
-    ), "expected CI to use the pinned shared coverage action"
-    coverage_inputs = require_mapping(coverage_step, "with", "coverage step")
-    assert coverage_inputs.get("output-path") == "coverage.xml", (
-        "expected CI coverage output path to match the act assertion"
-    )
-    assert coverage_inputs.get("format") == "cobertura", (
-        "expected CI coverage format to match the CodeScene upload"
-    )
-    assert coverage_inputs.get("artefact-name-suffix") == package_name.replace(
-        "_", "-"
-    ), "expected package-specific coverage artefact name suffix"
-    if use_rust:
-        assert coverage_inputs.get("cargo-manifest") == "rust_extension/Cargo.toml", (
-            "expected Rust variant to pass the extension manifest to coverage"
-        )
-    else:
-        assert "cargo-manifest" not in coverage_inputs, (
-            "expected pure-Python variant to omit Rust coverage inputs"
-        )

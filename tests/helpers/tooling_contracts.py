@@ -12,7 +12,30 @@ from tests.helpers.generated_files import (
 
 
 def assert_common_make_targets(makefile: str) -> None:
-    """Assert Makefile targets shared by all generated variants."""
+    """Assert Makefile targets shared by all generated variants.
+
+    Parameters
+    ----------
+    makefile : str
+        UTF-8 text of a generated Makefile.
+
+    Returns
+    -------
+    None
+        The helper returns after all shared Makefile assertions pass.
+
+    Raises
+    ------
+    AssertionError
+        Raised when a shared generated Makefile target or cleanup path is
+        missing.
+
+    Examples
+    --------
+    Validate shared targets after reading a generated Makefile::
+
+        assert_common_make_targets(makefile)
+    """
     assert "lint-python: build" in makefile, "Makefile should expose lint-python"
     assert "lint: lint-python" in makefile, "lint should delegate to lint-python"
     assert ".uv-cache .uv-tools" in makefile, "clean should remove uv state dirs"
@@ -31,27 +54,155 @@ def assert_generated_tooling_contracts(
     pure_wheel_action: str,
     use_rust: bool,
 ) -> None:
-    """Assert generated Python/Rust tooling contracts from one validator."""
-    assert_pyproject_contracts(
+    """Assert generated Python/Rust tooling contracts from one validator.
+
+    Parameters
+    ----------
+    package_name : str
+        Generated Python import package name.
+    agents : str
+        UTF-8 text of the generated ``AGENTS.md`` file.
+    pyproject : dict[str, Any]
+        Parsed generated ``pyproject.toml`` mapping.
+    makefile : str
+        UTF-8 text of the generated Makefile.
+    ci_workflow : str
+        UTF-8 text of the generated CI workflow.
+    release_workflow : str
+        UTF-8 text of the generated release workflow.
+    build_wheels_workflow : str
+        UTF-8 text of the generated build-wheels workflow.
+    build_wheels_action : str
+        UTF-8 text of the generated build-wheels composite action.
+    pure_wheel_action : str
+        UTF-8 text of the generated pure-wheel composite action.
+    use_rust : bool
+        Whether the rendered variant includes the optional Rust extension.
+
+    Returns
+    -------
+    None
+        The helper returns after all generated tooling contracts pass.
+
+    Raises
+    ------
+    AssertionError
+        Raised when any generated tooling, workflow, or packaging contract is
+        missing or variant-inconsistent.
+
+    Examples
+    --------
+    Validate generated contracts after rendering a project::
+
+        assert_generated_tooling_contracts(
+            package_name="example_pkg",
+            agents=agents,
+            pyproject=pyproject,
+            makefile=makefile,
+            ci_workflow=ci_workflow,
+            release_workflow=release_workflow,
+            build_wheels_workflow=build_wheels_workflow,
+            build_wheels_action=build_wheels_action,
+            pure_wheel_action=pure_wheel_action,
+            use_rust=False,
+        )
+    """
+    _assert_pyproject_contracts(
         package_name=package_name,
         pyproject=pyproject,
         use_rust=use_rust,
     )
-    assert_agents_contracts(agents)
-    assert_makefile_contracts(makefile=makefile, use_rust=use_rust)
-    assert_ci_workflow_contracts(ci_workflow=ci_workflow, use_rust=use_rust)
-    assert_release_workflow_contracts(
+    _assert_agents_contracts(agents)
+    _assert_makefile_contracts(makefile=makefile, use_rust=use_rust)
+    _assert_ci_workflow_contracts(ci_workflow=ci_workflow, use_rust=use_rust)
+    _assert_release_workflow_contracts(
         release_workflow=release_workflow,
         use_rust=use_rust,
     )
-    assert_wheel_workflow_contracts(
+    _assert_wheel_workflow_contracts(
         build_wheels_workflow=build_wheels_workflow,
         build_wheels_action=build_wheels_action,
         pure_wheel_action=pure_wheel_action,
     )
 
 
-def assert_pyproject_contracts(
+def assert_ci_coverage_action_contract(
+    *, ci_workflow: str, package_name: str, use_rust: bool
+) -> None:
+    """Assert generated CI coverage inputs used by act validation.
+
+    Parameters
+    ----------
+    ci_workflow : str
+        UTF-8 text of the generated CI workflow.
+    package_name : str
+        Generated Python import package name used to derive the coverage
+        artefact suffix.
+    use_rust : bool
+        Whether the rendered variant includes the optional Rust extension.
+
+    Returns
+    -------
+    None
+        The helper returns after the coverage action contract matches
+        expectations.
+
+    Raises
+    ------
+    AssertionError
+        Raised when checkout credentials, coverage action pinning, coverage
+        output settings, artefact naming, or Rust manifest inputs are wrong.
+
+    Examples
+    --------
+    Validate a rendered CI workflow's coverage step::
+
+        assert_ci_coverage_action_contract(
+            ci_workflow=ci_workflow,
+            package_name="example_pkg",
+            use_rust=True,
+        )
+    """
+    parsed_ci_workflow = parse_yaml_mapping(ci_workflow, "CI workflow")
+    jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
+    lint_test = require_mapping(jobs, "lint-test", "CI workflow jobs")
+    steps = require_sequence(lint_test, "steps", "CI lint-test job")
+    assert _checkout_steps_disable_credentials(steps), (
+        "expected CI checkout steps to disable credential persistence"
+    )
+    coverage_steps = [
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("name") == "Test and Measure Coverage"
+    ]
+    assert len(coverage_steps) == 1, "expected one shared coverage action step"
+    coverage_step = coverage_steps[0]
+    assert (
+        coverage_step.get("uses")
+        == "leynos/shared-actions/.github/actions/generate-coverage"
+        "@d400b079fb6a8fa92f7e7b6c57f3d1c92a4b2d54"
+    ), "expected CI to use the pinned shared coverage action"
+    coverage_inputs = require_mapping(coverage_step, "with", "coverage step")
+    assert coverage_inputs.get("output-path") == "coverage.xml", (
+        "expected CI coverage output path to match the act assertion"
+    )
+    assert coverage_inputs.get("format") == "cobertura", (
+        "expected CI coverage format to match the CodeScene upload"
+    )
+    assert coverage_inputs.get("artefact-name-suffix") == package_name.replace(
+        "_", "-"
+    ), "expected package-specific coverage artefact name suffix"
+    if use_rust:
+        assert coverage_inputs.get("cargo-manifest") == "rust_extension/Cargo.toml", (
+            "expected Rust variant to pass the extension manifest to coverage"
+        )
+    else:
+        assert "cargo-manifest" not in coverage_inputs, (
+            "expected pure-Python variant to omit Rust coverage inputs"
+        )
+
+
+def _assert_pyproject_contracts(
     *, package_name: str, pyproject: dict[str, Any], use_rust: bool
 ) -> None:
     """Assert generated Python packaging contracts."""
@@ -98,7 +249,7 @@ def assert_pyproject_contracts(
         )
 
 
-def assert_agents_contracts(agents: str) -> None:
+def _assert_agents_contracts(agents: str) -> None:
     """Assert generated assistant guidance documents act-enabled testing."""
     assert "make test WITH_ACT=1" in agents, (
         "expected generated AGENTS.md to document act-enabled test runs"
@@ -108,7 +259,7 @@ def assert_agents_contracts(agents: str) -> None:
     )
 
 
-def assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
+def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     """Assert generated Makefile contracts for both template variants."""
     assert_common_make_targets(makefile)
     assert "WITH_ACT ?= 0" in makefile, (
@@ -154,13 +305,13 @@ def assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
         )
 
 
-def assert_ci_workflow_contracts(*, ci_workflow: str, use_rust: bool) -> None:
+def _assert_ci_workflow_contracts(*, ci_workflow: str, use_rust: bool) -> None:
     """Assert generated CI workflow contracts."""
     parsed_ci_workflow = parse_yaml_mapping(ci_workflow, "CI workflow")
     jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
     lint_test = require_mapping(jobs, "lint-test", "CI workflow jobs")
     steps = require_sequence(lint_test, "steps", "CI lint-test job")
-    assert checkout_steps_disable_credentials(steps), (
+    assert _checkout_steps_disable_credentials(steps), (
         "expected generated CI workflow to disable checkout credentials"
     )
     assert "make check-fmt" in ci_workflow, (
@@ -197,13 +348,15 @@ def assert_ci_workflow_contracts(*, ci_workflow: str, use_rust: bool) -> None:
         )
 
 
-def assert_release_workflow_contracts(*, release_workflow: str, use_rust: bool) -> None:
+def _assert_release_workflow_contracts(
+    *, release_workflow: str, use_rust: bool
+) -> None:
     """Assert generated release workflow contracts."""
     parsed_release_workflow = parse_yaml_mapping(release_workflow, "release workflow")
     jobs = require_mapping(parsed_release_workflow, "jobs", "release workflow")
     release = require_mapping(jobs, "release", "release workflow jobs")
     release_steps = require_sequence(release, "steps", "release job")
-    assert checkout_steps_disable_credentials(release_steps), (
+    assert _checkout_steps_disable_credentials(release_steps), (
         "expected generated release workflow to disable checkout credentials"
     )
     assert "softprops/action-gh-release@v2" in release_workflow, (
@@ -241,7 +394,7 @@ def assert_release_workflow_contracts(*, release_workflow: str, use_rust: bool) 
         )
 
 
-def assert_wheel_workflow_contracts(
+def _assert_wheel_workflow_contracts(
     *,
     build_wheels_workflow: str,
     build_wheels_action: str,
@@ -277,7 +430,7 @@ def assert_wheel_workflow_contracts(
     )
 
 
-def checkout_steps_disable_credentials(steps: list[Any]) -> bool:
+def _checkout_steps_disable_credentials(steps: list[Any]) -> bool:
     """Return whether all checkout steps disable credential persistence."""
     checkout_steps = [
         step
