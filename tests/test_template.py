@@ -256,7 +256,32 @@ def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
 def test_rust_template_make_test_runs_doctests(
     copier: CopierFixture, tmp_path: Path
 ) -> None:
-    """Validate that Rust-enabled generated projects gate doctests."""
+    """Validate that Rust-enabled generated projects gate doctests.
+
+    Parameters
+    ----------
+    copier : CopierFixture
+        Fixture used to render the template into a temporary project.
+    tmp_path : Path
+        Temporary directory used as the generated project root.
+
+    Returns
+    -------
+    None
+        The test fails via assertions when the generated ``make test`` target
+        does not run Rust documentation tests.
+
+    Raises
+    ------
+    None
+        Expected failures are captured through pytest assertions.
+
+    Notes
+    -----
+    The test injects a deliberately broken Rust doctest and verifies that the
+    generated project's public ``make test`` target reports the doctest
+    failure.
+    """
     proj = copier.copy(
         tmp_path / "rust-doctest",
         project_name="RustDoctest",

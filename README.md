@@ -16,7 +16,7 @@ the Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust tests.
 
 Run the parent template tests through the repository `Makefile`. Run
 `make help` to list the available parent Makefile targets. The `test` target
-uses `uvx` to provide `pytest-copier`, `PyYAML`, `syrupy`, and `make-parser`
+uses `uvx` to provide `pytest-copier`, `pyyaml`, `syrupy`, and `make-parser`
 without a manually managed virtual environment:
 
 ```bash
