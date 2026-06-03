@@ -14,6 +14,8 @@ normal user caches used by those generated projects.
 from __future__ import annotations
 
 import ast
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -249,6 +251,49 @@ def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
     )
 
     check_generated_import(proj, "rust_pkg", "hello from Rust")
+
+
+def test_rust_template_make_test_runs_doctests(
+    copier: CopierFixture, tmp_path: Path
+) -> None:
+    """Validate that Rust-enabled generated projects gate doctests."""
+    proj = copier.copy(
+        tmp_path / "rust-doctest",
+        project_name="RustDoctest",
+        package_name="rust_doctest_pkg",
+        use_rust=True,
+    )
+    lib_rs = proj / "rust_extension" / "src" / "lib.rs"
+    lib_rs.write_text(
+        lib_rs.read_text(encoding="utf-8")
+        + """
+
+/// Deliberately broken doctest used by the parent template regression test.
+///
+/// ```
+/// let status = std::process::ExitCode::SUCCESS;
+/// assert!(status.success());
+/// ```
+pub fn doctest_regression_marker() {}
+""",
+        encoding="utf-8",
+    )
+    make = shutil.which("make")
+    assert make is not None, "expected make to be available for generated tests"
+
+    result = subprocess.run(
+        [make, "test"],
+        cwd=proj.path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    output = f"{result.stdout}\n{result.stderr}"
+    assert result.returncode != 0, "expected make test to fail on broken doctests"
+    assert "no method named `success`" in output, (
+        "expected make test to compile doctests, exposing the broken example"
+    )
 
 
 def test_rust_template_custom_package(copier: CopierFixture, tmp_path: Path) -> None:
