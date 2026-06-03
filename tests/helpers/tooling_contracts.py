@@ -276,6 +276,21 @@ def _assert_agents_contracts(agents: str) -> None:
     assert "RUN_ACT_VALIDATION=1" in agents, (
         "expected generated AGENTS.md to describe the pytest act environment"
     )
+    assert "meaningful, reviewer-useful contracts" in agents, (
+        "expected generated AGENTS.md to require meaningful snapshot contracts"
+    )
+    assert "generic dumps" in agents, (
+        "expected generated AGENTS.md to warn against generic snapshots"
+    )
+    assert "semantic assertions" in agents, (
+        "expected generated AGENTS.md to pair snapshots with semantic assertions"
+    )
+    assert "normalize nondeterministic fields" in agents, (
+        "expected generated AGENTS.md to require nondeterministic field redaction"
+    )
+    assert "brittle snapshots" in agents, (
+        "expected generated AGENTS.md to warn against brittle snapshot churn"
+    )
 
 
 def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
