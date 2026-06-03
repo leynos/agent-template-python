@@ -9,10 +9,9 @@ contract assertions directly.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
-from pytest_copier.plugin import CopierProject
 
 from tests.helpers.generated_files import (
     parse_toml_file,
@@ -27,33 +26,27 @@ from tests.helpers.tooling_contracts import (
     assert_common_make_targets,
 )
 
+if TYPE_CHECKING:
+    from pytest_copier.plugin import CopierProject
 
-def test_read_generated_text_converts_os_errors(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+
+def test_read_generated_text_converts_os_errors() -> None:
     """Convert generated-file read errors into pytest failures.
 
     Parameters
     ----------
-    monkeypatch
-        Pytest monkeypatch fixture used to force ``Path.read_text`` to raise an
-        ``OSError``.
+    None
+        This test passes a nonexistent ``Path`` to ``read_generated_text``.
 
     Returns
     -------
     None
-        The test passes when the helper raises ``pytest.fail.Exception`` with
-        path context instead of propagating the raw OS error.
+        The test passes when ``read_generated_text`` raises
+        ``pytest.fail.Exception`` with path context instead of propagating the
+        raw ``FileNotFoundError`` from ``Path.read_text``.
     """
-
-    def raise_os_error(self: Path, *, encoding: str | None = None) -> str:
-        """Raise a deterministic OS error for helper error-path coverage."""
-        raise OSError("cannot read fixture")
-
-    monkeypatch.setattr(Path, "read_text", raise_os_error)
-
     with pytest.raises(pytest.fail.Exception, match="could not read generated file"):
-        read_generated_text(Path("generated.txt"))
+        read_generated_text(Path("nonexistent_generated.txt"))
 
 
 def test_parse_toml_file_reports_decode_errors(tmp_path: Path) -> None:
@@ -134,8 +127,16 @@ def test_generated_file_schema_helpers_require_expected_shapes() -> None:
         "steps": [{"name": "Check"}],
     }
 
-    assert require_mapping(mapping, "jobs", "CI workflow") == {"lint-test": {}}
-    assert require_sequence(mapping, "steps", "CI lint-test job") == [{"name": "Check"}]
+    assert require_mapping(mapping, "jobs", "CI workflow") == {"lint-test": {}}, (
+        "expected require_mapping(mapping, 'jobs', 'CI workflow') to return a "
+        "jobs mapping containing lint-test"
+    )
+    assert require_sequence(mapping, "steps", "CI lint-test job") == [
+        {"name": "Check"}
+    ], (
+        "expected require_sequence(mapping, 'steps', 'CI lint-test job') to "
+        "return steps sequence [{'name': 'Check'}]"
+    )
 
     with pytest.raises(
         pytest.fail.Exception,
@@ -167,9 +168,12 @@ def test_read_generated_file_uses_shared_error_contract(tmp_path: Path) -> None:
     generated = tmp_path / "docs" / "users-guide.md"
     generated.parent.mkdir()
     generated.write_text("generated docs\n", encoding="utf-8")
-    project = cast(CopierProject, tmp_path)
+    project = cast("CopierProject", tmp_path)
 
-    assert read_generated_file(project, "docs/users-guide.md") == "generated docs\n"
+    assert read_generated_file(project, "docs/users-guide.md") == "generated docs\n", (
+        "expected read_generated_file(project, 'docs/users-guide.md') to return "
+        "the generated docs text"
+    )
     with pytest.raises(pytest.fail.Exception, match="could not read generated file"):
         read_generated_file(project, "missing.md")
 
