@@ -12,6 +12,7 @@ these targets in order:
 - `lint`: run `lint-python` and, when Rust is enabled, `lint-rust`.
 - `typecheck`: run `ty check`.
 - `test`: run pytest and, when Rust is enabled, Rust tests.
+- `audit`: run `pip-audit` and, when Rust is enabled, `cargo audit`.
 
 The `lint-python` target runs Ruff followed by Pylint via a PyPy-backed runner.
 The Pylint runner is installed through `uv tool run` from the pinned
@@ -25,6 +26,13 @@ When the Rust extension is enabled, `lint-rust` runs:
 
 The generated Makefile installs Whitaker on demand before local Rust linting
 when it is not already available.
+
+## Dependency Auditing
+
+Run `make audit` to check generated project dependencies for known
+vulnerabilities. All generated projects run `pip-audit` against the Python
+environment created by `uv sync --group dev`. Rust-enabled projects also run
+`cargo audit` from the `rust_extension` crate directory.
 
 ## Rust Test Behaviour
 

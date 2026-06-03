@@ -41,6 +41,7 @@ jobs:
         with:
           cache-directories: |
             ~/.cargo/bin/cargo-nextest
+            ~/.cargo/bin/cargo-audit
             ~/.cargo/bin/whitaker-installer
             ~/.local/bin/whitaker
             ~/.local/share/whitaker
@@ -52,6 +53,7 @@ jobs:
             --rev "${WHITAKER_INSTALLER_REV}" \
             whitaker-installer
           whitaker-installer --cranelift
+          cargo install --locked cargo-audit
 
       {% endif %}
       - name: Install CLI tools
@@ -73,6 +75,9 @@ jobs:
 
       - name: Run typechecker
         run: make typecheck
+
+      - name: Audit dependencies
+        run: make audit
 
       - name: Test and Measure Coverage
         uses: leynos/shared-actions/.github/actions/generate-coverage@d400b079fb6a8fa92f7e7b6c57f3d1c92a4b2d54

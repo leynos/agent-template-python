@@ -52,6 +52,7 @@ def assert_common_make_targets(makefile: str) -> None:
     """
     assert "lint-python: build" in makefile, "Makefile should expose lint-python"
     assert "lint: lint-python" in makefile, "lint should delegate to lint-python"
+    assert "audit: build" in makefile, "Makefile should expose audit"
     assert ".uv-cache .uv-tools" in makefile, "clean should remove uv state dirs"
 
 
@@ -250,7 +251,7 @@ def _assert_pyproject_contracts(
     assert isinstance(dev_dependencies, list), (
         "expected generated pyproject.toml to include a dev dependency group"
     )
-    for dependency in ["pytest", "ruff", "pyright", "ty", "pytest-xdist"]:
+    for dependency in ["pytest", "pip-audit", "ruff", "pyright", "ty", "pytest-xdist"]:
         assert dependency in dev_dependencies, (
             f"expected generated dev dependencies to include {dependency}"
         )
@@ -317,6 +318,7 @@ def _assert_agents_make_targets_mirror_makefile(
         f"in the generated Makefile, missing: {missing_targets}"
     )
     required_documented_targets = {
+        "audit",
         "check-fmt",
         "fmt",
         "lint",
@@ -361,6 +363,10 @@ def _assert_documented_command_flags(
         "typecheck": [
             ("AGENTS.md", "ty check $(PYTHON_TARGETS)"),
             ("Makefile", f"ty check {python_targets}"),
+        ],
+        "audit": [
+            ("AGENTS.md", "pip-audit"),
+            ("Makefile", "pip-audit"),
         ],
         "test": [
             ("AGENTS.md", "pytest -v -n $(PYTEST_XDIST_WORKERS)"),
@@ -413,6 +419,15 @@ def _assert_documented_command_flags(
                         "Makefile",
                         "test --doc --manifest-path rust_extension/Cargo.toml",
                     ),
+                ],
+                "audit": [
+                    *command_contracts["audit"],
+                    ("AGENTS.md", "cargo audit"),
+                    ("Makefile", "$(MAKE) rust-audit"),
+                ],
+                "rust-audit": [
+                    ("Makefile", "cd rust_extension"),
+                    ("Makefile", "cargo) audit"),
                 ],
             }
         )
@@ -486,6 +501,9 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     assert "test: build $(VENV_TOOLS)" in makefile, (
         "expected generated Makefile test target to depend on the project env"
     )
+    assert "$(UV_ENV) $(UV) run pip-audit" in makefile, (
+        "expected generated audit target to run pip-audit"
+    )
     if use_rust:
         assert "TEST_CMD :=" in makefile, (
             "expected Rust variant to select nextest or cargo test"
@@ -499,12 +517,21 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
         assert "$(CARGO) $(TEST_CMD) $(TEST_FLAGS)" in makefile, (
             "expected Rust variant tests to use the selected cargo test command"
         )
+        assert "rust-audit:" in makefile, (
+            "expected Rust variant to expose the rust-audit target"
+        )
+        assert "cd $(RUST_CRATE_DIR) && $(CARGO) audit" in makefile, (
+            "expected Rust variant audit target to run cargo audit"
+        )
     else:
         assert "lint-rust" not in makefile, (
             "expected pure-Python variant to omit Rust lint targets"
         )
         assert "TEST_CMD :=" not in makefile, (
             "expected pure-Python variant to omit Rust test command selection"
+        )
+        assert "rust-audit" not in makefile, (
+            "expected pure-Python variant to omit Rust audit targets"
         )
 
 
@@ -538,6 +565,9 @@ def _assert_ci_workflow_contracts(
     assert "make typecheck" in ci_workflow, (
         "expected generated CI workflow to run the typecheck gate"
     )
+    assert "make audit" in ci_workflow, (
+        "expected generated CI workflow to run the dependency audit gate"
+    )
     assert "make build" in ci_workflow, (
         "expected generated CI workflow to build the project before checks"
     )
@@ -554,12 +584,18 @@ def _assert_ci_workflow_contracts(
         assert "cargo-manifest: rust_extension/Cargo.toml" in ci_workflow, (
             "expected Rust variant CI to pass the Rust manifest to coverage"
         )
+        assert "cargo install --locked cargo-audit" in ci_workflow, (
+            "expected Rust variant CI to install cargo-audit"
+        )
     else:
         assert "setup-rust" not in ci_workflow, (
             "expected pure-Python CI to omit Rust setup"
         )
         assert "cargo-manifest" not in ci_workflow, (
             "expected pure-Python CI to omit Rust coverage inputs"
+        )
+        assert "cargo-audit" not in ci_workflow, (
+            "expected pure-Python CI to omit Rust audit installation"
         )
 
 

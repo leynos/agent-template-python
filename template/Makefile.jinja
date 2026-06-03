@@ -36,8 +36,8 @@ WHITAKER_INSTALLER_REV ?= f768c2e53c47df13658af1168a67851d388750bf
 WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
 {% endif %}
 
-.PHONY: help all clean build build-release lint lint-python fmt check-fmt \
-        markdownlint nixie test typecheck $(TOOLS) $(VENV_TOOLS){% if use_rust %} lint-rust whitaker{% endif %}
+.PHONY: help all audit clean build build-release lint lint-python fmt check-fmt \
+        markdownlint nixie test typecheck $(TOOLS) $(VENV_TOOLS){% if use_rust %} lint-rust rust-audit whitaker{% endif %}
 
 .DEFAULT_GOAL := all
 
@@ -149,6 +149,16 @@ lint-rust: build whitaker ## Run Rust linters
 typecheck: build ## Run typechecking
 	$(UV_ENV) $(UV) run ty --version
 	$(UV_ENV) $(UV) run ty check $(PYTHON_TARGETS)
+
+audit: build ## Audit dependencies for known vulnerabilities
+	$(UV_ENV) $(UV) run pip-audit
+{% if use_rust %}
+	$(MAKE) rust-audit
+
+rust-audit: ## Audit Rust extension dependencies for known vulnerabilities
+	$(call ensure_cargo)
+	cd $(RUST_CRATE_DIR) && $(CARGO) audit
+{% endif %}
 
 markdownlint: $(MDLINT) ## Lint Markdown files
 	env -u NO_COLOR $(MDLINT) '**/*.md'

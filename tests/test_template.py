@@ -80,7 +80,7 @@ def test_python_only_help_output_snapshot(
     )
 
     help_output = project.run("make help")
-    for target in ["build", "check-fmt", "lint", "typecheck", "test", "help"]:
+    for target in ["build", "check-fmt", "lint", "typecheck", "audit", "test", "help"]:
         assert f"  {target}" in help_output, (
             f"expected generated help output to list the {target!r} target"
         )

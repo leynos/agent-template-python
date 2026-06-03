@@ -76,6 +76,7 @@
   - **Formatting:** Adheres to formatting standards (`make check-fmt`; use
     `make fmt` to apply fixes).
   - **Typechecking:** Passes type checking (`make typecheck`).
+  - **Auditing:** Passes dependency vulnerability checks (`make audit`).
   - The generated Makefile wiring for these targets is:
     - `make check-fmt` runs Ruff formatting checks with
       `ruff format --check $(PYTHON_TARGETS)`.
@@ -85,12 +86,14 @@
     - `make typecheck` runs `ty check $(PYTHON_TARGETS)`.
     - `make test` runs `pytest -v -n $(PYTEST_XDIST_WORKERS)` and honours
       `WITH_ACT=1` through `RUN_ACT_VALIDATION=1`.
+    - `make audit` runs `pip-audit`.
   {% if use_rust -%}
   - For Rust files:
     - **Testing:** Passes relevant unit and behavioural tests (`make test`).
     - **Linting:** Passes lint checks (`make lint`).
     - **Formatting:** Adheres to formatting standards (`make check-fmt`; use
       `make fmt` to apply fixes).
+    - **Auditing:** Passes Rust dependency vulnerability checks (`make audit`).
   {% endif %}
   - **Markdown files (`.md` only):**
     - **Linting:** Passes markdown lint checks (`make markdownlint`).
@@ -198,6 +201,15 @@ project:
     running the Rust extension test suite and documentation tests. Use
     `make fmt` (`cargo fmt --manifest-path rust_extension/Cargo.toml --all`) to
     apply formatting fixes reported by the formatter check.
+  - `make audit` executes:
+
+    ```sh
+    pip-audit
+    cargo audit
+    ```
+
+    checking Python dependencies and Rust extension dependencies for known
+    vulnerabilities.
 - Clippy warnings MUST be disallowed.
 - Fix any warnings emitted during tests in code instead of silencing them.
 - Where a function is too long, extract meaningfully named helper functions

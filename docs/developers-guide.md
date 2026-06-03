@@ -8,6 +8,9 @@ projects and run their public quality gates.
 
 `template/Makefile.jinja` defines the generated developer workflow. The default
 `all` target runs build, formatting, linting, typechecking, and tests.
+The generated `audit` target is an explicit security gate run by CI. It runs
+`pip-audit` for every rendered project and, when `use_rust` is enabled, also
+runs `cargo audit` in the Rust extension crate.
 
 The generated lint targets are split by language:
 
@@ -15,6 +18,8 @@ The generated lint targets are split by language:
 - `lint-rust` exists only when `use_rust` is enabled and runs rustdoc, Clippy,
   and Whitaker.
 - `lint` delegates to the applicable language-specific targets.
+- `audit` exists for both generated variants and runs `pip-audit`; Rust-enabled
+  variants delegate to `rust-audit` for `cargo audit`.
 
 Tool revisions are exposed as Makefile variables such as
 `PYLINT_PYPY_SHIM_REF` and `WHITAKER_INSTALLER_REV`, so generated projects can
@@ -24,7 +29,7 @@ override pins without editing target recipes.
 
 `template/.github/workflows/ci.yml.jinja` mirrors the generated local gates. It
 sets up Python, optionally sets up Rust, runs `make check-fmt`, `make lint`,
-and `make typecheck`, then delegates coverage to
+`make typecheck`, and `make audit`, then delegates coverage to
 `leynos/shared-actions/.github/actions/generate-coverage`.
 
 Rust-enabled workflows pass `rust_extension/Cargo.toml` to the coverage action

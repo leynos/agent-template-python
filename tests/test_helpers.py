@@ -200,7 +200,11 @@ def test_common_make_targets_reports_missing_contracts() -> None:
         Makefile fragment and rejects a fragment missing required targets.
     """
     assert_common_make_targets(
-        "lint-python: build\nlint: lint-python\nclean:\n\trm -rf .uv-cache .uv-tools\n"
+        "lint-python: build\n"
+        "lint: lint-python\n"
+        "audit: build\n"
+        "clean:\n"
+        "\trm -rf .uv-cache .uv-tools\n"
     )
 
     with pytest.raises(AssertionError, match="Makefile should expose lint-python"):
