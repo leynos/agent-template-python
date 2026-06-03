@@ -3,7 +3,7 @@
 MAKEFLAGS += --no-print-directory
 
 test: ## Run template tests
-	uvx --with pytest-copier --with pyyaml --with syrupy pytest tests/
+	uvx --with pytest-copier --with pyyaml --with syrupy --with make-parser pytest tests/
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | \

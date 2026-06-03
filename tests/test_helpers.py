@@ -340,10 +340,11 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
         "expected parent Makefile to expose a documented test target"
     )
     assert (
-        "uvx --with pytest-copier --with pyyaml --with syrupy pytest tests/" in makefile
+        "uvx --with pytest-copier --with pyyaml --with syrupy --with make-parser "
+        "pytest tests/" in makefile
     ), (
         "expected parent Makefile test target to run pytest through uvx with "
-        "pytest-copier, pyyaml, and syrupy"
+        "pytest-copier, pyyaml, syrupy, and make-parser"
     )
 
 

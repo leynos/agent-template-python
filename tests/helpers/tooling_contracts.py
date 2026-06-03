@@ -11,7 +11,12 @@ tests stay focused on scenario setup.
 
 from __future__ import annotations
 
+import re
+import tempfile
+from pathlib import Path
 from typing import Any
+
+import make_parser
 
 from tests.helpers.generated_files import (
     parse_yaml_mapping,
@@ -123,6 +128,12 @@ def assert_generated_tooling_contracts(
         use_rust=use_rust,
     )
     _assert_agents_contracts(agents)
+    _assert_agents_make_targets_mirror_makefile(
+        agents=agents,
+        makefile=makefile,
+        package_name=package_name,
+        use_rust=use_rust,
+    )
     _assert_makefile_contracts(makefile=makefile, use_rust=use_rust)
     _assert_ci_workflow_contracts(
         parsed_ci_workflow=parsed_ci_workflow,
@@ -291,6 +302,164 @@ def _assert_agents_contracts(agents: str) -> None:
     assert "brittle snapshots" in agents, (
         "expected generated AGENTS.md to warn against brittle snapshot churn"
     )
+
+
+def _assert_agents_make_targets_mirror_makefile(
+    *, agents: str, makefile: str, package_name: str, use_rust: bool
+) -> None:
+    """Assert AGENTS.md make target references match parsed Makefile commands."""
+    documented_targets = _documented_make_targets(agents)
+    makefile_rules = _parse_makefile_rules(makefile)
+    makefile_targets = set(makefile_rules)
+    missing_targets = sorted(documented_targets - makefile_targets)
+    assert not missing_targets, (
+        "expected every make target documented in generated AGENTS.md to exist "
+        f"in the generated Makefile, missing: {missing_targets}"
+    )
+    required_documented_targets = {
+        "check-fmt",
+        "fmt",
+        "lint",
+        "markdownlint",
+        "nixie",
+        "test",
+        "typecheck",
+    }
+    missing_documented_targets = sorted(
+        required_documented_targets - documented_targets
+    )
+    assert not missing_documented_targets, (
+        "expected generated AGENTS.md to document the generated Makefile quality "
+        f"gate targets, missing: {missing_documented_targets}"
+    )
+    _assert_documented_command_flags(
+        agents=agents,
+        makefile_rules=makefile_rules,
+        package_name=package_name,
+        use_rust=use_rust,
+    )
+
+
+def _assert_documented_command_flags(
+    *,
+    agents: str,
+    makefile_rules: dict[str, list[str]],
+    package_name: str,
+    use_rust: bool,
+) -> None:
+    """Assert documented make command flags are present in parsed recipes."""
+    python_targets = f"{package_name} tests"
+    command_contracts = {
+        "check-fmt": [
+            ("AGENTS.md", "ruff format --check $(PYTHON_TARGETS)"),
+            ("Makefile", f"ruff format --check {python_targets}"),
+        ],
+        "lint-python": [
+            ("AGENTS.md", "ruff check $(PYTHON_TARGETS)"),
+            ("Makefile", f"ruff check {python_targets}"),
+        ],
+        "typecheck": [
+            ("AGENTS.md", "ty check $(PYTHON_TARGETS)"),
+            ("Makefile", f"ty check {python_targets}"),
+        ],
+        "test": [
+            ("AGENTS.md", "pytest -v -n $(PYTEST_XDIST_WORKERS)"),
+            ("Makefile", "pytest -v -n auto"),
+        ],
+    }
+    if use_rust:
+        command_contracts.update(
+            {
+                "check-fmt": [
+                    *command_contracts["check-fmt"],
+                    (
+                        "AGENTS.md",
+                        "cargo fmt --manifest-path rust_extension/Cargo.toml",
+                    ),
+                    ("AGENTS.md", "--all -- --check"),
+                    ("Makefile", "fmt --manifest-path rust_extension/Cargo.toml"),
+                    ("Makefile", "--all -- --check"),
+                ],
+                "lint-rust": [
+                    ("AGENTS.md", "cargo doc --no-deps"),
+                    (
+                        "AGENTS.md",
+                        "cargo clippy --manifest-path rust_extension/Cargo.toml",
+                    ),
+                    ("AGENTS.md", "--all-targets --all-features -- -D warnings"),
+                    ("AGENTS.md", "whitaker --all -- --all-targets --all-features"),
+                    ("Makefile", "doc --no-deps"),
+                    ("Makefile", "clippy --manifest-path rust_extension/Cargo.toml"),
+                    ("Makefile", "--all-targets --all-features -- -D warnings"),
+                    ("Makefile", "--all -- --all-targets --all-features"),
+                ],
+                "test": [
+                    *command_contracts["test"],
+                    (
+                        "AGENTS.md",
+                        "cargo nextest run --manifest-path rust_extension/Cargo.toml",
+                    ),
+                    (
+                        "AGENTS.md",
+                        "cargo test --manifest-path rust_extension/Cargo.toml",
+                    ),
+                    (
+                        "AGENTS.md",
+                        "cargo test --doc --manifest-path rust_extension/Cargo.toml",
+                    ),
+                    ("Makefile", "--manifest-path rust_extension/Cargo.toml"),
+                    ("Makefile", "--all-targets --all-features"),
+                    (
+                        "Makefile",
+                        "test --doc --manifest-path rust_extension/Cargo.toml",
+                    ),
+                ],
+            }
+        )
+    for target, checks in command_contracts.items():
+        commands = "\n".join(makefile_rules[target])
+        for source, fragment in checks:
+            haystack = agents if source == "AGENTS.md" else commands
+            assert fragment in haystack, (
+                f"expected generated {source} {target!r} command contract to "
+                f"include {fragment!r}"
+            )
+
+
+def _documented_make_targets(agents: str) -> set[str]:
+    """Return make targets referenced in rendered AGENTS.md guidance."""
+    return set(re.findall(r"`make ([a-zA-Z][a-zA-Z_-]*)", agents))
+
+
+def _parse_makefile_rules(makefile: str) -> dict[str, list[str]]:
+    """Return generated Makefile rules parsed through make-parser."""
+    target_names = set(
+        re.findall(r"^([a-zA-Z][a-zA-Z_-]*):", makefile, flags=re.MULTILINE)
+    )
+    normalised_targets = {
+        target: target.replace("-", "_") for target in target_names if "-" in target
+    }
+
+    def normalise_target(match: re.Match[str]) -> str:
+        target = match.group(1)
+        return normalised_targets.get(target, target) + ":"
+
+    normalised_makefile = re.sub(
+        r"^([a-zA-Z][a-zA-Z_-]*):",
+        normalise_target,
+        makefile.replace("?=", "="),
+        flags=re.MULTILINE,
+    )
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        makefile_path = Path(tmp_dir) / "Makefile"
+        makefile_path.write_text(normalised_makefile, encoding="utf-8")
+        parsed = make_parser.make_load(makefile_path)
+    normalised_rules = parsed["rules"]
+    return {
+        target: normalised_rules[normalised_targets.get(target, target)]["commands"]
+        for target in target_names
+        if normalised_targets.get(target, target) in normalised_rules
+    }
 
 
 def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:

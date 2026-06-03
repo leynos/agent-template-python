@@ -76,6 +76,15 @@
   - **Formatting:** Adheres to formatting standards (`make check-fmt`; use
     `make fmt` to apply fixes).
   - **Typechecking:** Passes type checking (`make typecheck`).
+  - The generated Makefile wiring for these targets is:
+    - `make check-fmt` runs Ruff formatting checks with
+      `ruff format --check $(PYTHON_TARGETS)`.
+    - `make lint` runs `make lint-python`; `make lint-python` runs
+      `ruff check $(PYTHON_TARGETS)` and the PyPy-backed Pylint runner against
+      `$(PYLINT_TARGETS)`.
+    - `make typecheck` runs `ty check $(PYTHON_TARGETS)`.
+    - `make test` runs `pytest -v -n $(PYTEST_XDIST_WORKERS)` and honours
+      `WITH_ACT=1` through `RUN_ACT_VALIDATION=1`.
   {% if use_rust -%}
   - For Rust files:
     - **Testing:** Passes relevant unit and behavioural tests (`make test`).
@@ -163,27 +172,32 @@ project:
   - `make check-fmt` executes:
 
     ```sh
-    cargo fmt --workspace -- --check
+    cargo fmt --manifest-path rust_extension/Cargo.toml --all -- --check
     ```
 
-    validating formatting across the entire workspace without modifying files.
+    validating formatting for the Rust extension without modifying files.
   - `make lint` executes:
 
     ```sh
-    cargo clippy --workspace --all-targets --all-features -- -D warnings
+    cargo doc --no-deps --manifest-path rust_extension/Cargo.toml
+    cargo clippy --manifest-path rust_extension/Cargo.toml --all-targets --all-features -- -D warnings
+    whitaker --all -- --all-targets --all-features
     ```
 
-    linting every target with all features enabled and denying all Clippy
-    warnings.
+    documenting and linting every Rust extension target with all features
+    enabled and warnings denied.
   - `make test` executes:
 
     ```sh
-    cargo test --workspace
+    cargo nextest run --manifest-path rust_extension/Cargo.toml --all-targets --all-features
+    # or, when cargo-nextest is unavailable:
+    cargo test --manifest-path rust_extension/Cargo.toml --all-targets --all-features
+    cargo test --doc --manifest-path rust_extension/Cargo.toml --all-features
     ```
 
-    running the full workspace test suite. Use `make fmt`
-    (`cargo fmt --workspace`) to apply formatting fixes reported by the
-    formatter check.
+    running the Rust extension test suite and documentation tests. Use
+    `make fmt` (`cargo fmt --manifest-path rust_extension/Cargo.toml --all`) to
+    apply formatting fixes reported by the formatter check.
 - Clippy warnings MUST be disallowed.
 - Fix any warnings emitted during tests in code instead of silencing them.
 - Where a function is too long, extract meaningfully named helper functions
