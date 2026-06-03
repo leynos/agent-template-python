@@ -328,8 +328,9 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     Returns
     -------
     None
-        The test passes when the parent Makefile exposes ``test`` as phony and
-        runs pytest through ``uvx`` with the required template-test packages.
+        The test passes when the parent Makefile exposes ``test`` as phony,
+        checks for ``uvx``, and runs pytest through the resolved executable with
+        the required template-test packages.
     """
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
@@ -339,11 +340,17 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     assert "test: ## Run template tests" in makefile, (
         "expected parent Makefile to expose a documented test target"
     )
+    assert "UV := $(shell command -v uvx 2>/dev/null)" in makefile, (
+        "expected parent Makefile to resolve uvx before running tests"
+    )
+    assert "uvx is required to run template tests" in makefile, (
+        "expected parent Makefile to fail early with a uvx installation message"
+    )
     assert (
-        "uvx --with pytest-copier --with pyyaml --with syrupy --with make-parser "
+        "$(UV) --with pytest-copier --with pyyaml --with syrupy --with make-parser "
         "pytest tests/" in makefile
     ), (
-        "expected parent Makefile test target to run pytest through uvx with "
+        "expected parent Makefile test target to run pytest through $(UV) with "
         "pytest-copier, pyyaml, syrupy, and make-parser"
     )
 
