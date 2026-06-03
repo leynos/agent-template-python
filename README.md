@@ -14,9 +14,10 @@ The test suite relies on the `pytest-copier` plugin and renders generated
 projects that run Ruff, Pylint via a PyPy-backed runner, `ty`, pytest, and, when
 the Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust tests.
 
-Run the parent template tests through the repository `Makefile`. The `test`
-target uses `uvx` to provide `pytest-copier`, `PyYAML`, and `syrupy` without a
-manually managed virtual environment:
+Run the parent template tests through the repository `Makefile`. Run
+`make help` to list the available parent Makefile targets. The `test` target
+uses `uvx` to provide `pytest-copier`, `PyYAML`, `syrupy`, and `make-parser`
+without a manually managed virtual environment:
 
 ```bash
 make test
