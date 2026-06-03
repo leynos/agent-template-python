@@ -63,6 +63,7 @@ def assert_generated_tooling_contracts(
     pyproject: dict[str, Any],
     makefile: str,
     ci_workflow: str,
+    act_validation_workflow: str,
     release_workflow: str,
     build_wheels_workflow: str,
     build_wheels_action: str,
@@ -83,6 +84,8 @@ def assert_generated_tooling_contracts(
         UTF-8 text of the generated Makefile.
     ci_workflow : str
         UTF-8 text of the generated CI workflow.
+    act_validation_workflow : str
+        UTF-8 text of the generated act-validation workflow.
     release_workflow : str
         UTF-8 text of the generated release workflow.
     build_wheels_workflow : str
@@ -115,6 +118,7 @@ def assert_generated_tooling_contracts(
             pyproject=pyproject,
             makefile=makefile,
             ci_workflow=ci_workflow,
+            act_validation_workflow=act_validation_workflow,
             release_workflow=release_workflow,
             build_wheels_workflow=build_wheels_workflow,
             build_wheels_action=build_wheels_action,
@@ -139,6 +143,10 @@ def assert_generated_tooling_contracts(
     _assert_ci_workflow_contracts(
         parsed_ci_workflow=parsed_ci_workflow,
         ci_workflow=ci_workflow,
+        use_rust=use_rust,
+    )
+    _assert_act_validation_workflow_contracts(
+        act_validation_workflow=act_validation_workflow,
         use_rust=use_rust,
     )
     _assert_release_workflow_contracts(
@@ -568,6 +576,10 @@ def _assert_ci_workflow_contracts(
     assert "make audit" in ci_workflow, (
         "expected generated CI workflow to run the dependency audit gate"
     )
+    assert "make test WITH_ACT=1" not in ci_workflow, (
+        "expected generated main CI workflow to leave act validation to a "
+        "separate workflow"
+    )
     assert "make build" in ci_workflow, (
         "expected generated CI workflow to build the project before checks"
     )
@@ -596,6 +608,35 @@ def _assert_ci_workflow_contracts(
         )
         assert "cargo-audit" not in ci_workflow, (
             "expected pure-Python CI to omit Rust audit installation"
+        )
+
+
+def _assert_act_validation_workflow_contracts(
+    *, act_validation_workflow: str, use_rust: bool
+) -> None:
+    """Assert generated act-validation workflow contracts."""
+    assert "name: Act Validation" in act_validation_workflow, (
+        "expected generated act-validation workflow to be named"
+    )
+    assert "ACT_VERSION: v0.2.80" in act_validation_workflow, (
+        "expected generated act-validation workflow to pin act"
+    )
+    assert "act_Linux_x86_64.tar.gz" in act_validation_workflow, (
+        "expected generated act-validation workflow to install act"
+    )
+    assert "docker info" in act_validation_workflow, (
+        "expected generated act-validation workflow to verify Docker"
+    )
+    assert "make test WITH_ACT=1" in act_validation_workflow, (
+        "expected generated act-validation workflow to run act-enabled tests"
+    )
+    if use_rust:
+        assert "leynos/shared-actions/.github/actions/setup-rust" in (
+            act_validation_workflow
+        ), "expected Rust variant act-validation workflow to set up Rust"
+    else:
+        assert "setup-rust" not in act_validation_workflow, (
+            "expected pure-Python act-validation workflow to omit Rust setup"
         )
 
 

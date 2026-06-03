@@ -350,12 +350,18 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     assert "uvx is required to run template tests" in makefile, (
         "expected parent Makefile to fail early with a uvx installation message"
     )
+    assert "WITH_ACT ?= 0" in makefile, (
+        "expected parent Makefile to default act validation off"
+    )
+    assert "RUN_ACT_VALIDATION=1" in makefile, (
+        "expected parent Makefile to map WITH_ACT to act validation"
+    )
     assert (
-        "$(UV) --with pytest-copier --with pyyaml --with syrupy --with make-parser "
-        "pytest tests/" in makefile
+        "$(ACT_TEST_ENV) $(UV) --with pytest-copier --with pyyaml --with syrupy "
+        "--with make-parser pytest tests/" in makefile
     ), (
         "expected parent Makefile test target to run pytest through $(UV) with "
-        "pytest-copier, pyyaml, syrupy, and make-parser"
+        "pytest-copier, pyyaml, syrupy, make-parser, and act environment wiring"
     )
 
 

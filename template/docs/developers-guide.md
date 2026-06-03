@@ -36,6 +36,9 @@ actions under `.github/`.
   and `make audit`, then delegates coverage generation to the shared coverage
   action. When the Rust extension is enabled, it also sets up Rust, installs
   Rust lint and test tools, and passes `rust_extension/Cargo.toml` to coverage.
+- `.github/workflows/act-validation.yml` runs rendered workflow validation in a
+  separate workflow. It installs `act`, checks Docker availability, and runs
+  `make test WITH_ACT=1` outside the coverage path.
 - `.github/workflows/release.yml` publishes wheels when a `v*.*.*` tag is
   pushed. It builds a pure Python wheel, creates a GitHub release with generated
   release notes, downloads wheel artifacts, and uploads them to the tag release.

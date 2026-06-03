@@ -23,6 +23,11 @@ without a manually managed virtual environment:
 make test
 ```
 
+Run `make test WITH_ACT=1` to include the act-backed workflow integration tests
+when `act` and Docker are available. Parent repository CI runs this mode in a
+separate act-validation workflow so rendered in-template GitHub workflows do not
+hold up the normal template test workflow.
+
 Generated projects install and run their own tooling, including Ruff, Pylint via
 PyPy, `ty`, pytest, and, when Rust is enabled, Clippy, Whitaker, and nextest.
 

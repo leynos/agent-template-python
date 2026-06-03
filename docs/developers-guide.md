@@ -32,6 +32,10 @@ sets up Python, optionally sets up Rust, runs `make check-fmt`, `make lint`,
 `make typecheck`, and `make audit`, then delegates coverage to
 `leynos/shared-actions/.github/actions/generate-coverage`.
 
+`template/.github/workflows/act-validation.yml.jinja` keeps rendered workflow
+validation separate from generated application CI. It installs `act`, verifies
+Docker availability, and runs `make test WITH_ACT=1`.
+
 Rust-enabled workflows pass `rust_extension/Cargo.toml` to the coverage action
 because the generated Python project root does not contain a Rust manifest.
 
