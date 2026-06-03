@@ -31,6 +31,9 @@ if TYPE_CHECKING:
     from pytest_copier.plugin import CopierProject
 
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
 def test_read_generated_text_converts_os_errors(tmp_path: Path) -> None:
     """Convert generated-file read errors into pytest failures.
 
@@ -299,6 +302,7 @@ def test_parent_makefile_help_target_lists_available_targets() -> None:
         ["make", "help"],
         check=True,
         capture_output=True,
+        cwd=REPO_ROOT,
         encoding="utf-8",
     )
 
@@ -327,7 +331,7 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
         The test passes when the parent Makefile exposes ``test`` as phony and
         runs pytest through ``uvx`` with the required template-test packages.
     """
-    makefile = Path("Makefile").read_text(encoding="utf-8")
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
     assert ".PHONY: help test" in makefile, (
         "expected parent Makefile to mark help and test as phony targets"

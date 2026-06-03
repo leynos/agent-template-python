@@ -13,6 +13,7 @@ normal user caches used by those generated projects.
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 import pytest
@@ -76,7 +77,12 @@ def test_python_only_help_output_snapshot(
         use_rust=False,
     )
 
-    assert project.run("make help") == snapshot
+    help_output = project.run("make help")
+    for target in ["build", "check-fmt", "lint", "typecheck", "test", "help"]:
+        assert f"  {target}" in help_output, (
+            f"expected generated help output to list the {target!r} target"
+        )
+    assert help_output == snapshot
 
 
 @pytest.mark.parametrize(
@@ -126,7 +132,27 @@ def test_pure_module_snapshot(
         use_rust=use_rust,
     )
 
-    assert read_generated_file(project, f"{package_name}/pure.py") == snapshot
+    pure_module = read_generated_file(project, f"{package_name}/pure.py")
+    parsed_module = ast.parse(pure_module)
+    hello_functions = [
+        node
+        for node in parsed_module.body
+        if isinstance(node, ast.FunctionDef) and node.name == "hello"
+    ]
+    assert len(hello_functions) == 1, (
+        "expected generated pure.py to define exactly one hello function"
+    )
+    hello_function = hello_functions[0]
+    assert not hello_function.args.args, (
+        "expected generated pure.py hello function to accept no positional arguments"
+    )
+    assert isinstance(hello_function.returns, ast.Name), (
+        "expected generated pure.py hello function to declare a return annotation"
+    )
+    assert hello_function.returns.id == "str", (
+        "expected generated pure.py hello function to return str"
+    )
+    assert pure_module == snapshot
 
 
 def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
