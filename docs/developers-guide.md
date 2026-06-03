@@ -53,7 +53,7 @@ domain assertions so workflow format details stay local to the adapter helpers.
 
 ### Test Helper Modules
 
-Test helpers are organised under `tests/helpers/` into three modules, each with
+Test helpers are organized under `tests/helpers/` into three modules, each with
 a distinct responsibility:
 
 **`tests/helpers/rendering.py`** — project rendering and command execution.
