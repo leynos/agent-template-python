@@ -1,4 +1,12 @@
-"""Parse and validate generated project files in template tests."""
+"""Parse generated project files for template contract tests.
+
+This module owns assertion-focused file reading and structured data parsing for
+rendered Copier projects.  Rendering helpers use ``read_generated_text`` so
+filesystem errors become pytest failures consistently, while tooling contract
+helpers consume ``parse_yaml_mapping``, ``require_mapping``, and
+``require_sequence`` to keep workflow schema checks readable.  Keep raw
+generated-file I/O here so template tests share one error-reporting boundary.
+"""
 
 from __future__ import annotations
 

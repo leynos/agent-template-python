@@ -1,4 +1,13 @@
-"""Assertion helpers for generated tooling and workflow contracts."""
+"""Assert rendered tooling contracts for generated project variants.
+
+This module contains the higher-level contract checks used after
+``tests.helpers.rendering`` renders a project and
+``tests.helpers.generated_files`` parses its structured files.  The public
+helpers validate generated Makefile targets, packaging metadata, assistant
+guidance, and GitHub workflow structure for both pure-Python and Python/Rust
+variants.  Keep workflow and tooling assertions here so top-level template
+tests stay focused on scenario setup.
+"""
 
 from __future__ import annotations
 

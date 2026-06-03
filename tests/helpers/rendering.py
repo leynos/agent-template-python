@@ -1,4 +1,13 @@
-"""Render generated projects and run their public commands in tests."""
+"""Render Copier projects and bridge generated-file helper APIs.
+
+This module wraps ``pytest-copier`` interactions used by template tests:
+rendering projects, running generated quality gates, importing generated
+packages, and reading rendered files relative to a project root.  File reads
+delegate to :mod:`tests.helpers.generated_files` so rendering-oriented tests
+share the same pytest failure semantics as lower-level generated-file parsers.
+Tooling contract tests call these helpers before passing rendered text into
+:mod:`tests.helpers.tooling_contracts`.
+"""
 
 from __future__ import annotations
 

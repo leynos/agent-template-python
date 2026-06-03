@@ -8,6 +8,7 @@ contract assertions directly.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -30,13 +31,14 @@ if TYPE_CHECKING:
     from pytest_copier.plugin import CopierProject
 
 
-def test_read_generated_text_converts_os_errors() -> None:
+def test_read_generated_text_converts_os_errors(tmp_path: Path) -> None:
     """Convert generated-file read errors into pytest failures.
 
     Parameters
     ----------
-    None
-        This test passes a nonexistent ``Path`` to ``read_generated_text``.
+    tmp_path
+        Temporary directory used to build a missing file path for
+        ``read_generated_text``.
 
     Returns
     -------
@@ -45,8 +47,10 @@ def test_read_generated_text_converts_os_errors() -> None:
         ``pytest.fail.Exception`` with path context instead of propagating the
         raw ``FileNotFoundError`` from ``Path.read_text``.
     """
+    missing_path = tmp_path / "nonexistent_generated.txt"
+
     with pytest.raises(pytest.fail.Exception, match="could not read generated file"):
-        read_generated_text(Path("nonexistent_generated.txt"))
+        read_generated_text(missing_path)
 
 
 def test_parse_toml_file_reports_decode_errors(tmp_path: Path) -> None:
@@ -274,6 +278,68 @@ def test_ci_coverage_action_contract_validates_rust_manifest_edge() -> None:
         ),
         package_name="helper_pkg",
         use_rust=True,
+    )
+
+
+def test_parent_makefile_help_target_lists_available_targets() -> None:
+    """Validate the parent repository ``help`` target output.
+
+    Parameters
+    ----------
+    None
+        This test does not use pytest fixtures.
+
+    Returns
+    -------
+    None
+        The test passes when ``make help`` advertises the parent ``help`` and
+        ``test`` targets.
+    """
+    result = subprocess.run(
+        ["make", "help"],
+        check=True,
+        capture_output=True,
+        encoding="utf-8",
+    )
+
+    assert "Available targets:" in result.stdout, (
+        "expected parent Makefile help target to print an available-targets header"
+    )
+    assert "help" in result.stdout, (
+        "expected parent Makefile help target to list the help target"
+    )
+    assert "test" in result.stdout, (
+        "expected parent Makefile help target to list the test target"
+    )
+
+
+def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
+    """Validate the parent repository ``test`` target command contract.
+
+    Parameters
+    ----------
+    None
+        This test does not use pytest fixtures.
+
+    Returns
+    -------
+    None
+        The test passes when the parent Makefile exposes ``test`` as phony and
+        runs pytest through ``uvx`` with the required template-test packages.
+    """
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert ".PHONY: help test" in makefile, (
+        "expected parent Makefile to mark help and test as phony targets"
+    )
+    assert "test: ## Run template tests" in makefile, (
+        "expected parent Makefile to expose a documented test target"
+    )
+    assert (
+        "uvx --with pytest-copier --with pyyaml --with syrupy pytest tests/" in makefile
+    ), (
+        "expected parent Makefile test target to run pytest through uvx with "
+        "pytest-copier, pyyaml, and syrupy"
     )
 
 
