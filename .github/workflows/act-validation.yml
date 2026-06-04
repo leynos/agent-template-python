@@ -35,7 +35,6 @@ jobs:
             sudo tar -xz -C /usr/local/bin act
           npm install -g markdownlint-cli2
           uv tool install mbake
-          uv tool install mdformat-all
 
       - name: Check Docker runtime
         run: docker info
