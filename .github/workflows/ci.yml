@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+env:
+  MARKDOWNLINT_CLI2_VERSION: 0.22.1
+  MBAKE_VERSION: 1.4.6
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -29,8 +36,8 @@ jobs:
 
       - name: Install template test tools
         run: |
-          npm install -g markdownlint-cli2
-          uv tool install mbake
+          npm install -g "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}"
+          uv tool install "mbake==${MBAKE_VERSION}"
 
       - name: Run template tests
         run: make test
