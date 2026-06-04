@@ -4,6 +4,35 @@ This repository is a Copier template. Source files under `template/` are
 rendered into generated projects, while tests under `tests/` render those
 projects and run their public quality gates.
 
+## Parent Repository Makefile
+
+The root `Makefile` provides developer workflow targets for working on the
+template itself.
+
+- `make help` — lists all `##`-annotated targets.
+- `make test` — runs the template test suite via `uvx`, supplying
+  `pytest-copier`, `pyyaml`, `syrupy`, and `make-parser` without a manually
+  managed virtual environment.
+- `make test WITH_ACT=1` — sets `RUN_ACT_VALIDATION=1` inside the pytest
+  invocation, enabling the act-backed integration tests that run generated CI
+  workflows locally. Requires `act` and Docker to be available.
+
+`uvx` is required; the Makefile aborts with an error if it is not found on
+`PATH`.
+
+## Parent CI Workflows
+
+The parent repository uses two separate GitHub Actions workflows to keep
+Docker-dependent tests isolated from the standard template test gate:
+
+- `.github/workflows/ci.yml` runs `make test` on every push to `main` and on
+  all pull requests. It installs `markdownlint-cli2` and `mbake` at pinned
+  versions.
+- `.github/workflows/act-validation.yml` runs `make test WITH_ACT=1`. It
+  additionally downloads the `act` binary at a pinned `ACT_VERSION`, verifies
+  its SHA-256 checksum before extraction, and confirms Docker availability via
+  `docker info`.
+
 ## Makefile Template
 
 `template/Makefile.jinja` defines the generated developer workflow. The default
