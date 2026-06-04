@@ -176,8 +176,29 @@ def _assert_act_validation_workflow_contracts(
     assert "ACT_VERSION: v0.2.80" in act_validation_workflow, (
         "expected generated act-validation workflow to pin act"
     )
+    assert "permissions:\n  contents: read" in act_validation_workflow, (
+        "expected generated act-validation workflow to restrict GITHUB_TOKEN"
+    )
+    assert "MARKDOWNLINT_CLI2_VERSION: 0.22.1" in act_validation_workflow, (
+        "expected generated act-validation workflow to pin markdownlint-cli2"
+    )
+    assert "MBAKE_VERSION: 1.4.6" in act_validation_workflow, (
+        "expected generated act-validation workflow to pin mbake"
+    )
     assert "act_Linux_x86_64.tar.gz" in act_validation_workflow, (
         "expected generated act-validation workflow to install act"
+    )
+    assert "${ACT_VERSION}/${act_archive}" in act_validation_workflow, (
+        "expected generated act-validation workflow to build the act URL from ACT_VERSION"
+    )
+    assert "sha256sum -c -" in act_validation_workflow, (
+        "expected generated act-validation workflow to verify the act archive checksum"
+    )
+    assert 'npm install -g "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}"' in (
+        act_validation_workflow
+    ), "expected generated act-validation workflow to install pinned markdownlint-cli2"
+    assert 'uv tool install "mbake==${MBAKE_VERSION}"' in act_validation_workflow, (
+        "expected generated act-validation workflow to install pinned mbake"
     )
     assert "docker info" in act_validation_workflow, (
         "expected generated act-validation workflow to verify Docker"
