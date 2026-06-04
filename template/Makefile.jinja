@@ -175,9 +175,7 @@ test: build $(VENV_TOOLS) ## Run tests
 	  exit 1; \
 	}
 	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) $(TEST_CMD) $(TEST_FLAGS) $(BUILD_JOBS)
-ifneq ($(TEST_CMD),test)
 	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) test --doc --manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all-features
-endif
 {% endif %}
 
 help: ## Show available targets

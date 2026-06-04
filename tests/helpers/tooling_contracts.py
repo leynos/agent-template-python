@@ -525,6 +525,13 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
         assert "$(CARGO) $(TEST_CMD) $(TEST_FLAGS)" in makefile, (
             "expected Rust variant tests to use the selected cargo test command"
         )
+        assert "ifneq ($(TEST_CMD),test)" not in makefile, (
+            "expected Rust variant tests to run doctests even when nextest is absent"
+        )
+        assert (
+            'RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) test --doc '
+            "--manifest-path $(RUST_CRATE_DIR)/Cargo.toml --all-features"
+        ) in makefile, "expected Rust variant tests to run Rust doctests"
         assert "rust-audit:" in makefile, (
             "expected Rust variant to expose the rust-audit target"
         )
