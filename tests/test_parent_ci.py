@@ -60,9 +60,12 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "ACT_VERSION:" in act_workflow, (
         "expected parent act-validation workflow to declare an act version"
     )
-    assert (
-        "act_Linux_x86_64.tar.gz" in act_workflow and "${ACT_VERSION}" in act_workflow
-    ), "expected parent act-validation workflow to build the act URL from ACT_VERSION"
+    assert "act_Linux_x86_64.tar.gz" in act_workflow, (
+        "expected parent act-validation workflow to include act_Linux_x86_64.tar.gz"
+    )
+    assert "${ACT_VERSION}" in act_workflow, (
+        "expected parent act-validation workflow to include ${ACT_VERSION}"
+    )
     assert "sha256sum -c -" in act_workflow, (
         "expected parent act-validation workflow to verify the act archive checksum"
     )

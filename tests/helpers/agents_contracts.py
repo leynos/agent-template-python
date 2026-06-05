@@ -164,6 +164,10 @@ def _assert_documented_command_flags(
             }
         )
     for target, checks in command_contracts.items():
+        assert target in makefile_rules, (
+            "expected generated Makefile rules to include target "
+            f"{target!r} from command_contracts"
+        )
         commands = "\n".join(makefile_rules[target])
         for source, fragment in checks:
             haystack = agents if source == "AGENTS.md" else commands
