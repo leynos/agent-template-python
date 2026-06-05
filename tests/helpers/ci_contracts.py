@@ -145,6 +145,23 @@ def _assert_ci_workflow_contracts(
         assert "leynos/shared-actions/.github/actions/setup-rust" in ci_workflow, (
             "expected Rust variant CI to set up Rust"
         )
+        rust_tool_steps = [
+            step
+            for step in steps
+            if isinstance(step, dict)
+            and step.get("name") == "Install Rust lint and test tools"
+        ]
+        assert len(rust_tool_steps) == 1, (
+            "expected Rust variant CI to install Rust lint and test tools once"
+        )
+        rust_tool_env = require_mapping(
+            rust_tool_steps[0],
+            "env",
+            "Install Rust lint and test tools step",
+        )
+        assert rust_tool_env.get("RUSTFLAGS") == "", (
+            "expected Rust tool installation step to clear inherited RUSTFLAGS"
+        )
         assert "Cache Rust lint and test tools" in ci_workflow, (
             "expected Rust variant CI to cache Rust tools"
         )

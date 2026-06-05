@@ -47,6 +47,8 @@ jobs:
             ~/.local/share/whitaker
 
       - name: Install Rust lint and test tools
+        env:
+          RUSTFLAGS: ""
         run: |
           cargo install --locked \
             --git https://github.com/leynos/whitaker \
