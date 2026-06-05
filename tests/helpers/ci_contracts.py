@@ -190,7 +190,7 @@ def _assert_act_validation_workflow_contracts(
     assert "name: Act Validation" in act_validation_workflow, (
         "expected generated act-validation workflow to be named"
     )
-    assert "ACT_VERSION: v0.2.80" in act_validation_workflow, (
+    assert "ACT_VERSION: v0.2.84" in act_validation_workflow, (
         "expected generated act-validation workflow to pin act"
     )
     assert "permissions:\n  contents: read" in act_validation_workflow, (

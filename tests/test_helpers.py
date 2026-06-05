@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
+from tests.conftest import MINIMUM_ACT_VERSION, _parse_act_version
 from tests.helpers.generated_files import (
     parse_toml_file,
     parse_yaml_mapping,
@@ -26,12 +27,113 @@ from tests.helpers.tooling_contracts import (
     assert_ci_coverage_action_contract,
     assert_common_make_targets,
 )
+from tests.utilities import docker_environment
 
 if TYPE_CHECKING:
     from pytest_copier.plugin import CopierProject
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        ("act version 0.2.84", (0, 2, 84)),
+        ("act version v0.2.84", (0, 2, 84)),
+    ],
+)
+def test_parse_act_version_accepts_supported_formats(
+    output: str,
+    expected: tuple[int, int, int],
+) -> None:
+    """Parse act version output used by the local preflight.
+
+    Parameters
+    ----------
+    output
+        Text emitted by ``act --version``.
+    expected
+        Semantic version tuple expected from the parser.
+
+    Returns
+    -------
+    None
+        The test passes when supported act version output formats parse to the
+        expected tuple.
+    """
+    assert _parse_act_version(output) == expected, (
+        f"expected act version parser to parse {output!r}"
+    )
+
+
+def test_parse_act_version_rejects_unexpected_output() -> None:
+    """Reject act version output that does not contain a semantic version.
+
+    Parameters
+    ----------
+    None
+        This test does not use pytest fixtures.
+
+    Returns
+    -------
+    None
+        The test passes when unexpected output returns ``None`` so the preflight
+        can skip optional act-backed tests with a clear reason.
+    """
+    assert _parse_act_version("unexpected act output") is None, (
+        "expected act version parser to reject output without a semantic version"
+    )
+
+
+def test_old_act_version_is_below_minimum() -> None:
+    """Compare stale act versions against the Node24-capable minimum.
+
+    Parameters
+    ----------
+    None
+        This test does not use pytest fixtures.
+
+    Returns
+    -------
+    None
+        The test passes when act ``0.2.80`` is detected as older than the
+        minimum version required for Node24 action runtime support.
+    """
+    parsed_version = _parse_act_version("act version 0.2.80")
+
+    assert parsed_version is not None, "expected parser to read stale act version"
+    assert parsed_version < MINIMUM_ACT_VERSION, (
+        "expected act 0.2.80 to be below the Node24-capable minimum"
+    )
+
+
+def test_docker_environment_removes_github_auth_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Remove host GitHub credentials from act subprocess environments.
+
+    Parameters
+    ----------
+    monkeypatch
+        Pytest fixture used to install representative host GitHub token
+        variables.
+
+    Returns
+    -------
+    None
+        The test passes when ``docker_environment`` removes GitHub auth tokens
+        so stale host credentials cannot break public action clones in ``act``.
+    """
+    monkeypatch.setenv("GITHUB_TOKEN", "stale-token")
+    monkeypatch.setenv("GH_TOKEN", "stale-token")
+
+    env = docker_environment()
+
+    assert "GITHUB_TOKEN" not in env, (
+        "expected docker_environment to remove host GITHUB_TOKEN"
+    )
+    assert "GH_TOKEN" not in env, "expected docker_environment to remove host GH_TOKEN"
 
 
 def test_read_generated_text_converts_os_errors(tmp_path: Path) -> None:
