@@ -18,6 +18,11 @@ The `lint-python` target runs Ruff followed by Pylint via a PyPy-backed runner.
 The Pylint runner is installed through `uv tool run` from the pinned
 `pylint-pypy-shim` repository.
 
+Pytest discovery is limited to the top-level `tests/` tree. Keep generated
+project unit tests there rather than in package module directories or
+`unittests/` subdirectories, because CI coverage runs through xdist-backed
+SlipCover support.
+
 When the Rust extension is enabled, `lint-rust` runs:
 
 - `cargo doc` with warnings denied;

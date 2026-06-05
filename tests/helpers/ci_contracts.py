@@ -71,7 +71,7 @@ def assert_ci_coverage_action_contract(
     assert (
         coverage_step.get("uses")
         == "leynos/shared-actions/.github/actions/generate-coverage"
-        "@d400b079fb6a8fa92f7e7b6c57f3d1c92a4b2d54"
+        "@455d9ed03477c0026da96c2541ca26569a74acac"
     ), "expected CI to use the pinned shared coverage action"
     coverage_inputs = require_mapping(coverage_step, "with", "coverage step")
     assert coverage_inputs.get("output-path") == "coverage.xml", (

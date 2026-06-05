@@ -39,6 +39,10 @@ def _assert_agents_contracts(agents: str) -> None:
         "expected generated AGENTS.md to require linked plans for temporary "
         "lint suppressions"
     )
+    assert "Keep pytest tests in the top-level `tests/` tree" in agents, (
+        "expected generated AGENTS.md to keep pytest discovery compatible with "
+        "xdist-backed coverage"
+    )
 
 
 def _assert_agents_make_targets_mirror_makefile(

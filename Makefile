@@ -1,4 +1,4 @@
-.PHONY: help test
+.PHONY: help check-fmt lint test typecheck
 
 MAKEFLAGS += --no-print-directory
 
@@ -12,6 +12,15 @@ endif
 
 test: ## Run template tests
 	$(ACT_TEST_ENV) $(UV) --with pytest-copier --with pyyaml --with syrupy --with make-parser pytest tests/
+
+check-fmt: ## Verify template test formatting
+	$(UV) ruff format --check tests/
+
+lint: ## Run template test lint checks
+	$(UV) ruff check tests/
+
+typecheck: ## Run template test type checks
+	$(UV) --with pytest --with pytest-copier --with pyyaml --with syrupy --with make-parser ty check tests/
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | \

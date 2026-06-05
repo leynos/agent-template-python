@@ -16,9 +16,10 @@ projects that run Ruff, Pylint via a PyPy-backed runner, `ty`, pytest, and, when
 the Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust tests.
 
 Run the parent template tests through the repository `Makefile`. Run
-`make help` to list the available parent Makefile targets. The `test` target
-uses `uvx` to provide `pytest-copier`, `pyyaml`, `syrupy`, and `make-parser`
-without a manually managed virtual environment:
+`make help` to list the available parent Makefile targets. Parent gates include
+`make check-fmt`, `make lint`, `make typecheck`, and `make test`. The `test`
+target uses `uvx` to provide `pytest-copier`, `pyyaml`, `syrupy`, and
+`make-parser` without a manually managed virtual environment:
 
 ```bash
 make test

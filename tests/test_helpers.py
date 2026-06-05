@@ -300,7 +300,7 @@ def test_parent_makefile_help_target_lists_available_targets() -> None:
     -------
     None
         The test passes when ``make help`` advertises the parent ``help`` and
-        ``test`` targets.
+        quality-gate targets.
     """
     result = subprocess.run(
         ["make", "help"],
@@ -316,9 +316,10 @@ def test_parent_makefile_help_target_lists_available_targets() -> None:
     assert "help" in result.stdout, (
         "expected parent Makefile help target to list the help target"
     )
-    assert "test" in result.stdout, (
-        "expected parent Makefile help target to list the test target"
-    )
+    for target in ["check-fmt", "lint", "typecheck", "test"]:
+        assert target in result.stdout, (
+            f"expected parent Makefile help target to list the {target} target"
+        )
 
 
 def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
@@ -338,9 +339,28 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     """
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
-    assert ".PHONY: help test" in makefile, (
-        "expected parent Makefile to mark help and test as phony targets"
+    assert ".PHONY: help check-fmt lint test typecheck" in makefile, (
+        "expected parent Makefile to mark documented gate targets as phony"
     )
+    assert "check-fmt: ## Verify template test formatting" in makefile, (
+        "expected parent Makefile to expose a documented check-fmt target"
+    )
+    assert "$(UV) ruff format --check tests/" in makefile, (
+        "expected parent Makefile check-fmt target to run Ruff formatting checks"
+    )
+    assert "lint: ## Run template test lint checks" in makefile, (
+        "expected parent Makefile to expose a documented lint target"
+    )
+    assert "$(UV) ruff check tests/" in makefile, (
+        "expected parent Makefile lint target to run Ruff checks"
+    )
+    assert "typecheck: ## Run template test type checks" in makefile, (
+        "expected parent Makefile to expose a documented typecheck target"
+    )
+    assert (
+        "$(UV) --with pytest --with pytest-copier --with pyyaml --with syrupy "
+        "--with make-parser ty check tests/" in makefile
+    ), "expected parent Makefile typecheck target to run ty with test dependencies"
     assert "test: ## Run template tests" in makefile, (
         "expected parent Makefile to expose a documented test target"
     )
@@ -376,7 +396,7 @@ jobs:
         with:
           persist-credentials: {persist_credentials}
       - name: Test and Measure Coverage
-        uses: leynos/shared-actions/.github/actions/generate-coverage@d400b079fb6a8fa92f7e7b6c57f3d1c92a4b2d54
+        uses: leynos/shared-actions/.github/actions/generate-coverage@455d9ed03477c0026da96c2541ca26569a74acac
         with:
           output-path: coverage.xml
           format: cobertura

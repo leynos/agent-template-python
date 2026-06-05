@@ -36,6 +36,19 @@ def _assert_pyproject_contracts(
         assert dependency in dev_dependencies, (
             f"expected generated dev dependencies to include {dependency}"
         )
+    pytest_options = require_mapping(
+        require_mapping(pyproject, "tool", "pyproject.toml"),
+        "pytest",
+        "pyproject.toml tool",
+    )
+    pytest_ini_options = require_mapping(
+        pytest_options,
+        "ini_options",
+        "pyproject.toml tool.pytest",
+    )
+    assert pytest_ini_options.get("testpaths") == ["tests"], (
+        "expected generated pytest discovery to be limited to the tests tree"
+    )
 
     build_system = require_mapping(pyproject, "build-system", "pyproject.toml")
     if use_rust:

@@ -10,6 +10,11 @@ The root `Makefile` provides developer workflow targets for working on the
 template itself.
 
 - `make help` — lists all `##`-annotated targets.
+- `make check-fmt` — runs Ruff formatting checks against the parent template
+  test suite.
+- `make lint` — runs Ruff lint checks against the parent template test suite.
+- `make typecheck` — runs `ty check` against the parent template test suite,
+  supplying the test dependencies through `uvx`.
 - `make test` — runs the template test suite via `uvx`, supplying
   `pytest-copier`, `pyyaml`, `syrupy`, and `make-parser` without a manually
   managed virtual environment.
@@ -60,6 +65,11 @@ override pins without editing target recipes.
 sets up Python, optionally sets up Rust, runs `make check-fmt`, `make lint`,
 `make typecheck`, and `make audit`, then delegates coverage to
 `leynos/shared-actions/.github/actions/generate-coverage`.
+
+The shared coverage action runs Python coverage through xdist-backed SlipCover
+support. Generated pytest discovery is therefore constrained to the top-level
+`tests/` tree via `tool.pytest.ini_options.testpaths`; do not add pytest unit
+tests under package module directories or `unittests/` subdirectories.
 
 `template/.github/workflows/act-validation.yml.jinja` keeps rendered workflow
 validation separate from generated application CI. It installs `act`, verifies
