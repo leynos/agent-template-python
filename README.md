@@ -1,6 +1,7 @@
 # Generic Copier Template
 
-This repository provides a [Copier](https://copier.readthedocs.io/) template for a Python package.
+This repository provides a [Copier](https://copier.readthedocs.io/) template
+for a Python package.
 It offers two flavours:
 
 1. **Python Only** – a pure Python implementation.
@@ -38,7 +39,8 @@ dependencies into the current Python environment manually.
 
 Figure: The generated `make all` quality gate runs build, formatting, linting,
 typechecking, and testing. Rust-specific lint and test branches run only when
-the Rust extension is enabled.
+the Rust extension is enabled. The `audit` target checks Python dependencies
+via `pip-audit` and, when Rust is enabled, Rust dependencies via `cargo audit`.
 
 ```mermaid
 flowchart LR
@@ -47,17 +49,20 @@ flowchart LR
     All --> CheckFmt[check-fmt]
     All --> Lint[lint]
     All --> Typecheck[typecheck]
+    All --> Audit[audit]
     All --> Test[test]
 
     Lint --> RuffCheck[ruff check]
     Lint --> PylintPyPy[pylint-pypy via PyPy]
     Typecheck --> TyCheck[ty check]
+    Audit --> PipAudit[pip-audit]
     Test --> Pytest[pytest -v -n auto]
 
     subgraph Rust_extension_enabled[use_rust == true]
         Lint --> RustDoc[cargo doc]
         Lint --> Clippy[cargo clippy]
         Lint --> Whitaker[whitaker --all]
+        Audit --> CargoAudit[cargo audit]
         Test --> Nextest[cargo nextest run]
         Test --> RustDocTests[cargo test --doc]
     end
