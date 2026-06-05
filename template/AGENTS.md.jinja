@@ -87,6 +87,8 @@
     - `make test` runs `pytest -v -n $(PYTEST_XDIST_WORKERS)` and honours
       `WITH_ACT=1` through `RUN_ACT_VALIDATION=1`.
     - `make audit` runs `pip-audit`.
+  - Temporary lint suppressions must include a link to the planned fix or
+    implementation that will remove the suppression.
   {% if use_rust -%}
   - For Rust files:
     - **Testing:** Passes relevant unit and behavioural tests (`make test`).

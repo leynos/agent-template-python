@@ -35,6 +35,10 @@ def _assert_agents_contracts(agents: str) -> None:
     assert "brittle snapshots" in agents, (
         "expected generated AGENTS.md to warn against brittle snapshot churn"
     )
+    assert "Temporary lint suppressions must include a link" in agents, (
+        "expected generated AGENTS.md to require linked plans for temporary "
+        "lint suppressions"
+    )
 
 
 def _assert_agents_make_targets_mirror_makefile(
