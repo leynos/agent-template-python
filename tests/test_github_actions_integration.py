@@ -293,12 +293,7 @@ def assert_act_result(
 
         assert_act_result(project, code, logs, use_rust=False)
     """
-    assert (project / "coverage.xml").exists(), (
-        "act workflow should write coverage.xml in the generated project"
-    )
     assert_ci_exercised_expected_steps(logs, use_rust=use_rust)
-    if code == 0:
-        return
     if (
         "Parameter INPUT_ARTEFACT_NAME_SUFFIX specified multiple times" in logs
         and "Provided artifact name input during validation is empty" in logs
@@ -308,6 +303,9 @@ def assert_act_result(
             "action output/archive phase after tests and coverage succeed"
         )
     assert code == 0, logs
+    assert (project / "coverage.xml").exists(), (
+        "act workflow should write coverage.xml in the generated project"
+    )
 
 
 @pytest.mark.parametrize(
