@@ -69,16 +69,33 @@
   - Formatting is correct and validated.
 - **For Python files:**
   - **Testing:** Passes all relevant unit and behavioural tests (`make test`).
+    Use `make test WITH_ACT=1` when local GitHub Actions workflow validation
+    should run through `act`; this sets `RUN_ACT_VALIDATION=1` for the pytest
+    invocation.
   - **Linting:** Passes lint checks (`make lint`).
   - **Formatting:** Adheres to formatting standards (`make check-fmt`; use
     `make fmt` to apply fixes).
   - **Typechecking:** Passes type checking (`make typecheck`).
+  - **Auditing:** Passes dependency vulnerability checks (`make audit`).
+  - The generated Makefile wiring for these targets is:
+    - `make check-fmt` runs Ruff formatting checks with
+      `ruff format --check $(PYTHON_TARGETS)`.
+    - `make lint` runs `make lint-python`; `make lint-python` runs
+      `ruff check $(PYTHON_TARGETS)` and the PyPy-backed Pylint runner against
+      `$(PYLINT_TARGETS)`.
+    - `make typecheck` runs `ty check $(PYTHON_TARGETS)`.
+    - `make test` runs `pytest -v -n $(PYTEST_XDIST_WORKERS)` and honours
+      `WITH_ACT=1` through `RUN_ACT_VALIDATION=1`.
+    - `make audit` runs `pip-audit`.
+  - Temporary lint suppressions must include a link to the planned fix or
+    implementation that will remove the suppression.
   {% if use_rust -%}
   - For Rust files:
     - **Testing:** Passes relevant unit and behavioural tests (`make test`).
     - **Linting:** Passes lint checks (`make lint`).
     - **Formatting:** Adheres to formatting standards (`make check-fmt`; use
       `make fmt` to apply fixes).
+    - **Auditing:** Passes Rust dependency vulnerability checks (`make audit`).
   {% endif %}
   - **Markdown files (`.md` only):**
     - **Linting:** Passes markdown lint checks (`make markdownlint`).
@@ -127,8 +144,20 @@
 
 - For Python work, use `pytest` for unit tests and `pytest-bdd` for behavioural
   tests. Cover happy paths, unhappy paths, and relevant edge cases.
+- Keep pytest tests in the top-level `tests/` tree. Do not place unit tests in
+  package module directories or `unittests/` subdirectories, because CI coverage
+  uses xdist-backed SlipCover support.
 - Snapshot tests (using `syrupy`) should be provided where multivariant output
-  format consistency is relevant to the requirements.
+  format consistency is relevant to the requirements. Snapshot tests must
+  capture meaningful, reviewer-useful contracts rather than generic dumps of
+  broad objects. Keep snapshots focused on stable output boundaries, pair them
+  with semantic assertions for the behaviours they represent, and avoid
+  snapshot-only coverage for logic that can be asserted directly. Redact or
+  normalize nondeterministic fields such as timestamps, absolute paths, random
+  identifiers, ordering-dependent maps, hostnames, and environment-specific
+  values before snapshotting. Do not accept brittle snapshots that churn after
+  harmless formatting or dependency changes; narrow the captured output until a
+  snapshot failure identifies a real contract change.
 - Add end-to-end tests where a change affects externally observable workflows,
   integration contracts, persistence, command-line behaviour, network boundaries,
   user interface flows, or other system-level behaviour.
@@ -151,27 +180,41 @@ project:
   - `make check-fmt` executes:
 
     ```sh
-    cargo fmt --workspace -- --check
+    cargo fmt --manifest-path rust_extension/Cargo.toml --all -- --check
     ```
 
-    validating formatting across the entire workspace without modifying files.
+    validating formatting for the Rust extension without modifying files.
   - `make lint` executes:
 
     ```sh
-    cargo clippy --workspace --all-targets --all-features -- -D warnings
+    cargo doc --no-deps --manifest-path rust_extension/Cargo.toml
+    cargo clippy --manifest-path rust_extension/Cargo.toml --all-targets --all-features -- -D warnings
+    whitaker --all -- --all-targets --all-features
     ```
 
-    linting every target with all features enabled and denying all Clippy
-    warnings.
+    documenting and linting every Rust extension target with all features
+    enabled and warnings denied.
   - `make test` executes:
 
     ```sh
-    cargo test --workspace
+    cargo nextest run --manifest-path rust_extension/Cargo.toml --all-targets --all-features
+    # or, when cargo-nextest is unavailable:
+    cargo test --manifest-path rust_extension/Cargo.toml --all-targets --all-features
+    cargo test --doc --manifest-path rust_extension/Cargo.toml --all-features
     ```
 
-    running the full workspace test suite. Use `make fmt`
-    (`cargo fmt --workspace`) to apply formatting fixes reported by the
-    formatter check.
+    running the Rust extension test suite and documentation tests. Use
+    `make fmt` (`cargo fmt --manifest-path rust_extension/Cargo.toml --all`) to
+    apply formatting fixes reported by the formatter check.
+  - `make audit` executes:
+
+    ```sh
+    pip-audit
+    cargo audit
+    ```
+
+    checking Python dependencies and Rust extension dependencies for known
+    vulnerabilities.
 - Clippy warnings MUST be disallowed.
 - Fix any warnings emitted during tests in code instead of silencing them.
 - Where a function is too long, extract meaningfully named helper functions
@@ -183,8 +226,9 @@ project:
 - Ensure that new features are validated with unit and behavioural tests before
   release using `rstest` and `rstest-bdd`. Cover happy paths, unhappy paths,
   and relevant edge cases.
-- For Rust: snapshot tests (using `insta`) should be provided where multivariant
-  output format consistency is relevant to the requirements.
+- For Rust: snapshot tests (using `insta`) should follow the same snapshot
+  quality criteria and should be provided where multivariant output format
+  consistency is relevant to the requirements.
 - Add end-to-end tests where a change affects externally observable workflows,
   integration contracts, persistence, command-line behaviour, network boundaries,
   user interface flows, or other system-level behaviour.

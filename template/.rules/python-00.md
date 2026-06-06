@@ -75,14 +75,14 @@ def scale(values: list[float], factor: float) -> list[float]:
 
 ## Testing with pytest
 
-- **Colocate unit tests with code** using an `unittests` subdirectory and a
-  `test_` prefix. This keeps logic and its tests together:
+- **Keep tests in the top-level `tests/` tree.** Do not place pytest unit tests
+  in package module directories or `unittests/` subdirectories. Coverage runs
+  through xdist-backed SlipCover support, which currently requires tests to be
+  outside the import package tree.
 
 ```text
-user_auth/
-  models.py
-  login_flow.py
-  unittests/
+tests/
+  user_auth/
     test_models.py
     test_login_flow.py
 ```

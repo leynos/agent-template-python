@@ -6,15 +6,6 @@ quality gates.  The tests are intended for repository-level validation: they
 verify generated files, Make targets, package imports, and Rust-specific output
 without requiring callers to inspect the rendered project tree manually.
 
-Typical usage is to run this module through pytest after changing template
-files, generated Makefile targets, or package layout:
-
-Examples
---------
-Run the generated-template checks directly::
-
-    python -m pytest tests/test_template.py -v
-
 The tests create temporary projects, install generated dependencies through the
 rendered ``make all`` target, and may download toolchain packages into the
 normal user caches used by those generated projects.
@@ -22,136 +13,30 @@ normal user caches used by those generated projects.
 
 from __future__ import annotations
 
-import shlex
+import ast
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
-from pytest_copier.plugin import CopierFixture, CopierProject
+from pytest_copier.plugin import CopierFixture
 from syrupy.assertion import SnapshotAssertion
 
-
-def run_quality_gates(project: CopierProject) -> None:
-    """Run the rendered project's public quality gate.
-
-    Parameters
-    ----------
-    project
-        Rendered ``pytest-copier`` project whose root contains the generated
-        Makefile.
-
-    Returns
-    -------
-    None
-        The helper delegates validation to the generated project's ``make all``
-        target.
-
-    Raises
-    ------
-    AssertionError
-        Raised by ``pytest-copier`` if the command exits unsuccessfully.
-
-    Examples
-    --------
-    Validate a rendered project before making assertions about its files::
-
-        project = copier.copy(tmp_path / "pure", use_rust=False)
-        run_quality_gates(project)
-    """
-    project.run("make all")
-
-
-def check_generated_import(project: CopierProject, package: str, greeting: str) -> None:
-    """Import a generated package and assert its greeting.
-
-    Parameters
-    ----------
-    project
-        Rendered project whose managed environment should contain the package.
-    package
-        Import name to load through ``importlib.import_module``.
-    greeting
-        Expected return value from the generated package's ``hello`` function.
-
-    Returns
-    -------
-    None
-        The helper succeeds when the generated import and assertion succeed.
-
-    Raises
-    ------
-    AssertionError
-        Raised by ``pytest-copier`` if the command exits unsuccessfully.
-
-    Examples
-    --------
-    Check the generated pure-Python package import path::
-
-        check_generated_import(project, "pure_pkg", "hello from Python")
-    """
-    script = (
-        "import importlib; "
-        f"module = importlib.import_module({package!r}); "
-        f"assert module.hello() == {greeting!r}"
-    )
-    project.run(f"uv run python -c {shlex.quote(script)}")
-
-
-def read_generated_file(project: CopierProject, relative_path: str) -> str:
-    """Read a rendered project file as UTF-8 text.
-
-    Parameters
-    ----------
-    project
-        Rendered ``pytest-copier`` project to read from.
-    relative_path
-        Path to the generated file, relative to the rendered project root.
-
-    Returns
-    -------
-    str
-        File contents decoded as UTF-8.
-
-    Raises
-    ------
-    FileNotFoundError
-        Raised if the requested generated file does not exist.
-
-    Examples
-    --------
-    Read the generated Makefile for target assertions::
-
-        makefile = read_generated_file(project, "Makefile")
-    """
-    return (project / relative_path).read_text(encoding="utf-8")
-
-
-def assert_common_make_targets(makefile: str) -> None:
-    """Assert Makefile targets shared by all generated variants.
-
-    Parameters
-    ----------
-    makefile
-        UTF-8 text of a generated Makefile.
-
-    Returns
-    -------
-    None
-        The helper returns after all common target assertions pass.
-
-    Raises
-    ------
-    AssertionError
-        Raised when a required shared target or cleanup path is missing.
-
-    Examples
-    --------
-    Validate shared targets after reading a generated Makefile::
-
-        assert_common_make_targets(makefile)
-    """
-    assert "lint-python: build" in makefile, "Makefile should expose lint-python"
-    assert "lint: lint-python" in makefile, "lint should delegate to lint-python"
-    assert ".uv-cache .uv-tools" in makefile, "clean should remove uv state dirs"
+from tests.helpers.generated_files import (
+    parse_toml_file,
+    read_generated_text,
+)
+from tests.helpers.rendering import (
+    check_generated_import,
+    read_generated_file,
+    render_project,
+    run_quality_gates,
+)
+from tests.helpers.tooling_contracts import (
+    assert_ci_coverage_action_contract,
+    assert_common_make_targets,
+    assert_generated_tooling_contracts,
+)
 
 
 def test_python_only_help_output_snapshot(
@@ -194,7 +79,12 @@ def test_python_only_help_output_snapshot(
         use_rust=False,
     )
 
-    assert project.run("make help") == snapshot
+    help_output = project.run("make help")
+    for target in ["build", "check-fmt", "lint", "typecheck", "audit", "test", "help"]:
+        assert f"  {target}" in help_output, (
+            f"expected generated help output to list the {target!r} target"
+        )
+    assert help_output == snapshot
 
 
 @pytest.mark.parametrize(
@@ -244,7 +134,27 @@ def test_pure_module_snapshot(
         use_rust=use_rust,
     )
 
-    assert read_generated_file(project, f"{package_name}/pure.py") == snapshot
+    pure_module = read_generated_file(project, f"{package_name}/pure.py")
+    parsed_module = ast.parse(pure_module)
+    hello_functions = [
+        node
+        for node in parsed_module.body
+        if isinstance(node, ast.FunctionDef) and node.name == "hello"
+    ]
+    assert len(hello_functions) == 1, (
+        "expected generated pure.py to define exactly one hello function"
+    )
+    hello_function = hello_functions[0]
+    assert not hello_function.args.args, (
+        "expected generated pure.py hello function to accept no positional arguments"
+    )
+    assert isinstance(hello_function.returns, ast.Name), (
+        "expected generated pure.py hello function to declare a return annotation"
+    )
+    assert hello_function.returns.id == "str", (
+        "expected generated pure.py hello function to return str"
+    )
+    assert pure_module == snapshot
 
 
 def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
@@ -274,20 +184,20 @@ def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
     )
     run_quality_gates(proj)
 
-    assert not (
-        proj / "rust_extension"
-    ).exists(), "rust_extension directory should not exist for Python-only template"
-    assert not (
-        proj / "docs" / "rust-extension.md"
-    ).exists(), "Rust documentation should not be generated for Python-only template"
-    assert (
-        "maturin" not in (proj / "pyproject.toml").read_text(encoding="utf-8")
-    ), "maturin should not be in pyproject.toml for Python-only template"
+    assert not (proj / "rust_extension").exists(), (
+        "rust_extension directory should not exist for Python-only template"
+    )
+    assert not (proj / "docs" / "rust-extension.md").exists(), (
+        "Rust documentation should not be generated for Python-only template"
+    )
+    assert "maturin" not in (proj / "pyproject.toml").read_text(encoding="utf-8"), (
+        "maturin should not be in pyproject.toml for Python-only template"
+    )
     makefile = read_generated_file(proj, "Makefile")
     assert_common_make_targets(makefile)
-    assert (
-        "lint-rust" not in makefile
-    ), "Python-only Makefile should not expose lint-rust"
+    assert "lint-rust" not in makefile, (
+        "Python-only Makefile should not expose lint-rust"
+    )
 
     check_generated_import(proj, "pure_pkg", "hello from Python")
 
@@ -322,25 +232,93 @@ def test_rust_template(copier: CopierFixture, tmp_path: Path) -> None:
     )
     run_quality_gates(proj)
 
-    assert (
-        proj / "rust_extension"
-    ).exists(), "rust_extension directory should exist for Rust template"
-    assert (
-        proj / "docs" / "rust-extension.md"
-    ).exists(), "Rust documentation should be generated for Rust template"
-    assert (
-        "maturin" in (proj / "pyproject.toml").read_text(encoding="utf-8")
-    ), "maturin should be in pyproject.toml for Rust template"
+    assert (proj / "rust_extension").exists(), (
+        "rust_extension directory should exist for Rust template"
+    )
+    assert (proj / "docs" / "rust-extension.md").exists(), (
+        "Rust documentation should be generated for Rust template"
+    )
+    assert "maturin" in (proj / "pyproject.toml").read_text(encoding="utf-8"), (
+        "maturin should be in pyproject.toml for Rust template"
+    )
     makefile = read_generated_file(proj, "Makefile")
     assert_common_make_targets(makefile)
-    assert (
-        "lint-rust: build whitaker" in makefile
-    ), "Rust Makefile should expose lint-rust"
-    assert (
-        "cargo is required for Rust tests" in makefile
-    ), "Rust Makefile should fail clearly when cargo is unavailable"
+    assert "lint-rust: build whitaker" in makefile, (
+        "Rust Makefile should expose lint-rust"
+    )
+    assert "cargo is required for Rust tests" in makefile, (
+        "Rust Makefile should fail clearly when cargo is unavailable"
+    )
 
     check_generated_import(proj, "rust_pkg", "hello from Rust")
+
+
+def test_rust_template_make_test_runs_doctests(
+    copier: CopierFixture, tmp_path: Path
+) -> None:
+    """Validate that Rust-enabled generated projects gate doctests.
+
+    Parameters
+    ----------
+    copier : CopierFixture
+        Fixture used to render the template into a temporary project.
+    tmp_path : Path
+        Temporary directory used as the generated project root.
+
+    Returns
+    -------
+    None
+        The test fails via assertions when the generated ``make test`` target
+        does not run Rust documentation tests.
+
+    Raises
+    ------
+    None
+        Expected failures are captured through pytest assertions.
+
+    Notes
+    -----
+    The test injects a deliberately broken Rust doctest and verifies that the
+    generated project's public ``make test`` target reports the doctest
+    failure.
+    """
+    proj = copier.copy(
+        tmp_path / "rust-doctest",
+        project_name="RustDoctest",
+        package_name="rust_doctest_pkg",
+        use_rust=True,
+    )
+    lib_rs = proj / "rust_extension" / "src" / "lib.rs"
+    lib_rs.write_text(
+        lib_rs.read_text(encoding="utf-8")
+        + """
+
+/// Deliberately broken doctest used by the parent template regression test.
+///
+/// ```
+/// let status = std::process::ExitCode::SUCCESS;
+/// assert!(status.success());
+/// ```
+pub fn doctest_regression_marker() {}
+""",
+        encoding="utf-8",
+    )
+    make = shutil.which("make")
+    assert make is not None, "expected make to be available for generated tests"
+
+    result = subprocess.run(
+        [make, "test"],
+        cwd=proj.path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    output = f"{result.stdout}\n{result.stderr}"
+    assert result.returncode != 0, "expected make test to fail on broken doctests"
+    assert "no method named `success`" in output, (
+        "expected make test to compile doctests, exposing the broken example"
+    )
 
 
 def test_rust_template_custom_package(copier: CopierFixture, tmp_path: Path) -> None:
@@ -373,12 +351,146 @@ def test_rust_template_custom_package(copier: CopierFixture, tmp_path: Path) -> 
     )
     run_quality_gates(proj)
 
-    assert (
-        proj / "rust_extension"
-    ).exists(), "rust_extension directory should exist for custom package Rust template"
+    assert (proj / "rust_extension").exists(), (
+        "rust_extension directory should exist for custom package Rust template"
+    )
     text = (proj / "pyproject.toml").read_text(encoding="utf-8")
-    assert (
-        "custom_pkg" in text
-    ), "custom package name should appear in pyproject.toml"
+    assert "custom_pkg" in text, "custom package name should appear in pyproject.toml"
 
     check_generated_import(proj, "custom_pkg", "hello from Rust")
+
+
+@pytest.mark.parametrize(
+    ("target_dir", "project_name", "package_name", "use_rust"),
+    [
+        ("tooling-pure", "ToolingPure", "tooling_pure", False),
+        ("tooling-rust", "ToolingRust", "tooling_rust", True),
+    ],
+)
+def test_generated_tooling_contracts(
+    copier: CopierFixture,
+    tmp_path: Path,
+    target_dir: str,
+    project_name: str,
+    package_name: str,
+    use_rust: bool,
+) -> None:
+    """Generated variants expose the expected Python and optional Rust tooling.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    target_dir
+        Temporary project directory name for the rendered variant.
+    project_name
+        Project name answer passed to Copier.
+    package_name
+        Package name answer passed to Copier.
+    use_rust
+        Whether the rendered variant includes the optional Rust extension.
+
+    Returns
+    -------
+    None
+        The test passes when the generated tooling contracts are satisfied.
+    """
+    project = render_project(
+        tmp_path / target_dir,
+        copier,
+        project_name=project_name,
+        package_name=package_name,
+        use_rust=use_rust,
+    )
+
+    run_quality_gates(project)
+    project.run("uv tool run mbake validate Makefile")
+
+    pyproject = parse_toml_file(project / "pyproject.toml")
+    agents = read_generated_text(project / "AGENTS.md")
+    makefile = read_generated_text(project / "Makefile")
+    ci_workflow = read_generated_text(project / ".github" / "workflows" / "ci.yml")
+    act_validation_workflow = read_generated_text(
+        project / ".github" / "workflows" / "act-validation.yml"
+    )
+    release_workflow = read_generated_text(
+        project / ".github" / "workflows" / "release.yml"
+    )
+    build_wheels_workflow = read_generated_text(
+        project / ".github" / "workflows" / "build-wheels.yml"
+    )
+    build_wheels_action = read_generated_text(
+        project / ".github" / "actions" / "build-wheels" / "action.yml"
+    )
+    pure_wheel_action = read_generated_text(
+        project / ".github" / "actions" / "pure-python-wheel" / "action.yml"
+    )
+
+    assert_generated_tooling_contracts(
+        package_name=package_name,
+        agents=agents,
+        pyproject=pyproject,
+        makefile=makefile,
+        ci_workflow=ci_workflow,
+        act_validation_workflow=act_validation_workflow,
+        release_workflow=release_workflow,
+        build_wheels_workflow=build_wheels_workflow,
+        build_wheels_action=build_wheels_action,
+        pure_wheel_action=pure_wheel_action,
+        use_rust=use_rust,
+    )
+
+
+@pytest.mark.parametrize(
+    ("target_dir", "project_name", "package_name", "use_rust"),
+    [
+        ("workflow-pure", "WorkflowPure", "workflow_pure", False),
+        ("workflow-rust", "WorkflowRust", "workflow_rust", True),
+    ],
+)
+def test_generated_github_workflows_match_act_validation_contract(
+    copier: CopierFixture,
+    tmp_path: Path,
+    target_dir: str,
+    project_name: str,
+    package_name: str,
+    use_rust: bool,
+) -> None:
+    """Rendered workflows expose stable black-box inputs for act validation.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    target_dir
+        Temporary project directory name for the rendered variant.
+    project_name
+        Project name answer passed to Copier.
+    package_name
+        Package name answer passed to Copier.
+    use_rust
+        Whether the rendered variant includes the optional Rust extension.
+
+    Returns
+    -------
+    None
+        The test passes when the generated CI coverage action contract matches
+        the act validation expectations.
+    """
+    project = render_project(
+        tmp_path / target_dir,
+        copier,
+        project_name=project_name,
+        package_name=package_name,
+        use_rust=use_rust,
+    )
+    ci_workflow = read_generated_text(project / ".github" / "workflows" / "ci.yml")
+    assert_ci_coverage_action_contract(
+        ci_workflow=ci_workflow,
+        package_name=package_name,
+        use_rust=use_rust,
+    )

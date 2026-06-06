@@ -12,10 +12,16 @@ these targets in order:
 - `lint`: run `lint-python` and, when Rust is enabled, `lint-rust`.
 - `typecheck`: run `ty check`.
 - `test`: run pytest and, when Rust is enabled, Rust tests.
+- `audit`: run `pip-audit` and, when Rust is enabled, `cargo audit`.
 
 The `lint-python` target runs Ruff followed by Pylint via a PyPy-backed runner.
 The Pylint runner is installed through `uv tool run` from the pinned
 `pylint-pypy-shim` repository.
+
+Pytest discovery is limited to the top-level `tests/` tree. Keep generated
+project unit tests there rather than in package module directories or
+`unittests/` subdirectories, because CI coverage runs through xdist-backed
+SlipCover support.
 
 When the Rust extension is enabled, `lint-rust` runs:
 
@@ -26,6 +32,13 @@ When the Rust extension is enabled, `lint-rust` runs:
 The generated Makefile installs Whitaker on demand before local Rust linting
 when it is not already available.
 
+## Dependency Auditing
+
+Run `make audit` to check generated project dependencies for known
+vulnerabilities. All generated projects run `pip-audit` against the Python
+environment created by `uv sync --group dev`. Rust-enabled projects also run
+`cargo audit` from the `rust_extension` crate directory.
+
 ## Rust Test Behaviour
 
 Rust-enabled projects use `cargo nextest run` when `cargo-nextest` is available.
@@ -35,6 +48,21 @@ If `cargo-nextest` is not installed, the generated `test` target falls back to
 If cargo is missing from the local environment, generated Rust test targets fail
 early with a clear error instead of falling through to an unusable `cargo`
 invocation.
+
+## Local GitHub Actions Validation
+
+The generated Makefile supports optional local workflow validation using
+[`act`](https://github.com/nektos/act). When `act` is installed and Docker is
+available, pass `WITH_ACT=1` to the `test` target:
+
+```bash
+make test WITH_ACT=1
+```
+
+This sets `RUN_ACT_VALIDATION=1` for the pytest invocation, enabling the
+act-based integration tests that run the generated CI workflow locally.
+Omitting `WITH_ACT` (or setting it to `0`) skips act validation; the rest of
+the test suite runs unchanged.
 
 ## Cleaning Local State
 

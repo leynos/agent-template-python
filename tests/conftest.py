@@ -24,12 +24,16 @@ Run act-backed workflow validation when local prerequisites are available::
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 
 import pytest
 
 from tests.utilities import docker_environment
+
+MINIMUM_ACT_VERSION = (0, 2, 84)
+ACT_VERSION_PATTERN = re.compile(r"\bact version v?(\d+)\.(\d+)\.(\d+)\b")
 
 
 @pytest.fixture(scope="session")
@@ -110,6 +114,36 @@ def _runtime_info_commands() -> list[list[str]]:
     return commands
 
 
+def _parse_act_version(output: str) -> tuple[int, int, int] | None:
+    """Return the semantic act version from command output."""
+    match = ACT_VERSION_PATTERN.search(output)
+    if match is None:
+        return None
+    major, minor, patch = match.groups()
+    return int(major), int(minor), int(patch)
+
+
+def _installed_act_version() -> tuple[int, int, int]:
+    """Return the installed act version or skip when it cannot be parsed."""
+    try:
+        version = subprocess.run(
+            ["act", "--version"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        pytest.skip(f"could not determine act version: {exc}")
+    parsed_version = _parse_act_version(version.stdout)
+    if parsed_version is None:
+        pytest.skip(
+            "could not parse act version from 'act --version' output: "
+            f"{version.stdout.strip() or version.stderr.strip()}"
+        )
+    return parsed_version
+
+
 @pytest.fixture
 def act_ready() -> None:
     """Skip act-backed tests unless local workflow validation can run.
@@ -145,6 +179,14 @@ def act_ready() -> None:
         pytest.skip("set RUN_ACT_VALIDATION=1 to run act workflow validation")
     if shutil.which("act") is None:
         pytest.skip("act is not installed")
+    act_version = _installed_act_version()
+    if act_version < MINIMUM_ACT_VERSION:
+        found_version = ".".join(str(part) for part in act_version)
+        minimum_version = ".".join(str(part) for part in MINIMUM_ACT_VERSION)
+        pytest.skip(
+            f"act >= {minimum_version} is required for Node24 action runtime "
+            f"support; found act version {found_version}"
+        )
     info_commands = _runtime_info_commands()
     if not info_commands:
         pytest.skip("docker-compatible container runtime is not installed")

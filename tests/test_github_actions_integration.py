@@ -26,6 +26,8 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from pytest_copier.plugin import CopierFixture, CopierProject
@@ -35,6 +37,7 @@ from tests.utilities import container_daemon_socket, docker_environment
 EVENT = Path(__file__).parent / "fixtures" / "pull_request.event.json"
 ACT_IMAGE = "ubuntu-latest=catthehacker/ubuntu:act-latest"
 GENERATE_COVERAGE_STEP = "Test and Measure Coverage"
+
 
 def prepare_git_repository(project: CopierProject) -> None:
     """Initialise a rendered project as a Git repository for act.
@@ -118,6 +121,9 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
     docker_host = container_daemon_socket(env)
     if docker_host is not None:
         command.extend(["--container-daemon-socket", docker_host])
+    act_github_token = env.get("ACT_GITHUB_TOKEN")
+    if act_github_token:
+        command.extend(["-s", f"GITHUB_TOKEN={act_github_token}"])
     completed = subprocess.run(
         command,
         cwd=project.path,
@@ -128,6 +134,76 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
         timeout=1200,
     )
     return completed.returncode, f"{completed.stdout}\n{completed.stderr}"
+
+
+@pytest.mark.parametrize(
+    ("env", "expected_secret"),
+    [
+        ({}, None),
+        ({"ACT_GITHUB_TOKEN": "nested-token"}, "GITHUB_TOKEN=nested-token"),
+    ],
+)
+def test_run_act_forwards_only_explicit_act_github_token(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    env: dict[str, str],
+    expected_secret: str | None,
+) -> None:
+    """Forward only explicit nested-act GitHub tokens.
+
+    Parameters
+    ----------
+    monkeypatch
+        Pytest fixture used to replace subprocess and environment helpers.
+    tmp_path
+        Temporary directory used as the fake rendered project and artifact
+        location.
+    env
+        Sanitized act subprocess environment returned by ``docker_environment``.
+    expected_secret
+        Expected ``GITHUB_TOKEN`` secret argument, or ``None`` when no secret
+        should be passed to act.
+
+    Returns
+    -------
+    None
+        The test passes when ``run_act`` forwards ``ACT_GITHUB_TOKEN`` as an act
+        secret and does not synthesize a secret when it is absent.
+    """
+    captured_command: list[str] = []
+
+    def fake_run(command: list[str], **_: Any) -> subprocess.CompletedProcess[str]:
+        captured_command.extend(command)
+        return subprocess.CompletedProcess(command, 0, "stdout", "stderr")
+
+    monkeypatch.setattr(
+        "tests.test_github_actions_integration.docker_environment",
+        lambda: env,
+    )
+    monkeypatch.setattr(
+        "tests.test_github_actions_integration.container_daemon_socket",
+        lambda _: None,
+    )
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    project = cast("CopierProject", SimpleNamespace(path=tmp_path))
+
+    run_act(project, artifact_dir=tmp_path / "artifacts")
+
+    if expected_secret is None:
+        assert "-s" not in captured_command, (
+            "expected run_act not to pass act secrets without ACT_GITHUB_TOKEN"
+        )
+        assert not any(
+            argument.startswith("GITHUB_TOKEN=") for argument in captured_command
+        ), "expected run_act not to synthesize a GITHUB_TOKEN secret"
+    else:
+        assert "-s" in captured_command, (
+            "expected run_act to pass an act secret when ACT_GITHUB_TOKEN is set"
+        )
+        secret_index = captured_command.index("-s") + 1
+        assert captured_command[secret_index] == expected_secret, (
+            "expected run_act to forward ACT_GITHUB_TOKEN as GITHUB_TOKEN secret"
+        )
 
 
 def iter_json_log_events(logs: str) -> list[dict[str, object]]:
@@ -234,12 +310,8 @@ def assert_ci_exercised_expected_steps(logs: str, *, use_rust: bool) -> None:
     saw_python = False
     saw_rust = not use_rust
     for event in iter_json_log_events(logs):
-        output = str(
-            event_text(event, "Output", "output", "message", "msg")
-        )
-        step = str(
-            event_text(event, "name", "step_name", "Step", "step")
-        )
+        output = str(event_text(event, "Output", "output", "message", "msg"))
+        step = str(event_text(event, "name", "step_name", "Step", "step"))
         in_coverage_step = GENERATE_COVERAGE_STEP in step
         saw_coverage = saw_coverage or (
             in_coverage_step
@@ -296,12 +368,7 @@ def assert_act_result(
 
         assert_act_result(project, code, logs, use_rust=False)
     """
-    assert (
-        project / "coverage.xml"
-    ).exists(), "act workflow should write coverage.xml in the generated project"
     assert_ci_exercised_expected_steps(logs, use_rust=use_rust)
-    if code == 0:
-        return
     if (
         "Parameter INPUT_ARTEFACT_NAME_SUFFIX specified multiple times" in logs
         and "Provided artifact name input during validation is empty" in logs
@@ -311,6 +378,9 @@ def assert_act_result(
             "action output/archive phase after tests and coverage succeed"
         )
     assert code == 0, logs
+    assert (project / "coverage.xml").exists(), (
+        "act workflow should write coverage.xml in the generated project"
+    )
 
 
 @pytest.mark.parametrize(
@@ -380,11 +450,11 @@ def test_generated_workflow_runs_with_shared_coverage_action(
     workflow = (project / ".github" / "workflows" / "ci.yml").read_text(
         encoding="utf-8"
     )
-    assert (
-        "leynos/shared-actions/.github/actions/generate-coverage" in workflow
-    ), "Generated workflow should use the shared generate-coverage action"
+    assert "leynos/shared-actions/.github/actions/generate-coverage" in workflow, (
+        "Generated workflow should use the shared generate-coverage action"
+    )
     if use_rust:
-        assert (
-            "cargo-manifest: rust_extension/Cargo.toml" in workflow
-        ), "Rust workflow should pass the Rust extension manifest to coverage"
+        assert "cargo-manifest: rust_extension/Cargo.toml" in workflow, (
+            "Rust workflow should pass the Rust extension manifest to coverage"
+        )
     assert_act_result(project, code, logs, use_rust=use_rust)

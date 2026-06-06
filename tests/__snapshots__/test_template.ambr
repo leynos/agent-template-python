@@ -53,9 +53,11 @@
     lint                 Run linters
     lint-python          Run Python linters
     typecheck            Run typechecking
+    audit                Audit dependencies for known vulnerabilities
     markdownlint         Lint Markdown files
     nixie                Validate Mermaid diagrams
     test                 Run tests
     help                 Show available targets
+  
   '''
 # ---

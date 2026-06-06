@@ -15,7 +15,9 @@ Constraints
 -----------
 Only canonical local Unix socket paths are accepted.  Remote Docker endpoints,
 malformed ``DOCKER_HOST`` values, missing sockets, and sockets outside the
-allowed runtime directories are removed or ignored.
+allowed runtime directories are removed or ignored.  Host GitHub authentication
+tokens are removed so stale local credentials cannot break public action clones
+inside ``act``.
 
 Examples
 --------
@@ -30,6 +32,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from urllib.parse import urlparse
+
+GITHUB_AUTH_ENV_VARS = ("GITHUB_TOKEN", "GH_TOKEN")
 
 
 def _resolved_socket_from_docker_host(
@@ -150,6 +154,8 @@ def docker_environment() -> dict[str, str]:
         subprocess.run(command, env=docker_environment(), check=False)
     """
     env = os.environ.copy()
+    for variable in GITHUB_AUTH_ENV_VARS:
+        env.pop(variable, None)
     docker_host = env.get("DOCKER_HOST")
     if docker_host is not None:
         socket_path = _resolved_socket_from_docker_host(

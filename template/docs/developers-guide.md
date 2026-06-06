@@ -9,6 +9,10 @@ The public entrypoint for formatting, linting, typechecking, and tests is
 failure, and changes should be reconciled with the aggregate gate before being
 considered complete.
 
+Run `make audit` as the dependency vulnerability gate. It runs `pip-audit` for
+Python dependencies, and Rust-enabled projects also run `cargo audit` from the
+`rust_extension` crate directory.
+
 ## Automation scripts
 
 The [Scripting standards](scripting-standards.md) document provides guidance for
@@ -28,10 +32,13 @@ actions under `.github/`.
 
 - `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests. It
   sets up Python 3.13, installs `uv`, validates the generated `Makefile` with
-  `mbake`, runs `make build`, `make check-fmt`, `make lint`, and
-  `make typecheck`, then delegates coverage generation to the shared coverage
+  `mbake`, runs `make build`, `make check-fmt`, `make lint`, `make typecheck`,
+  and `make audit`, then delegates coverage generation to the shared coverage
   action. When the Rust extension is enabled, it also sets up Rust, installs
   Rust lint and test tools, and passes `rust_extension/Cargo.toml` to coverage.
+- `.github/workflows/act-validation.yml` runs rendered workflow validation in a
+  separate workflow. It installs `act`, checks Docker availability, and runs
+  `make test WITH_ACT=1` outside the coverage path.
 - `.github/workflows/release.yml` publishes wheels when a `v*.*.*` tag is
   pushed. It builds a pure Python wheel, creates a GitHub release with generated
   release notes, downloads wheel artifacts, and uploads them to the tag release.
