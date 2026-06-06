@@ -36,7 +36,9 @@ Docker-dependent tests isolated from the standard template test gate:
 - `.github/workflows/act-validation.yml` runs `make test WITH_ACT=1`. It
   additionally downloads the `act` binary at a pinned `ACT_VERSION`, verifies
   its SHA-256 checksum before extraction, and confirms Docker availability via
-  `docker info`.
+  `docker info`. The workflow exposes `ACT_GITHUB_TOKEN: ${{ github.token }}`
+  only to the nested act test step so actions requiring `github.token` behave
+  like they do on GitHub-hosted runners.
 
 ## Makefile Template
 

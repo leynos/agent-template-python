@@ -84,6 +84,10 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "docker info" in act_workflow, (
         "expected parent act-validation workflow to verify Docker before act tests"
     )
+    assert "ACT_GITHUB_TOKEN: ${{ github.token }}" in act_workflow, (
+        "expected parent act-validation workflow to expose github.token only to "
+        "nested act tests"
+    )
     assert "make test WITH_ACT=1" in act_workflow, (
         "expected parent act-validation workflow to run parent tests with act enabled"
     )
