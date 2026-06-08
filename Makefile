@@ -18,6 +18,7 @@ check-fmt: ## Verify template test formatting
 
 lint: ## Run template test lint checks
 	$(UV) ruff check tests/
+	$(UV) --with interrogate interrogate --fail-under 100 tests/
 
 typecheck: ## Run template test type checks
 	$(UV) --with pytest --with pytest-copier --with pyyaml --with syrupy --with make-parser ty check tests/

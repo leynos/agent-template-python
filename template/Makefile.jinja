@@ -136,6 +136,7 @@ lint: lint-python{% if use_rust %} lint-rust{% endif %} ## Run linters
 
 lint-python: build ## Run Python linters
 	$(UV_ENV) $(UV) run ruff check $(PYTHON_TARGETS)
+	$(UV_ENV) $(UV) run interrogate --fail-under 100 {{ package_name }}
 	$(PYLINT) $(PYLINT_TARGETS)
 {% if use_rust %}
 

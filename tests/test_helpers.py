@@ -456,6 +456,9 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     assert "$(UV) ruff check tests/" in makefile, (
         "expected parent Makefile lint target to run Ruff checks"
     )
+    assert "$(UV) --with interrogate interrogate --fail-under 100 tests/" in makefile, (
+        "expected parent Makefile lint target to enforce docstring coverage"
+    )
     assert "typecheck: ## Run template test type checks" in makefile, (
         "expected parent Makefile to expose a documented typecheck target"
     )
