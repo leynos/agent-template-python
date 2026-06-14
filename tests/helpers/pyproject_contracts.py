@@ -39,6 +39,7 @@ def _assert_pyproject_contracts(
         "ruff",
         "pyright",
         "ty",
+        "pytest-timeout",
         "pytest-xdist",
     ]:
         assert dependency in dev_dependencies, (
