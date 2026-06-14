@@ -76,6 +76,12 @@ packaging contract change, not a normal dependency bump. The contract has three
 layers: version pins agree, the active toolchain matches the pins when present,
 and a built wheel has the expected metadata and native module layout.
 
+| Layer | Invariants it owns |
+| --- | --- |
+| Pin layer | Pure-Python renders omit maturin and PyO3; Rust-extension renders repeat exactly one maturin pin; PyO3 source and lockfile agree. |
+| Toolchain layer | The active maturin module matches the selected pin when present; local wheel builds use the pytest interpreter; unsupported interpreter combinations skip with named reasons. |
+| Artefact layer | A local native wheel is a platform wheel produced by the pinned maturin version; focused assertions name generator, `Root-Is-Purelib`, and native-module failures; the snapshot catches remaining layout drift; release artefacts come from the reusable wheel workflow. |
+
 ## Terminology
 
 | Term | Definition |
@@ -105,6 +111,10 @@ The template should add the following files only when `use_rust` is true.
 Pure-Python renders must continue to assert that `pyproject.toml` contains no
 `tool.maturin` configuration and no maturin dependency. Existing template tests
 already enforce that boundary and should be extended rather than replaced.
+Rust-extension parent-template tests should also assert the opposite of the
+femtologging negative case: the rendered project must not use a broad maturin
+range, and CI must not rely only on a successful `maturin develop` command as
+its validation of the extension build.
 
 ## Template variables
 
@@ -119,19 +129,44 @@ The generated validation needs explicit template answers or defaults.
 | `maturin_build_env_var` | empty | Optional TEI-style switch for repositories that separate test and wheel link modes |
 | `maturin_features` | project default features | `tool.maturin.features`, local wheel build command |
 | `enable_pyo3_ui_tests` | `false` | Optional `trybuild` tests for repositories with a non-trivial PyO3 bridge |
+| `expects_sbom` | `false` | Whether the expected wheel entry set includes a normalised SBOM entry |
 
 The implementation can start with constants in the rendered files and promote
 them to Copier answers only when a generated repository needs to override them.
 The important invariant is that the rendered project has one value per pin and
 tests assert every repeated surface matches that value.
 
+An empty `maturin_build_env_var` means the helper sets no project-specific
+environment variable. In that mode, maturin's own `MATURIN_BUILDING` signal is
+the only wheel-build signal.
+
 ## Version pin contract
 
 The generated tests should parse pins from structured files where practical.
 `pyproject.toml` and `Cargo.lock` should use `tomllib`. YAML workflows can use
-existing repository helpers when tests run in the template parent, but rendered
-project tests should stay dependency-light and can use focused regular
-expressions with source-specific assertion messages.
+existing repository helpers when tests run in the template parent. Rendered
+project tests should stay dependency-light; they may use focused regular
+expressions for YAML only, with assertion messages naming the source file and
+field. TOML and wheel metadata must use structured parsing.
+
+### Version comparison
+
+Generated projects should canonicalise tool versions before comparison.
+
+| Version source | Canonical form | Matching rule |
+| --- | --- | --- |
+| `maturin==X.Y.Z` in `pyproject.toml` | `(X, Y, Z)` integer tuple parsed from the exact dependency pin | Exact match. Broad ranges such as `maturin>=1.13,<2` fail the template contract because upgrades must be deliberate. |
+| `MATURIN_VERSION: "X.Y.Z"` in YAML | `(X, Y, Z)` integer tuple parsed from the scalar value | Exact match against the `pyproject.toml` maturin pin. |
+| Installed maturin | Prefer `importlib.metadata.version("maturin")`; if the CLI is inspected, strip a leading `maturin` token and parse the first `X.Y.Z` token | Exact match against the `pyproject.toml` maturin pin. Local absence skips the active-toolchain test only. |
+| PyO3 manifest dependency | Full `X.Y.Z` version tuple from `Cargo.toml` | Exact match for generated projects. The template should emit a full patch version, not `0.28` or a range. |
+| PyO3 lockfile package | Full `X.Y.Z` version tuple from `Cargo.lock` | Exact match against the generated PyO3 manifest version. |
+
+Existing downstream repositories may temporarily use a minor-only PyO3 manifest
+such as `0.28` while `Cargo.lock` resolves `0.28.3`. That is
+prefix-compatible for Cargo, but it is not the generated-template contract. A
+repository migration may accept the prefix during the first import only if the
+same change replaces it with a full patch pin before declaring the validation
+complete.
 
 The minimum Rust-extension pin contract is:
 
@@ -172,6 +207,14 @@ command = [
 ]
 ```
 
+The local wheel contract is not a fast unit-test lane. `maturin build
+--release` can compile and link Rust code on every Rust-extension CI run. The
+default design keeps `--release` to match the produced artefact path. Projects
+whose extension build exceeds their CI budget should keep the static pin tests
+in the default suite and move the wheel build test behind a named pytest marker
+or a separate `make test-wheel` target that the main CI still runs before
+merge.
+
 The helper must pass `--interpreter sys.executable`. Stilyagi needed this
 because maturin could not discover `python3` inside the uv-managed Python
 environment during the first snapshot run; the test should validate the
@@ -183,6 +226,17 @@ known to be unsupported by the pinned maturin version. The Prosidy and TEI
 tests currently skip Python 3.15 for maturin `1.13.3`; the generated helper
 should express this as a compatibility table keyed by the maturin pin, not as a
 permanent Python-version rule.
+
+Skips must be explicit and auditable:
+
+- Missing `cargo`, `rustc`, or maturin skips with the missing tool named in the
+  pytest skip message.
+- Unsupported Python/maturin combinations skip with a message naming the
+  active Python version and maturin pin.
+- Active maturin version mismatch skips the wheel-build fixture and fails the
+  installed-version test when maturin is installed but does not match the pin.
+- Parent-template tests assert that the rendered helper contains a
+  pin-keyed compatibility table and non-empty skip reasons for each skip path.
 
 When a project needs a wheel-build signal, the helper should copy
 `os.environ`, set the project-specific environment variable to `1`, and rely on
@@ -201,6 +255,19 @@ snapshot with four fields:
 | `metadata` | `METADATA` headers | Preserve `Name`, `Version`, `Requires-Python`, sorted `Requires-Dist`, and sorted classifiers when present. |
 | `wheel` | `WHEEL` headers | Preserve `Root-Is-Purelib`; normalise `Tag` to `<platform-tag>` unless the repository deliberately validates ABI tags. |
 | `entries` | ZIP member names | Replace versioned `.dist-info` directories, SBOM names, and native extension suffixes with placeholders. |
+
+The test should make focused assertions before comparing the catch-all
+snapshot:
+
+| Assertion | Named failure |
+| --- | --- |
+| `snapshot["generator"] == expected_maturin_version` | The wheel was not produced by the pinned maturin version. |
+| `snapshot["wheel"]["root_is_purelib"] == "false"` | The native wheel was built as a pure wheel. |
+| Exactly one normalised native extension entry exists. | The PyO3 module is missing, duplicated, or installed under the wrong package path. |
+
+The full snapshot remains useful as a catch-all for metadata and layout drift,
+but the focused assertions satisfy the requirement that operationally important
+failures name the broken contract.
 
 The expected snapshot for the generated default Rust extension should include:
 
@@ -230,8 +297,16 @@ The expected snapshot for the generated default Rust extension should include:
 ```
 
 Generated repositories that emit SBOMs should include a normalised
-`<sbom>.cyclonedx.json` entry. The template should not require SBOM output
-unless the generated build backend actually emits one.
+`<sbom>.cyclonedx.json` entry only when `expects_sbom` is true. The expected
+snapshot is a regenerated artefact of the rendered package contract, not a
+frozen literal. Legitimate changes to runtime dependencies, package version,
+classifiers, SBOM output, or package files should update the expected snapshot
+in the same commit as the intentional packaging change.
+
+The `requires_dist` and package `version` fields are expected-drift fields.
+They should still appear in the snapshot because dependency and version drift
+matter to release reviewers; they should not be treated as constants that every
+future generated repository must keep empty or at `0.1.0`.
 
 ## PyO3 feature and link-mode contract
 
@@ -294,14 +369,38 @@ commit `.stderr` files for compile-fail diagnostics. When a PyO3 upgrade
 changes diagnostics intentionally, maintainers refresh those `.stderr` files in
 the same commit as the version bump.
 
+If a repository opts into `abi3` or `abi3t`, the wheel snapshot and
+cross-platform matrix must change together. The expected wheel tag moves from a
+single interpreter-specific tag such as `cp314-cp314-<platform>` to a stable ABI
+tag such as `cp38-abi3-<platform>` or `cp315-abi3t-<platform>`, and fewer
+per-interpreter builds may be needed. That choice belongs in the repository's
+Rust-extension documentation before the feature flag lands.
+
+## Rust-extension runbook
+
+The generated `docs/rust-extension.md` file is the maintainer runbook for this
+contract. It must contain:
+
+- the maturin pin surfaces that must change together;
+- the PyO3 manifest and lockfile surfaces that must change together;
+- the focused command for refreshing the wheel snapshot;
+- the expected local and CI gates after an upgrade;
+- the rule for `--interpreter sys.executable`;
+- the skip semantics for missing tools and unsupported interpreters;
+- the TEI-style feature/build-script escalation trigger for repositories whose
+  Rust tests need Python embedding;
+- the `trybuild` escalation trigger for non-trivial PyO3 bridge APIs;
+- the `abi3` or `abi3t` opt-in warning and expected tag change;
+- the SBOM expectation flag and when to update it.
+
 ## CI and release validation
 
-The generated CI should keep fast local checks and platform production checks
+The generated CI should keep local checks and platform production checks
 separate.
 
 | Lane | Required behaviour |
 | --- | --- |
-| Main CI | Runs `make check-fmt`, `make lint`, `make typecheck`, `make audit`, and `make test`. For Rust-extension renders, `make test` includes the generated maturin compatibility pytest module. This lane proves the repository's ordinary quality gates and local wheel contract, not the full platform matrix. |
+| Main CI | Runs `make check-fmt`, `make lint`, `make typecheck`, `make audit`, and `make test`. For Rust-extension renders, `make test` includes static maturin compatibility tests and, unless the project moves it to a named marker or `make test-wheel`, the local wheel build contract. This lane proves the repository's ordinary quality gates and local wheel contract, not the full platform matrix. |
 | Coverage lane | Measures coverage from the installed/generated project and uploads the coverage artefact. Prosidy Darn keeps CodeScene upload separate from wheel production; the template should preserve that separation. |
 | Reusable wheel workflow | Builds native wheels with the pinned maturin version on the configured platform matrix. Prosidy Darn uses `cibuildwheel`, installs Rust inside Linux builders with `CIBW_BEFORE_ALL_LINUX`, uses QEMU for non-`x86_64` Linux builds, and passes `MATURIN_VERSION` from workflow `env` into the composite action. |
 | Release workflow | Runs on version tags, calls the reusable wheel workflow with the project Python version, downloads wheel artefacts, and uploads only those artefacts to the release. |
@@ -319,28 +418,30 @@ project currently has one native wheel path, so its minimum CI smoke test is
 | Maturin upgraded in `pyproject.toml` but not in CI. | `test_maturin_pins_are_synchronised` fails with the pin map. |
 | Maturin CLI in the active environment is stale. | `test_installed_maturin_matches_expected_pin` fails or skips if maturin is absent. |
 | PyO3 manifest upgraded but lockfile not refreshed. | `test_pyo3_pin_matches_lockfile` fails with manifest and lockfile versions. |
-| `maturin build` succeeds but native module path changes. | Wheel entry snapshot fails with a normalised archive list. |
-| Wheel accidentally becomes pure. | Snapshot asserts `Root-Is-Purelib: false`. |
+| `maturin build` succeeds but native module path changes. | The focused native-entry assertion fails before the full wheel snapshot diff. |
+| Wheel accidentally becomes pure. | The focused `Root-Is-Purelib: false` assertion fails. |
 | Package metadata drifts during build-backend upgrade. | Snapshot compares `Name`, `Version`, `Requires-Python`, and dependency headers. |
 | Rust tests fail because extension-module linking disabled `libpython`. | Repository should switch to the TEI feature/build-script pattern and keep wheel-build signalling explicit. |
 | Maturin uses the wrong Python interpreter in a uv-managed environment. | The wheel helper passes `--interpreter sys.executable`, tying the build to the interpreter running pytest. |
 | PyO3 macro compatibility drifts without a runtime import failure. | Optional `trybuild` UI tests fail in the extension crate. |
+| The local wheel test silently skips in CI. | Parent-template tests require pin-keyed compatibility data and named skip messages; CI logs expose the skip reason. |
+| SBOM output appears or disappears. | The snapshot changes, and `expects_sbom` records whether that drift is expected. |
 | CI cross-compilation diverges from local wheel build. | Workflow contract tests assert the pinned maturin version and platform-specific container references where configured. |
 | Main CI passes but release wheels cannot build. | The release workflow must depend on the reusable wheel workflow; parent-template workflow contract tests should assert that Rust-extension release workflows route through wheel production before upload. |
 
 ## Verification strategy
 
-The design has five named invariants.
+The design has seven named invariants.
 
-| Invariant | Verification method |
-| --- | --- |
-| Pure-Python renders do not mention maturin or PyO3. | Existing parent-template pytest assertions over rendered `pyproject.toml`, generated docs, and Makefile targets. |
-| Every Rust-extension render repeats exactly one maturin pin across configured pin surfaces. | Generated pytest reads the pin map and asserts `len(set(pins.values())) == 1`. Parent-template tests assert the rendered surfaces contain the templated pin. |
-| PyO3 source and lockfile agree after dependency upgrades. | Generated pytest parses the Rust manifest and lockfile with `tomllib`. |
-| A local native wheel is a platform wheel produced by the pinned maturin version. | Generated pytest builds one wheel when the toolchain is available and asserts generator plus `Root-Is-Purelib: false`. |
-| Wheel layout drift is intentional. | Generated pytest compares the normalised wheel snapshot; snapshot updates must accompany intentional packaging changes. |
-| Non-trivial PyO3 bridge signatures remain compatible with the pinned PyO3 family. | Optional `trybuild` compile-pass and compile-fail fixtures validate selected bridge patterns. |
-| Release artefacts come from the same wheel workflow that carries the maturin pin. | Parent-template workflow contract tests parse the rendered release workflow and assert its `native-wheels` job calls `./.github/workflows/build-wheels.yml` before upload. |
+| Layer | Invariant | Verification method |
+| --- | --- | --- |
+| Pin | Pure-Python renders do not mention maturin or PyO3. | Existing parent-template pytest assertions over rendered `pyproject.toml`, generated docs, and Makefile targets. |
+| Pin | Every Rust-extension render repeats exactly one maturin pin across configured pin surfaces. | Generated pytest reads the pin map and asserts `len(set(pins.values())) == 1`. Parent-template tests assert the rendered surfaces contain the templated pin. |
+| Pin | PyO3 source and lockfile agree after dependency upgrades. | Generated pytest parses the Rust manifest and lockfile with `tomllib` and applies the version-comparison rule. |
+| Toolchain | A local native wheel is a platform wheel produced by the pinned maturin version. | Generated pytest builds one wheel when the toolchain is available; skip paths carry named reasons and compatibility data is pin-keyed. |
+| Artefact | Wheel layout drift is intentional. | Generated pytest runs focused generator, purelib, and native-entry assertions, then compares the normalised wheel snapshot. Snapshot updates must accompany intentional packaging changes. |
+| Toolchain | Non-trivial PyO3 bridge signatures remain compatible with the pinned PyO3 family. | Optional `trybuild` compile-pass and compile-fail fixtures validate selected bridge patterns. |
+| Artefact | Release artefacts come from the same wheel workflow that carries the maturin pin. | Parent-template workflow contract tests parse the rendered release workflow and assert its `native-wheels` job calls `./.github/workflows/build-wheels.yml` before upload. |
 
 The tests intentionally do not prove cross-platform wheel installability. That
 property depends on GitHub-hosted runners, manylinux images, Windows/macOS
@@ -356,21 +457,28 @@ workflow tests must cover that surface separately.
    to use the templated PyO3 version.
 4. Add rendered `tests/helpers/maturin.py.jinja` and
    `tests/test_maturin_build.py.jinja`.
-5. Pass `--interpreter sys.executable` from the wheel-build helper so the
+5. Add version canonicalisation helpers for exact maturin and PyO3 patch pins.
+6. Pass `--interpreter sys.executable` from the wheel-build helper so the
    local compatibility test uses the active pytest interpreter.
-6. Extend parent-template contract tests to assert pure-Python omission and
+7. Add named skip messages and a pin-keyed compatibility table for
+   maturin/Python support.
+8. Add focused wheel assertions for generator version, `Root-Is-Purelib`, and
+   native-module entry presence before the full snapshot comparison.
+9. Extend parent-template contract tests to assert pure-Python omission and
    Rust-extension inclusion of the new files, pins, and Makefile/CI commands.
-7. Update `template/.github/workflows/build-wheels.yml` and
+10. Assert parent-template regressions against broad maturin ranges and bare
+    `maturin develop` validation.
+11. Update `template/.github/workflows/build-wheels.yml` and
    `template/.github/actions/build-wheels/action.yml` to pass a single
    `MATURIN_VERSION`.
-8. Extend release-workflow contract tests so Rust-extension releases depend on
+12. Extend release-workflow contract tests so Rust-extension releases depend on
    the reusable wheel workflow before publishing release artefacts.
-9. Expand `template/docs/rust-extension.md` with the upgrade procedure and the
-   TEI-style feature/build-script escalation path.
-10. Document optional `trybuild` PyO3 UI tests for repositories whose bridge
+13. Expand `template/docs/rust-extension.md` with the required runbook
+   sections listed above.
+14. Document optional `trybuild` PyO3 UI tests for repositories whose bridge
    surface grows beyond the starter function.
-11. Refresh generated snapshots with syrupy after the rendered file set changes.
-12. Gate in order with `make check-fmt`, `make lint`, `make typecheck`, and
+15. Refresh generated snapshots with syrupy after the rendered file set changes.
+16. Gate in order with `make check-fmt`, `make lint`, `make typecheck`, and
    `make test`, logging each command through `tee`.
 
 ## Open decisions
