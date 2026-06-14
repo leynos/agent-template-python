@@ -187,9 +187,9 @@ def test_runtime_module_documents_and_limits_fallback(
 
     runtime_module = read_generated_file(project, "runtime_pkg/_runtime.py")
 
-    assert '"""Select the generated package implementation backend.' in (
-        runtime_module
-    ), "expected _runtime.py to document backend selection"
+    assert runtime_module.startswith(
+        '"""Select the generated package implementation backend.'
+    ), "expected rendered _runtime.py to start with its module docstring"
     assert "except ModuleNotFoundError as exc:" in runtime_module, (
         "expected _runtime.py to inspect ModuleNotFoundError details"
     )
@@ -208,7 +208,12 @@ def test_runtime_module_documents_and_limits_fallback(
         [
             sys.executable,
             "-c",
-            "import runtime_pkg; assert runtime_pkg.hello() == 'hello from Python'",
+            (
+                "import runtime_pkg; "
+                "import runtime_pkg._runtime as runtime; "
+                "assert runtime_pkg.hello() == 'hello from Python'; "
+                "assert runtime.__doc__ is not None"
+            ),
         ],
         cwd=project.path,
         env=python_env,

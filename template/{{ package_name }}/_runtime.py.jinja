@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Select the generated package implementation backend.
 
 This module keeps `__init__.py` as a stable public re-export while isolating
@@ -14,9 +12,11 @@ Examples
 >>> {{ package_name }}.hello()
 "{% if use_rust %}hello from Rust{% else %}hello from Python{% endif %}"
 """
+
+from __future__ import annotations
 {% if use_rust %}
-import importlib  # noqa: E402
-import typing as typ  # noqa: E402
+import importlib
+import typing as typ
 
 if typ.TYPE_CHECKING:
     import collections.abc as cabc
@@ -33,5 +33,5 @@ except ModuleNotFoundError as exc:  # pragma: no cover - Python fallback
         raise
     from .pure import hello as hello
 {%- else %}
-from .pure import hello as hello  # noqa: E402
+from .pure import hello as hello
 {%- endif %}
