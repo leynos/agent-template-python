@@ -14,8 +14,10 @@ normal user caches used by those generated projects.
 from __future__ import annotations
 
 import ast
+import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -155,6 +157,78 @@ def test_pure_module_snapshot(
         "expected generated pure.py hello function to return str"
     )
     assert pure_module == snapshot
+
+
+def test_runtime_module_documents_and_limits_fallback(
+    copier: CopierFixture, tmp_path: Path
+) -> None:
+    """Validate generated runtime backend-selection safeguards.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+
+    Returns
+    -------
+    None
+        The test passes when the generated runtime module documents its role,
+        falls back only for the missing Rust extension, and re-raises unrelated
+        missing-module failures.
+    """
+    project = copier.copy(
+        tmp_path / "runtime",
+        project_name="Runtime",
+        package_name="runtime_pkg",
+        use_rust=True,
+    )
+
+    runtime_module = read_generated_file(project, "runtime_pkg/_runtime.py")
+
+    assert '"""Select the generated package implementation backend.' in runtime_module
+    assert "except ModuleNotFoundError as exc:" in runtime_module
+    assert 'EXPECTED_RUST_MODULE_NAME = f"{PACKAGE_NAME}.{RUST_MODULE_NAME}"' in (
+        runtime_module
+    )
+    assert "if exc.name != EXPECTED_RUST_MODULE_NAME:" in runtime_module
+    assert "raise" in runtime_module
+
+    python_env = os.environ | {"PYTHONPATH": str(project.path)}
+    fallback = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import runtime_pkg; assert runtime_pkg.hello() == 'hello from Python'",
+        ],
+        cwd=project.path,
+        env=python_env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert fallback.returncode == 0, fallback.stderr
+
+    (project / "runtime_pkg" / "_runtime_pkg_rs.py").write_text(
+        'raise ModuleNotFoundError("missing dependency", name="transitive_dependency")\n',
+        encoding="utf-8",
+    )
+    unexpected_missing_module = subprocess.run(
+        [sys.executable, "-c", "import runtime_pkg"],
+        cwd=project.path,
+        env=python_env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert unexpected_missing_module.returncode != 0, (
+        "expected runtime import to re-raise unrelated ModuleNotFoundError"
+    )
+    assert "transitive_dependency" in unexpected_missing_module.stderr, (
+        "expected runtime import failure to preserve the original missing module"
+    )
 
 
 def test_python_only_template(copier: CopierFixture, tmp_path: Path) -> None:
