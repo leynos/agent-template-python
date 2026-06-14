@@ -1,4 +1,16 @@
-"""{{ project_name }} package."""
+"""Public package entry point for {{ project_name }}.
+
+The package exposes the supported public API for generated projects. Import
+from this module when application code needs the package's main functionality;
+the package selects the configured backend internally and exports `hello` as
+the stable greeting function.
+
+Examples
+--------
+>>> import {{ package_name }}
+>>> {{ package_name }}.hello()
+"{% if use_rust %}hello from Rust{% else %}hello from Python{% endif %}"
+"""
 
 from __future__ import annotations
 

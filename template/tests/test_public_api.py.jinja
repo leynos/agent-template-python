@@ -6,7 +6,7 @@ import {{ package_name }}
 
 
 def test_hello_uses_configured_backend() -> None:
-    """Return the expected greeting for this generated project."""
+    """Verify the expected greeting for this generated project."""
     expected_greeting = "{% if use_rust %}hello from Rust{% else %}hello from Python{% endif %}"
     assert {{ package_name }}.hello() == expected_greeting, (
         "expected public hello() to return the configured backend greeting"

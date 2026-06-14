@@ -187,13 +187,21 @@ def test_runtime_module_documents_and_limits_fallback(
 
     runtime_module = read_generated_file(project, "runtime_pkg/_runtime.py")
 
-    assert '"""Select the generated package implementation backend.' in runtime_module
-    assert "except ModuleNotFoundError as exc:" in runtime_module
+    assert '"""Select the generated package implementation backend.' in (
+        runtime_module
+    ), "expected _runtime.py to document backend selection"
+    assert "except ModuleNotFoundError as exc:" in runtime_module, (
+        "expected _runtime.py to inspect ModuleNotFoundError details"
+    )
     assert 'EXPECTED_RUST_MODULE_NAME = f"{PACKAGE_NAME}.{RUST_MODULE_NAME}"' in (
         runtime_module
+    ), "expected _runtime.py to define the fully qualified Rust module name"
+    assert "if exc.name != EXPECTED_RUST_MODULE_NAME:" in runtime_module, (
+        "expected _runtime.py to fall back only for the missing Rust module"
     )
-    assert "if exc.name != EXPECTED_RUST_MODULE_NAME:" in runtime_module
-    assert "raise" in runtime_module
+    assert "raise" in runtime_module, (
+        "expected _runtime.py to re-raise unrelated ModuleNotFoundError cases"
+    )
 
     python_env = os.environ | {"PYTHONPATH": str(project.path)}
     fallback = subprocess.run(
