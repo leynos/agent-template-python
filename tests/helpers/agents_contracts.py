@@ -98,9 +98,9 @@ def _assert_documented_command_flags(
         ],
         "lint-python": [
             ("AGENTS.md", "ruff check $(PYTHON_TARGETS)"),
-            ("AGENTS.md", f"interrogate --fail-under 100 {package_name}"),
+            ("AGENTS.md", "interrogate --fail-under 100 $(PYTHON_TARGETS)"),
             ("Makefile", f"ruff check {python_targets}"),
-            ("Makefile", f"interrogate --fail-under 100 {package_name}"),
+            ("Makefile", f"interrogate --fail-under 100 {python_targets}"),
         ],
         "typecheck": [
             ("AGENTS.md", "ty check $(PYTHON_TARGETS)"),

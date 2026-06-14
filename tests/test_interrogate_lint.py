@@ -76,6 +76,6 @@ def test_generated_make_lint_enforces_interrogate_docstrings(
     assert "RESULT: FAILED" in output, (
         "expected generated make lint to run the Interrogate docstring gate"
     )
-    assert "actual: 75.0%" in output, (
+    assert "actual: 83.3%" in output, (
         "expected Interrogate output to report reduced docstring coverage"
     )
