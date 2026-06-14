@@ -51,7 +51,9 @@ runs `cargo audit` in the Rust extension crate.
 
 The generated lint targets are split by language:
 
-- `lint-python` runs Ruff and Pylint via the pinned PyPy-backed runner.
+- `lint-python` runs Ruff, `interrogate --fail-under 100` for 100% docstring
+  coverage across `$(PYTHON_TARGETS)`, and Pylint via the pinned PyPy-backed
+  runner.
 - `lint-rust` exists only when `use_rust` is enabled and runs rustdoc, Clippy,
   and Whitaker.
 - `lint` delegates to the applicable language-specific targets.

@@ -10,7 +10,7 @@ failure, and changes should be reconciled with the aggregate gate before being
 considered complete.
 
 `make lint` runs Ruff, `interrogate --fail-under 100 $(PYTHON_TARGETS)` for
-100% Python target docstring coverage, and Pylint.
+100% docstring coverage across `$(PYTHON_TARGETS)`, and Pylint.
 
 Run `make audit` as the dependency vulnerability gate. It runs `pip-audit` for
 Python dependencies, and Rust-enabled projects also run `cargo audit` from the
