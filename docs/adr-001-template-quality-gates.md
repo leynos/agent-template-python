@@ -16,7 +16,7 @@ failures are predictable.
 Generated projects use `make all` as the public aggregate gate. The `lint`
 target delegates to language-specific targets:
 
-- `lint-python` runs Ruff and Pylint through the PyPy-backed runner.
+- `lint-python` runs Ruff, Interrogate (`--fail-under 100`), and Pylint through the PyPy-backed runner.
 - `lint-rust` is rendered only when `use_rust` is enabled and runs rustdoc,
   Clippy, and Whitaker.
 
