@@ -12,7 +12,8 @@ template itself.
 - `make help` — lists all `##`-annotated targets.
 - `make check-fmt` — runs Ruff formatting checks against the parent template
   test suite.
-- `make lint` — runs Ruff lint checks against the parent template test suite.
+- `make lint` — runs Ruff lint checks and `interrogate --fail-under 100` against
+  the `tests/` directory in the parent template test suite.
 - `make typecheck` — runs `ty check` against the parent template test suite,
   supplying the test dependencies through `uvx`.
 - `make test` — runs the template test suite via `uvx`, supplying
