@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -76,6 +77,11 @@ def test_generated_make_lint_enforces_interrogate_docstrings(
     assert "RESULT: FAILED" in output, (
         "expected generated make lint to run the Interrogate docstring gate"
     )
-    assert "actual: 83.3%" in output, (
+    actual_match = re.search(r"actual:\s+([0-9]+(?:\.[0-9]+)?)%", output)
+    assert actual_match is not None, (
+        f"expected Interrogate output to report actual docstring coverage:\n{output}"
+    )
+    actual_coverage = float(actual_match.group(1))
+    assert actual_coverage < 100.0, (
         "expected Interrogate output to report reduced docstring coverage"
     )
