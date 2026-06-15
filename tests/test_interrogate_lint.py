@@ -1,4 +1,14 @@
-"""Validate rendered docstring coverage lint behaviour."""
+"""Validate rendered docstring coverage lint behaviour.
+
+These integration tests render a project from the Copier template and exercise
+its public ``make lint`` target instead of inspecting only generated text.  They
+prove that a clean render passes the full Python lint tier, then mutate the
+rendered package to introduce a Ruff-clean missing private docstring and verify
+that Interrogate fails the target.
+
+The module protects the template contract that generated projects enforce 100%
+docstring coverage through their normal lint workflow.
+"""
 
 from __future__ import annotations
 

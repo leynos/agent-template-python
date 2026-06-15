@@ -14,6 +14,8 @@ Run `copier copy` and answer the prompts to generate a project.
 The test suite relies on the `pytest-copier` plugin and renders generated
 projects that run Ruff, Pylint via a PyPy-backed runner, `ty`, pytest, and, when
 the Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust tests.
+Generated Python linting also runs Interrogate as a 100% docstring-coverage
+gate.
 
 Run the parent template tests through the repository `Makefile`. Run
 `make help` to list the available parent Makefile targets. Parent gates include
@@ -30,8 +32,9 @@ when `act` and Docker are available. Parent repository CI runs this mode in a
 separate act-validation workflow so rendered in-template GitHub workflows do not
 hold up the normal template test workflow.
 
-Generated projects install and run their own tooling, including Ruff, Pylint via
-PyPy, `ty`, pytest, and, when Rust is enabled, Clippy, Whitaker, and nextest.
+Generated projects install and run their own tooling, including Ruff,
+Interrogate, Pylint via PyPy, `ty`, pytest, and, when Rust is enabled, Clippy,
+Whitaker, and nextest.
 
 You can also run `scripts/setup_test_deps.sh` to install parent test
 dependencies into the current Python environment manually.
@@ -54,6 +57,7 @@ flowchart LR
     All --> Test[test]
 
     Lint --> RuffCheck[ruff check]
+    Lint --> Interrogate[interrogate --fail-under 100]
     Lint --> PylintPyPy[pylint-pypy via PyPy]
     Typecheck --> TyCheck[ty check]
     Audit --> PipAudit[pip-audit]
