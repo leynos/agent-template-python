@@ -39,6 +39,7 @@ jobs:
       - name: Cache Rust lint and test tools
         uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2
         with:
+          workspaces: rust_extension
           cache-directories: |
             ~/.cargo/bin/cargo-nextest
             ~/.cargo/bin/cargo-audit

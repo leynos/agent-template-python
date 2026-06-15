@@ -165,6 +165,23 @@ def _assert_ci_workflow_contracts(
         assert "Cache Rust lint and test tools" in ci_workflow, (
             "expected Rust variant CI to cache Rust tools"
         )
+        rust_cache_steps = [
+            step
+            for step in steps
+            if isinstance(step, dict)
+            and step.get("name") == "Cache Rust lint and test tools"
+        ]
+        assert len(rust_cache_steps) == 1, (
+            "expected Rust variant CI to cache Rust lint and test tools once"
+        )
+        rust_cache_inputs = require_mapping(
+            rust_cache_steps[0],
+            "with",
+            "Cache Rust lint and test tools step",
+        )
+        assert rust_cache_inputs.get("workspaces") == "rust_extension", (
+            "expected Rust cache step to run cargo metadata in rust_extension"
+        )
         assert "cargo-manifest: rust_extension/Cargo.toml" in ci_workflow, (
             "expected Rust variant CI to pass the Rust manifest to coverage"
         )
