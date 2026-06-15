@@ -173,6 +173,7 @@ def test_run_act_forwards_only_explicit_act_github_token(
     captured_command: list[str] = []
 
     def fake_run(command: list[str], **_: Any) -> subprocess.CompletedProcess[str]:
+        """Capture the act subprocess command without executing it."""
         captured_command.extend(command)
         return subprocess.CompletedProcess(command, 0, "stdout", "stderr")
 

@@ -56,6 +56,7 @@ def _parse_makefile_rules(makefile: str) -> dict[str, list[str]]:
     }
 
     def normalise_target(match: re.Match[str]) -> str:
+        """Replace hyphenated target names with parser-compatible aliases."""
         target = match.group(1)
         return normalised_targets.get(target, target) + ":"
 
@@ -103,6 +104,9 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     )
     assert "$(UV_ENV) $(UV) run pip-audit" in makefile, (
         "expected generated audit target to run pip-audit"
+    )
+    assert "$(UV_ENV) $(UV) run interrogate --fail-under 100" in makefile, (
+        "expected generated lint target to enforce docstring coverage"
     )
     if use_rust:
         assert "TEST_CMD :=" in makefile, (

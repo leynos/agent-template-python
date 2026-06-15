@@ -12,7 +12,8 @@ template itself.
 - `make help` — lists all `##`-annotated targets.
 - `make check-fmt` — runs Ruff formatting checks against the parent template
   test suite.
-- `make lint` — runs Ruff lint checks against the parent template test suite.
+- `make lint` — runs Ruff lint checks and `interrogate --fail-under 100` against
+  the `tests/` directory in the parent template test suite.
 - `make typecheck` — runs `ty check` against the parent template test suite,
   supplying the test dependencies through `uvx`.
 - `make test` — runs the template test suite via `uvx`, supplying
@@ -50,7 +51,9 @@ runs `cargo audit` in the Rust extension crate.
 
 The generated lint targets are split by language:
 
-- `lint-python` runs Ruff and Pylint via the pinned PyPy-backed runner.
+- `lint-python` runs Ruff, `interrogate --fail-under 100` for 100% docstring
+  coverage across `$(PYTHON_TARGETS)`, and Pylint via the pinned PyPy-backed
+  runner.
 - `lint-rust` exists only when `use_rust` is enabled and runs rustdoc, Clippy,
   and Whitaker.
 - `lint` delegates to the applicable language-specific targets.

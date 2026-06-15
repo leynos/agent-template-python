@@ -39,6 +39,7 @@ GITHUB_AUTH_ENV_VARS = ("GITHUB_TOKEN", "GH_TOKEN")
 def _resolved_socket_from_docker_host(
     docker_host: str, allowed_dirs: tuple[Path, ...]
 ) -> Path | None:
+    """Return a trusted Unix socket path parsed from ``DOCKER_HOST``."""
     parsed = urlparse(docker_host)
     if parsed.scheme != "unix" or parsed.netloc or not parsed.path:
         return None
@@ -54,6 +55,7 @@ def _resolved_socket_from_docker_host(
 
 
 def _user_podman_socket() -> Path | None:
+    """Return the current user's Podman socket when it exists under runtime dir."""
     socket_path = Path(f"/run/user/{os.getuid()}/podman/podman.sock")
     if not socket_path.exists():
         return None

@@ -9,6 +9,9 @@ The public entrypoint for formatting, linting, typechecking, and tests is
 failure, and changes should be reconciled with the aggregate gate before being
 considered complete.
 
+`make lint` runs Ruff, `interrogate --fail-under 100 $(PYTHON_TARGETS)` for
+100% docstring coverage across `$(PYTHON_TARGETS)`, and Pylint.
+
 Run `make audit` as the dependency vulnerability gate. It runs `pip-audit` for
 Python dependencies, and Rust-enabled projects also run `cargo audit` from the
 `rust_extension` crate directory.
@@ -32,10 +35,12 @@ actions under `.github/`.
 
 - `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests. It
   sets up Python 3.13, installs `uv`, validates the generated `Makefile` with
-  `mbake`, runs `make build`, `make check-fmt`, `make lint`, `make typecheck`,
-  and `make audit`, then delegates coverage generation to the shared coverage
-  action. When the Rust extension is enabled, it also sets up Rust, installs
-  Rust lint and test tools, and passes `rust_extension/Cargo.toml` to coverage.
+  `mbake`, runs `make build`, `make check-fmt`,
+  `make lint` (Ruff + `interrogate --fail-under 100 $(PYTHON_TARGETS)` + Pylint), `make
+  typecheck`, and `make audit`, then delegates coverage generation to the shared
+  coverage action. When the Rust extension is enabled, it also sets up Rust,
+  installs Rust lint and test tools, and passes `rust_extension/Cargo.toml` to
+  coverage.
 - `.github/workflows/act-validation.yml` runs rendered workflow validation in a
   separate workflow. It installs `act`, checks Docker availability, and runs
   `make test WITH_ACT=1` outside the coverage path.

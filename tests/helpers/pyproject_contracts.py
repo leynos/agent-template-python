@@ -32,7 +32,16 @@ def _assert_pyproject_contracts(
     assert isinstance(dev_dependencies, list), (
         "expected generated pyproject.toml to include a dev dependency group"
     )
-    for dependency in ["pytest", "pip-audit", "ruff", "pyright", "ty", "pytest-xdist"]:
+    for dependency in [
+        "pytest",
+        "interrogate",
+        "pip-audit",
+        "ruff",
+        "pyright",
+        "ty",
+        "pytest-timeout",
+        "pytest-xdist",
+    ]:
         assert dependency in dev_dependencies, (
             f"expected generated dev dependencies to include {dependency}"
         )
