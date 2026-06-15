@@ -1,0 +1,37 @@
+"""Select the generated package implementation backend.
+
+This module keeps `__init__.py` as a stable public re-export while isolating
+the logic that chooses between the optional Rust extension and the pure Python
+implementation. External callers should import the package root and call
+`{{ package_name }}.hello()`. Internal generated code may import `hello` from
+`._runtime` when it needs the already-selected backend function.
+
+Examples
+--------
+>>> import {{ package_name }}
+>>> {{ package_name }}.hello()
+"{% if use_rust %}hello from Rust{% else %}hello from Python{% endif %}"
+"""
+
+from __future__ import annotations
+{% if use_rust %}
+import importlib
+import typing as typ
+
+if typ.TYPE_CHECKING:
+    import collections.abc as cabc
+
+PACKAGE_NAME = "{{ package_name }}"
+RUST_MODULE_NAME = f"_{PACKAGE_NAME}_rs"
+EXPECTED_RUST_MODULE_NAME = f"{PACKAGE_NAME}.{RUST_MODULE_NAME}"
+
+try:  # pragma: no cover - Rust optional
+    rust = importlib.import_module(f".{RUST_MODULE_NAME}", package=__package__)
+    hello = typ.cast("cabc.Callable[[], str]", rust.hello)
+except ModuleNotFoundError as exc:  # pragma: no cover - Python fallback
+    if exc.name != EXPECTED_RUST_MODULE_NAME:
+        raise
+    from .pure import hello as hello
+{%- else %}
+from .pure import hello as hello
+{%- endif %}

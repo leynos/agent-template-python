@@ -66,16 +66,16 @@ def default(
     # Required parameters
     bin_name: Annotated[str, Parameter(required=True)],
     version: Annotated[str, Parameter(required=True)],
-
     # Optional scalars
     package_name: Optional[str] = None,
     target: Optional[str] = None,
     outdir: Optional[Path] = None,
     dry_run: bool = False,
-
     # Lists (whitespace/newline separated by default)
     formats: list[str] | None = None,
-    man_paths: Annotated[list[Path] | None, Parameter(env_var="INPUT_MAN_PATHS")] = None,
+    man_paths: Annotated[
+        list[Path] | None, Parameter(env_var="INPUT_MAN_PATHS")
+    ] = None,
     deb_depends: list[str] | None = None,
     rpm_depends: list[str] | None = None,
 ):
@@ -338,15 +338,15 @@ The exceptions raised are those from the Python event loop itself, such as
 
 A `Catalogue` instance is safe to share across concurrent tasks because it is
 read-only after construction. `sh.scoped(CATALOGUE)` is a context manager that
-binds the catalogue for the current execution scope. Authors must not mutate the
-catalogue inside a concurrent task. Construct the catalogue once at module level
-and re-use it.
+binds the catalogue for the current execution scope. Authors must not mutate
+the catalogue inside a concurrent task. Construct the catalogue once at module
+level and re-use it.
 
 #### Concurrent testing patterns with cmd-mox
 
-Concurrent async script paths use the same catalogue and scoped context in tests
-as they do in production code. `cmd-mox` intercepts at the catalogue boundary
-regardless of whether `run()` or `run_sync()` is used.
+Concurrent async script paths use the same catalogue and scoped context in
+tests as they do in production code. `cmd-mox` intercepts at the catalogue
+boundary regardless of whether `run()` or `run_sync()` is used.
 
 ```python
 import pytest
@@ -407,7 +407,9 @@ f.write_text("1.2.3\n", encoding="utf-8")
 version = f.read_text(encoding="utf-8").strip()
 
 # Atomic write pattern (tmp → replace)
-with tempfile.NamedTemporaryFile("w", delete=False, dir=f.parent, encoding="utf-8") as tmp:
+with tempfile.NamedTemporaryFile(
+    "w", delete=False, dir=f.parent, encoding="utf-8"
+) as tmp:
     tmp.write("new-contents\n")
     tmp_path = Path(tmp.name)
 
