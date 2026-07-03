@@ -16,6 +16,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     {% if use_rust %}
     env:
       CARGO_TERM_COLOR: always

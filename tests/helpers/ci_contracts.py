@@ -273,6 +273,17 @@ def _assert_ci_workflow_contracts(
     assert "make audit" in ci_workflow, (
         "expected generated CI workflow to run the dependency audit gate"
     )
+    audit_steps = [
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("name") == "Audit dependencies"
+    ]
+    assert len(audit_steps) == 1, (
+        "expected generated CI workflow to include one dependency audit step"
+    )
+    assert audit_steps[0].get("if") == "github.actor != 'dependabot[bot]'", (
+        "expected generated CI audit step to skip Dependabot pull requests"
+    )
     assert "make test WITH_ACT=1" not in ci_workflow, (
         "expected generated main CI workflow to leave act validation to a "
         "separate workflow"
