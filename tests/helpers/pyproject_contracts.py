@@ -38,7 +38,7 @@ def _assert_pyproject_contracts(
         "pip-audit",
         "ruff",
         "pyright",
-        "ty",
+        "ty==0.0.56",
         "pytest-timeout",
         "pytest-xdist",
     ]:

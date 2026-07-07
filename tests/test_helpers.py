@@ -515,8 +515,10 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     )
     assert (
         "$(UV) --with hypothesis --with pytest --with pytest-copier --with pyyaml --with syrupy "
-        "--with make-parser ty check tests/" in makefile
-    ), "expected parent Makefile typecheck target to run ty with test dependencies"
+        "--with make-parser ty@0.0.56 check tests/" in makefile
+    ), (
+        "expected parent Makefile typecheck target to run pinned ty with test dependencies"
+    )
     assert "test: ## Run template tests" in makefile, (
         "expected parent Makefile to expose a documented test target"
     )
