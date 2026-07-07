@@ -34,6 +34,7 @@ from tests.helpers.rendering import (
 )
 from tests.helpers.tooling_contracts import (
     assert_ci_coverage_action_contract,
+    assert_ci_python_matrix_contract,
     assert_common_make_targets,
     assert_generated_tooling_contracts,
 )
@@ -493,4 +494,62 @@ def test_generated_github_workflows_match_act_validation_contract(
         ci_workflow=ci_workflow,
         package_name=package_name,
         use_rust=use_rust,
+    )
+
+
+@pytest.mark.parametrize(
+    ("target_dir", "use_rust", "multi_python_tests", "python_version"),
+    [
+        ("matrix-off-pure", False, False, "3.10"),
+        ("matrix-off-rust", True, False, "3.10"),
+        ("matrix-on-pure", False, True, "3.10"),
+        ("matrix-on-rust", True, True, "3.10"),
+        ("matrix-on-small", False, True, "3.14"),
+    ],
+)
+def test_generated_ci_python_matrix_contract(
+    copier: CopierFixture,
+    tmp_path: Path,
+    target_dir: str,
+    use_rust: bool,
+    multi_python_tests: bool,
+    python_version: str,
+) -> None:
+    """Rendered CI matches the optional Python version matrix contract.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    target_dir
+        Temporary project directory name for the rendered variant.
+    use_rust
+        Whether the rendered variant includes the optional Rust extension.
+    multi_python_tests
+        Whether the rendered variant enables the multi-version test matrix.
+    python_version
+        Minimum supported Python version answer passed to Copier.
+
+    Returns
+    -------
+    None
+        The test passes when the matrix job is present with derived legs and
+        a non-gating experimental lane, or absent when the toggle is off.
+    """
+    project = copier.copy(
+        tmp_path / target_dir,
+        project_name="MatrixProj",
+        package_name="matrix_pkg",
+        use_rust=use_rust,
+        multi_python_tests=multi_python_tests,
+        python_version=python_version,
+    )
+    ci_workflow = read_generated_text(project / ".github" / "workflows" / "ci.yml")
+    assert_ci_python_matrix_contract(
+        ci_workflow=ci_workflow,
+        multi_python_tests=multi_python_tests,
+        use_rust=use_rust,
+        python_version=python_version,
     )

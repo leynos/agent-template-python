@@ -71,6 +71,18 @@ sets up Python, optionally sets up Rust, runs `make check-fmt`, `make lint`,
 `make typecheck`, and `make audit`, then delegates coverage to
 `leynos/shared-actions/.github/actions/generate-coverage`.
 
+When `multi_python_tests` is enabled, the generated CI workflow adds a
+`typecheck-test` matrix job modelled on the estate's library repositories
+(femtologging, falcon-correlate, and cuprum). The matrix derives one leg per
+Python minor version from the project's `python_version` baseline through
+3.14, plus an experimental 3.15 lane that installs prerelease interpreters and
+sets `continue-on-error: true` so it never gates merges. Each leg runs
+`make build`, `make typecheck`, and `make test`; lint, audit, and coverage
+stay single-legged in `lint-test`. Rust-enabled variants set up the Rust
+toolchain in every leg because `make build` compiles the extension. The
+toggle suits libraries for external consumption; the estate baselines
+libraries at 3.12 and tests 3.12-3.14.
+
 The shared coverage action runs Python coverage through xdist-backed SlipCover
 support. Generated pytest discovery is therefore constrained to the top-level
 `tests/` tree via `tool.pytest.ini_options.testpaths`; do not add pytest unit

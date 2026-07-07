@@ -110,3 +110,63 @@ jobs:
             --format "cobertura" \
             --metric "line-coverage" \
             coverage.xml
+{%- if multi_python_tests %}
+
+  typecheck-test:
+    name: Typecheck and test (Python ${{ "{{" }} matrix.python-label {{ "}}" }})
+    # The experimental lane must never gate merges; stable lanes gate as
+    # normal required checks.
+    continue-on-error: ${{ "{{" }} matrix.experimental {{ "}}" }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+{%- for minor in range(python_version.split('.')[1] | int, 15) %}
+          - python-version: '3.{{ minor }}'
+            python-label: '3.{{ minor }}'
+            allow-prereleases: false
+            experimental: false
+{%- endfor %}
+          - python-version: '3.15'
+            python-label: '3.15a'
+            allow-prereleases: true
+            experimental: true
+    {% if use_rust %}
+    env:
+      CARGO_TERM_COLOR: always
+    {% endif %}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ "{{" }} matrix.python-version {{ "}}" }}
+          allow-prereleases: ${{ "{{" }} matrix.allow-prereleases {{ "}}" }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+
+      {% if use_rust %}
+      - name: Set up Rust
+        uses: leynos/shared-actions/.github/actions/setup-rust@455d9ed03477c0026da96c2541ca26569a74acac
+        with:
+          toolchain: stable
+
+      - name: Cache Rust build artefacts
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2
+
+      {% endif %}
+      - name: Install code
+        run: make build
+
+      - name: Run typechecker
+        run: make typecheck
+
+      - name: Run tests
+        run: make test
+{%- endif %}

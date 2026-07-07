@@ -20,3 +20,12 @@ python_version:
   type: str
   default: "3.10"
   help: Minimum supported Python version
+
+multi_python_tests:
+  type: bool
+  default: false
+  help: >-
+    Test across multiple Python versions in CI (baseline through 3.14,
+    plus an experimental 3.15 lane). Suits libraries for external
+    consumption; the estate baselines libraries at 3.12 and tests
+    3.12-3.14.

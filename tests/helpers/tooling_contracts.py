@@ -21,6 +21,7 @@ from tests.helpers.ci_contracts import (
     _assert_ci_workflow_contracts,
     _parse_ci_workflow,
     assert_ci_coverage_action_contract,
+    assert_ci_python_matrix_contract,
 )
 from tests.helpers.makefile_contracts import (
     _assert_makefile_contracts,
@@ -32,6 +33,7 @@ from tests.helpers.wheel_contracts import _assert_wheel_workflow_contracts
 
 __all__ = [
     "assert_ci_coverage_action_contract",
+    "assert_ci_python_matrix_contract",
     "assert_common_make_targets",
     "assert_generated_tooling_contracts",
 ]
