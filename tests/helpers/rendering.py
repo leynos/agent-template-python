@@ -49,7 +49,7 @@ def render_project(
     project_name: str,
     package_name: str,
     use_rust: bool = False,
-    python_version: str = "3.10",
+    python_version: str = "3.12",
 ) -> CopierProject:
     """Render a generated Python project with explicit template answers.
 
@@ -65,7 +65,7 @@ def render_project(
         Python import package name answer passed to Copier.
     use_rust : bool, default=False
         Whether to include the optional PyO3 extension.
-    python_version : str, default="3.10"
+    python_version : str, default="3.12"
         Minimum supported Python version answer passed to Copier.
 
     Returns

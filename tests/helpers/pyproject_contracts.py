@@ -20,7 +20,7 @@ def _assert_pyproject_contracts(
     """Assert generated Python packaging contracts."""
     project = require_mapping(pyproject, "project", "pyproject.toml")
     assert project.get("name"), "expected generated project metadata to include a name"
-    assert project.get("requires-python") == ">=3.10", (
+    assert project.get("requires-python") == ">=3.12", (
         "expected generated pyproject.toml to use the requested Python version"
     )
     dependency_groups = require_mapping(

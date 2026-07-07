@@ -24,7 +24,9 @@ from syrupy.assertion import SnapshotAssertion
 
 from tests.helpers.generated_files import (
     parse_toml_file,
+    parse_yaml_mapping,
     read_generated_text,
+    require_mapping,
 )
 from tests.helpers.rendering import (
     check_generated_import,
@@ -507,3 +509,93 @@ def test_generated_github_workflows_match_act_validation_contract(
         package_name=package_name,
         use_rust=use_rust,
     )
+
+@pytest.mark.parametrize(
+    ("target_dir", "use_rust", "python_version", "expect_mutmut"),
+    [
+        ("mutation-312-pure", False, "3.12", False),
+        ("mutation-312-rust", True, "3.12", False),
+        ("mutation-313-pure", False, "3.13", True),
+        ("mutation-314-rust", True, "3.14", True),
+    ],
+)
+def test_generated_mutation_testing_gating(
+    copier: CopierFixture,
+    tmp_path: Path,
+    target_dir: str,
+    use_rust: bool,
+    python_version: str,
+    expect_mutmut: bool,
+) -> None:
+    """Rendered mutation testing follows the interpreter and Rust gates.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    target_dir
+        Temporary project directory name for the rendered variant.
+    use_rust
+        Whether the rendered variant includes the optional Rust extension.
+    python_version
+        Minimum supported Python version answer passed to Copier.
+    expect_mutmut
+        Whether the baseline interpreter supports the mutmut workflow
+        (3.13 or greater).
+
+    Returns
+    -------
+    None
+        The test passes when the mutmut job and ``[tool.mutmut]`` section
+        render only for baselines of 3.13 or greater, the cargo-mutants job
+        renders only with the Rust extension, and the workflow file is
+        absent when both gates are off.
+    """
+    project = copier.copy(
+        tmp_path / target_dir,
+        project_name="MutationProj",
+        package_name="mutation_pkg",
+        use_rust=use_rust,
+        python_version=python_version,
+    )
+    pyproject = parse_toml_file(project / "pyproject.toml")
+    mutmut_config = pyproject.get("tool", {}).get("mutmut")
+    if expect_mutmut:
+        assert mutmut_config == {
+            "source_paths": ["mutation_pkg/"],
+            "pytest_add_cli_args_test_selection": ["tests/"],
+        }, "expected mutmut configuration for baselines of 3.13 or greater"
+    else:
+        assert mutmut_config is None, (
+            "expected no mutmut configuration below a 3.13 baseline"
+        )
+
+    workflow_path = project / ".github" / "workflows" / "mutation-testing.yml"
+    if not expect_mutmut and not use_rust:
+        assert not workflow_path.exists(), (
+            "expected no mutation workflow when both gates are off"
+        )
+        return
+    workflow = parse_yaml_mapping(
+        read_generated_text(workflow_path), "mutation workflow"
+    )
+    jobs = require_mapping(workflow, "jobs", "mutation workflow")
+    assert ("mutation" in jobs) == expect_mutmut, (
+        "expected the mutmut job only for baselines of 3.13 or greater"
+    )
+    assert ("mutation-rust" in jobs) == use_rust, (
+        "expected the cargo-mutants job only for Rust variants"
+    )
+    if expect_mutmut:
+        mutation_job = require_mapping(jobs, "mutation", "mutation workflow jobs")
+        mutation_inputs = require_mapping(mutation_job, "with", "mutation job")
+        assert mutation_inputs.get("python-version") == python_version, (
+            "expected the mutmut job to run on the project's baseline Python"
+        )
+    for job_name, job in jobs.items():
+        uses = str(job.get("uses", "")) if isinstance(job, dict) else ""
+        assert uses.endswith(f"@{MUTATION_WORKFLOW_PIN}"), (
+            f"expected {job_name} to pin the shared mutation workflow"
+        )
