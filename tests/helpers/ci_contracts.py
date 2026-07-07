@@ -93,6 +93,152 @@ def assert_ci_coverage_action_contract(
         )
 
 
+def _expected_python_matrix_legs(python_version: str) -> list[dict[str, Any]]:
+    """Build the expected CI matrix legs for a baseline Python version.
+
+    Parameters
+    ----------
+    python_version : str
+        Minimum supported Python version answer (for example ``"3.10"``).
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Stable legs from the baseline through 3.14, followed by the
+        experimental 3.15 leg.
+    """
+    baseline_minor = int(python_version.split(".")[1])
+    legs: list[dict[str, Any]] = [
+        {
+            "python-version": f"3.{minor}",
+            "python-label": f"3.{minor}",
+            "allow-prereleases": False,
+            "experimental": False,
+        }
+        for minor in range(baseline_minor, 15)
+    ]
+    legs.append(
+        {
+            "python-version": "3.15",
+            "python-label": "3.15a",
+            "allow-prereleases": True,
+            "experimental": True,
+        }
+    )
+    return legs
+
+
+def assert_ci_python_matrix_contract(
+    *,
+    ci_workflow: str,
+    multi_python_tests: bool,
+    use_rust: bool,
+    python_version: str = "3.10",
+) -> None:
+    """Assert the generated CI Python version matrix contract.
+
+    Parameters
+    ----------
+    ci_workflow : str
+        UTF-8 text of the generated CI workflow.
+    multi_python_tests : bool
+        Whether the rendered variant enables the multi-version test matrix.
+    use_rust : bool
+        Whether the rendered variant includes the optional Rust extension.
+    python_version : str, default="3.10"
+        Minimum supported Python version answer passed to Copier.
+
+    Returns
+    -------
+    None
+        The helper returns after the matrix contract matches expectations.
+
+    Raises
+    ------
+    AssertionError
+        Raised when the matrix job is unexpectedly present or absent, when
+        matrix legs diverge from the derived version list, when the
+        experimental lane gates merges, or when per-leg steps are wrong.
+
+    Examples
+    --------
+    Validate a rendered matrix-enabled CI workflow::
+
+        assert_ci_python_matrix_contract(
+            ci_workflow=ci_workflow,
+            multi_python_tests=True,
+            use_rust=False,
+            python_version="3.12",
+        )
+    """
+    parsed_ci_workflow = _parse_ci_workflow(ci_workflow)
+    jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
+    if not multi_python_tests:
+        assert "typecheck-test" not in jobs, (
+            "expected matrix-off CI workflow to omit the typecheck-test job"
+        )
+        return
+    job = require_mapping(jobs, "typecheck-test", "CI workflow jobs")
+    assert job.get("name") == (
+        "Typecheck and test (Python ${{ matrix.python-label }})"
+    ), "expected matrix legs to be named after their Python label"
+    assert job.get("continue-on-error") == "${{ matrix.experimental }}", (
+        "expected experimental matrix legs to avoid gating merges"
+    )
+    strategy = require_mapping(job, "strategy", "typecheck-test job")
+    assert strategy.get("fail-fast") is False, (
+        "expected matrix legs to run to completion independently"
+    )
+    matrix = require_mapping(strategy, "matrix", "typecheck-test strategy")
+    legs = require_sequence(matrix, "include", "typecheck-test matrix")
+    assert legs == _expected_python_matrix_legs(python_version), (
+        "expected matrix legs from the baseline through 3.14 plus an "
+        "experimental 3.15 leg"
+    )
+    _assert_python_matrix_steps(job, use_rust=use_rust)
+
+
+def _assert_python_matrix_steps(job: dict[str, Any], *, use_rust: bool) -> None:
+    """Assert the per-leg steps of the generated matrix job.
+
+    Parameters
+    ----------
+    job : dict[str, Any]
+        Parsed ``typecheck-test`` job mapping.
+    use_rust : bool
+        Whether the rendered variant includes the optional Rust extension.
+    """
+    steps = require_sequence(job, "steps", "typecheck-test job")
+    assert _checkout_steps_disable_credentials(steps), (
+        "expected matrix checkout steps to disable credential persistence"
+    )
+    step_names = [step.get("name") for step in steps if isinstance(step, dict)]
+    for required in ("Set up Python", "Install code", "Run typechecker", "Run tests"):
+        assert required in step_names, (
+            f"expected matrix legs to include the {required!r} step"
+        )
+    setup_python = next(
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("name") == "Set up Python"
+    )
+    setup_python_inputs = require_mapping(setup_python, "with", "Set up Python step")
+    assert setup_python_inputs.get("python-version") == (
+        "${{ matrix.python-version }}"
+    ), "expected matrix legs to install the leg's Python version"
+    assert setup_python_inputs.get("allow-prereleases") == (
+        "${{ matrix.allow-prereleases }}"
+    ), "expected the experimental leg to allow prerelease interpreters"
+    if use_rust:
+        assert "Set up Rust" in step_names, (
+            "expected Rust variant matrix legs to set up the Rust toolchain"
+        )
+    else:
+        assert "Set up Rust" not in step_names, (
+            "expected pure-Python matrix legs to omit Rust setup"
+        )
+
+
 def _parse_ci_workflow(ci_workflow: str) -> dict[str, Any]:
     """Parse a generated CI workflow as a YAML mapping."""
     return parse_yaml_mapping(ci_workflow, "CI workflow")
