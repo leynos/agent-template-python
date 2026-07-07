@@ -8,7 +8,10 @@ contract assertions directly.
 
 from __future__ import annotations
 
+import os
+import shlex
 import subprocess
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -540,6 +543,55 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     ), (
         "expected parent Makefile test target to run pytest through $(UV) with "
         "Hypothesis, pytest-copier, pyyaml, syrupy, make-parser, and act environment wiring"
+    )
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="requires a POSIX shell shim")
+def test_parent_makefile_typecheck_invokes_pinned_ty(tmp_path: Path) -> None:
+    """Validate the parent ``make typecheck`` boundary runs pinned ty.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory holding the fake ``uvx`` shim and its capture
+        file.
+
+    Returns
+    -------
+    None
+        The test passes when ``make typecheck`` resolves ``uvx`` from PATH
+        and invokes it with the pinned ``ty@0.0.56`` tool and the ``check``
+        subcommand.
+    """
+    capture = tmp_path / "uvx-args.txt"
+    shim = tmp_path / "uvx"
+    shim.write_text(
+        f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {shlex.quote(str(capture))}\n",
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+    environment = os.environ.copy()
+    environment["PATH"] = f"{tmp_path}{os.pathsep}{environment['PATH']}"
+
+    result = subprocess.run(
+        ["make", "typecheck"],
+        cwd=REPO_ROOT,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, (
+        "expected make typecheck to succeed with the fake uvx shim: "
+        f"{result.stdout}\n{result.stderr}"
+    )
+    invocation = capture.read_text(encoding="utf-8").splitlines()
+    assert "ty@0.0.56" in invocation, (
+        "expected make typecheck to invoke the pinned ty version through uvx"
+    )
+    assert "check" in invocation, (
+        "expected make typecheck to run the ty check subcommand"
     )
 
 

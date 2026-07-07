@@ -15,7 +15,11 @@ template itself.
 - `make lint` — runs Ruff lint checks and `interrogate --fail-under 100` against
   the `tests/` directory in the parent template test suite.
 - `make typecheck` — runs `ty check` against the parent template test suite,
-  supplying the test dependencies, including Hypothesis, through `uvx`.
+  supplying the test dependencies, including Hypothesis, through `uvx`. The `ty`
+  version is pinned (`ty@0.0.56`) because unpinned installations broke estate
+  repositories when ty 0.0.56 landed (falcon-correlate and polythene mains were
+  red for days). Version bumps are deliberate: update the pin, fix any new
+  diagnostics, and land both in one pull request (see ADR-004).
 - `make test` — runs the template test suite via `uvx`, supplying
   Hypothesis, `pytest-copier`, `pyyaml`, `syrupy`, and `make-parser` without a
   manually managed virtual environment.
@@ -49,7 +53,10 @@ Docker-dependent tests isolated from the standard template test gate:
 `template/Makefile.jinja` defines the generated developer workflow. The default
 `all` target runs build, formatting, linting, typechecking, tests, and spelling.
 The spelling recipe runs last so generated configuration cannot race tests when
-callers enable parallel Make execution.
+callers enable parallel Make execution. Generated projects pin `ty` in the dev
+dependency group (`ty==0.0.56`), so `make typecheck` resolves the pinned
+typechecker; bumps follow the same deliberate policy as the parent repository
+(ADR-004).
 The generated `audit` target is an explicit security gate run by CI. It runs
 `pip-audit` for every rendered project and, when `use_rust` is enabled, also
 runs `cargo audit` in the Rust extension crate.
