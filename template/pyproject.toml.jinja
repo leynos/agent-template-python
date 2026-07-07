@@ -294,6 +294,8 @@ enable = [
     "too-many-statements",
 ]
 
+{%- if mutmut_supported %}
+
 [tool.mutmut]
 # mutmut copies the tree before running the suite: tests that read
 # repository-root paths outside tests/ must either add those paths to
@@ -301,6 +303,7 @@ enable = [
 # caller guide (docs/mutation-mutmut-workflow.md).
 source_paths = ["{{ package_name }}/"]
 pytest_add_cli_args_test_selection = ["tests/"]
+{%- endif %}
 
 [tool.pytest.ini_options]
 # Tests automatically killed after seconds elapsed
