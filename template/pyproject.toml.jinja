@@ -17,6 +17,10 @@ dev = [
     "ty",
     "pytest-timeout",
     "pytest-xdist",
+{%- if en_gb_oxendict %}
+    # TOML parser for the typos-config tests on baselines before 3.11.
+    "tomli; python_version < '3.11'",
+{%- endif %}
 ]
 
 [tool.ruff]

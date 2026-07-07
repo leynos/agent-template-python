@@ -18,6 +18,15 @@ PYLINT_TARGETS ?= $(PYTHON_TARGETS)
 PYLINT_PYPY_SHIM_REF ?= 726d09f968b4d729ee4b29c71fc732e744854f3b
 PYLINT_PYPY_SHIM = git+https://github.com/leynos/pylint-pypy-shim.git@$(PYLINT_PYPY_SHIM_REF)
 PYLINT = $(UV_ENV) $(UV) tool run --python $(PYLINT_PYTHON) --from '$(PYLINT_PYPY_SHIM)' pylint-pypy
+{%- if en_gb_oxendict %}
+# Single source of truth for the typos version; CI consumes it through the
+# markdownlint target, so the Makefile and CI cannot drift apart.
+TYPOS_VERSION ?= 1.48.0
+# The env prefix lets xargs execute the command despite the leading
+# variable assignments in UV_ENV.
+TYPOS = env $(UV_ENV) $(UV) tool run typos@$(TYPOS_VERSION)
+MD_FILES_FIND = find . -type f -name '*.md' -not -path './.venv/*' -not -path './.uv-cache/*' -not -path './.uv-tools/*' -not -path './node_modules/*'{% if use_rust %} -not -path './$(RUST_CRATE_DIR)/target/*'{% endif %} -print0
+{%- endif %}
 {% if use_rust %}
 CARGO ?= $(or $(shell command -v cargo 2>/dev/null),$(wildcard $(USER_CARGO)),cargo)
 CARGO_AVAILABLE := $(shell command -v $(CARGO) 2>/dev/null)
@@ -161,8 +170,11 @@ rust-audit: ## Audit Rust extension dependencies for known vulnerabilities
 	cd $(RUST_CRATE_DIR) && $(CARGO) audit
 {% endif %}
 
-markdownlint: $(MDLINT) ## Lint Markdown files
+markdownlint: $(MDLINT) ## Lint Markdown files{% if en_gb_oxendict %} and enforce en-GB-oxendict spelling{% endif %}
 	env -u NO_COLOR $(MDLINT) '**/*.md'
+{%- if en_gb_oxendict %}
+	$(MD_FILES_FIND) | xargs -0 $(TYPOS) --config typos.toml --force-exclude
+{%- endif %}
 
 nixie: ## Validate Mermaid diagrams
 	$(call ensure_tool,$(NIXIE))

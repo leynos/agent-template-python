@@ -15,6 +15,53 @@ considered complete.
 Run `make audit` as the dependency vulnerability gate. It runs `pip-audit` for
 Python dependencies, and Rust-enabled projects also run `cargo audit` from the
 `rust_extension` crate directory.
+{%- if en_gb_oxendict %}
+
+## Spelling gate
+
+`make markdownlint` enforces en-GB-oxendict (Oxford) spelling over the
+repository's Markdown prose with
+[`typos`](https://github.com/crate-ci/typos), as required by the
+[documentation style guide](documentation-style-guide.md). The configuration
+lives in the repository-root `typos.toml` and works in two layers:
+
+1. The `en-gb` locale corrects American spellings (`color` to `colour`,
+   `behavior` to `behaviour`, `analyzed` to `analysed`).
+2. Generated `extend-words` entries restore Oxford spelling, which the
+   locale alone would not enforce: identity entries accept `-ize`
+   inflections that the locale would otherwise "correct" to `-ise`, and
+   `-ise` entries are corrected to `-ize`. Stems taking `-yse` (`analyse`,
+   `paralyse`) are left to the locale, which already enforces them.
+
+`typos.toml` is a generated file. Never edit its entries by hand; change
+`scripts/generate_typos_config.py` and regenerate:
+
+```bash
+uv run scripts/generate_typos_config.py
+```
+
+The generator script owns the maintainer-facing lists:
+
+- `STEMS` — word stems that take Oxford `-ize`. When the gate flags a
+  legitimate `-ize` word (or silently accepts its `-ise` variant) because
+  the stem is missing, add the stem here and regenerate. Do not add
+  genuinely `-ise`-only words (`advise`, `revise`, `exercise`,
+  `supervise`).
+- `EXTRA_ACCEPTED_WORDS` — words accepted verbatim, such as suffix
+  fragments quoted in prose and non-English example text.
+- `extend-ignore-re` patterns in `HEADER` — regions exempt from spelling
+  checks: inline code spans, fenced code blocks, and tool names that keep
+  their upstream spelling. Quoted APIs keep US spelling per the
+  documentation style guide, so put them in backticks rather than adding
+  word-level exceptions.
+
+The `typos` version is pinned once, in the Makefile `TYPOS_VERSION`
+variable, and CI inherits the pin by calling `make markdownlint`. Bump the
+pin there rather than installing a different version ad hoc. To fix
+findings mechanically, append `--write-changes` to the gate's `typos`
+command and review the rewrites before committing; corrections must not
+touch code samples, API names, or quoted material.
+{%- endif %}
 
 ## Automation scripts
 
@@ -35,10 +82,10 @@ actions under `.github/`.
 
 - `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests. It
   sets up Python 3.13, installs `uv`, validates the generated `Makefile` with
-  `mbake`, runs `make build`, `make check-fmt`,
-  `make lint` (Ruff + `interrogate --fail-under 100 $(PYTHON_TARGETS)` + Pylint), `make
-  typecheck`, and `make audit`, then delegates coverage generation to the shared
-  coverage action. When the Rust extension is enabled, it also sets up Rust,
+  `mbake`, runs `make build`, `make check-fmt`, `make lint` (Ruff +
+  `interrogate --fail-under 100 $(PYTHON_TARGETS)` + Pylint), `make typecheck`,
+  and `make audit`, then delegates coverage generation to the shared coverage
+  action. When the Rust extension is enabled, it also sets up Rust,
   installs Rust lint and test tools, and passes `rust_extension/Cargo.toml` to
   coverage.
 - `.github/workflows/act-validation.yml` runs rendered workflow validation in a
@@ -46,7 +93,7 @@ actions under `.github/`.
   `make test WITH_ACT=1` outside the coverage path.
 - `.github/workflows/release.yml` publishes wheels when a `v*.*.*` tag is
   pushed. It builds a pure Python wheel, creates a GitHub release with generated
-  release notes, downloads wheel artifacts, and uploads them to the tag release.
+  release notes, downloads wheel artefacts, and uploads them to the tag release.
 - `.github/workflows/build-wheels.yml` is a reusable workflow for extension
   builds. It accepts a Python version and builds wheels across Linux, Windows,
   and macOS architectures via `.github/actions/build-wheels`.
@@ -54,9 +101,9 @@ actions under `.github/`.
   the CodeScene coverage CLI installer, computes its SHA-256 digest, and writes
   the result to the `CODESCENE_CLI_SHA256` repository variable.
 - `.github/actions/build-wheels` wraps `cibuildwheel` with `uvx` and uploads
-  architecture-specific wheel artifacts.
+  architecture-specific wheel artefacts.
 - `.github/actions/pure-python-wheel` builds a pure Python wheel with
-  `uv build --wheel` and uploads the resulting artifact.
+  `uv build --wheel` and uploads the resulting artefact.
 - `.github/dependabot.yml` enables dependency update pull requests for GitHub
   Actions and Python packages. Rust-enabled projects also receive Cargo updates.
 

@@ -80,6 +80,11 @@ jobs:
 
       - name: Audit dependencies
         run: make audit
+{%- if en_gb_oxendict %}
+
+      - name: Lint documentation
+        run: make markdownlint
+{%- endif %}
 
       - name: Test and Measure Coverage
         uses: leynos/shared-actions/.github/actions/generate-coverage@455d9ed03477c0026da96c2541ca26569a74acac

@@ -16,6 +16,13 @@ use_rust:
   default: false
   help: 'Include Rust implementation via PyO3'
 
+en_gb_oxendict:
+  type: bool
+  default: true
+  help: >-
+    Enforce en-GB Oxford ("-ize") spelling in documentation via a typos
+    gate in make markdownlint
+
 python_version:
   type: str
   default: "3.10"
