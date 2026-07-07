@@ -1,0 +1,123 @@
+"""Unit tests for the ``typos.toml`` generator script.
+
+The generator is a standalone ``uv run`` script rather than a package
+module, so it is loaded here through ``importlib`` from its file path.
+"""
+
+from __future__ import annotations
+
+import importlib
+import importlib.util
+import pathlib
+import sys
+import typing as typ
+
+import pytest
+
+if typ.TYPE_CHECKING:
+    import types
+
+# tomllib is stdlib from Python 3.11; older baselines fall back to the
+# API-compatible tomli dev dependency. The dynamic import keeps static
+# checkers happy at the project's requires-python floor.
+_TOML_MODULE_NAME = "tomllib" if sys.version_info >= (3, 11) else "tomli"
+toml_reader = importlib.import_module(_TOML_MODULE_NAME)
+
+REPOSITORY_ROOT = pathlib.Path(__file__).resolve().parents[1]
+SCRIPT_PATH = REPOSITORY_ROOT / "scripts" / "generate_typos_config.py"
+
+
+@pytest.fixture(name="generator", scope="module")
+def generator_fixture() -> types.ModuleType:
+    """Load the generator script as a module from its file path."""
+    spec = importlib.util.spec_from_file_location("generate_typos_config", SCRIPT_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_render_config_emits_every_stem_and_suffix_pair(
+    generator: types.ModuleType,
+) -> None:
+    """Every stem inflection gets an -ise correction and an -ize identity."""
+    rendered = generator.render_config()
+    for stem in generator.STEMS:
+        for ise, ize in generator.SUFFIX_PAIRS:
+            assert f'{stem}{ise} = "{stem}{ize}"' in rendered
+            assert f'{stem}{ize} = "{stem}{ize}"' in rendered
+
+
+def test_render_config_accepts_extra_words_verbatim(
+    generator: types.ModuleType,
+) -> None:
+    """Every extra accepted word gets an identity entry."""
+    rendered = generator.render_config()
+    for word in generator.EXTRA_ACCEPTED_WORDS:
+        assert f'{word} = "{word}"' in rendered
+
+
+def test_render_config_ends_with_trailing_newline(
+    generator: types.ModuleType,
+) -> None:
+    """The rendered document ends with exactly one trailing newline."""
+    rendered = generator.render_config()
+    assert rendered.endswith("\n")
+    assert not rendered.endswith("\n\n")
+
+
+def test_render_config_parses_as_valid_toml(generator: types.ModuleType) -> None:
+    """The rendered configuration parses as TOML with no duplicate keys.
+
+    ``tomllib`` raises ``TOMLDecodeError`` on duplicate keys, so parsing
+    guards against two stem/suffix combinations (or an extra accepted word)
+    colliding into the same ``extend-words`` entry. The exact entry count
+    additionally documents that every stem inflection and accepted word is
+    present.
+    """
+    parsed = toml_reader.loads(generator.render_config())
+    extend_words = parsed["default"]["extend-words"]
+    expected = len(generator.EXTRA_ACCEPTED_WORDS) + 2 * len(generator.STEMS) * len(
+        generator.SUFFIX_PAIRS
+    )
+    assert len(extend_words) == expected
+
+
+def test_main_writes_rendered_config_to_explicit_path(
+    generator: types.ModuleType,
+    tmp_path: pathlib.Path,
+) -> None:
+    """main() writes the rendered configuration to the given output path."""
+    output = tmp_path / "typos.toml"
+    generator.main(output)
+    assert output.read_text(encoding="utf-8") == generator.render_config()
+
+
+def test_main_default_path_resolves_to_repository_root(
+    generator: types.ModuleType,
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """main() defaults to typos.toml one level above the script directory."""
+    fake_script = tmp_path / "scripts" / "generate_typos_config.py"
+    monkeypatch.setattr(generator, "__file__", str(fake_script))
+    generator.main()
+    written = tmp_path / "typos.toml"
+    assert written.read_text(encoding="utf-8") == generator.render_config()
+
+
+def test_committed_config_matches_generator_output(
+    generator: types.ModuleType,
+) -> None:
+    """The committed typos.toml must not drift from the generator."""
+    committed = (REPOSITORY_ROOT / "typos.toml").read_text(encoding="utf-8")
+    assert committed == generator.render_config()
+
+
+def test_committed_config_parses_as_valid_toml() -> None:
+    """The committed typos.toml parses cleanly (no duplicate-key errors)."""
+    committed = (REPOSITORY_ROOT / "typos.toml").read_text(encoding="utf-8")
+    parsed = toml_reader.loads(committed)
+    assert parsed["default"]["locale"] == "en-gb"
+    assert parsed["default"]["extend-words"]

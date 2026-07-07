@@ -494,3 +494,77 @@ def test_generated_github_workflows_match_act_validation_contract(
         package_name=package_name,
         use_rust=use_rust,
     )
+
+
+@pytest.mark.parametrize(
+    ("target_dir", "en_gb_oxendict"),
+    [
+        ("spelling-on", True),
+        ("spelling-off", False),
+    ],
+)
+def test_generated_spelling_gate_follows_toggle(
+    copier: CopierFixture,
+    tmp_path: Path,
+    target_dir: str,
+    en_gb_oxendict: bool,
+) -> None:
+    """Rendered projects include the spelling gate only when toggled on.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project is created.
+    target_dir
+        Temporary project directory name for the rendered variant.
+    en_gb_oxendict
+        Whether the rendered variant enables the en-GB-oxendict spelling
+        gate.
+
+    Returns
+    -------
+    None
+        The test passes when the generator script, committed configuration,
+        generator tests, Makefile wiring, and CI step are all present for
+        toggle-on renders and entirely absent for toggle-off renders.
+    """
+    project = copier.copy(
+        tmp_path / target_dir,
+        project_name="SpellingProj",
+        package_name="spelling_pkg",
+        en_gb_oxendict=en_gb_oxendict,
+    )
+    makefile = read_generated_text(project / "Makefile")
+    ci_workflow = read_generated_text(project / ".github" / "workflows" / "ci.yml")
+    agents = read_generated_text(project / "AGENTS.md")
+    guide = read_generated_text(project / "docs" / "developers-guide.md")
+
+    generated_paths = [
+        project / "scripts" / "generate_typos_config.py",
+        project / "typos.toml",
+        project / "tests" / "test_generate_typos_config.py",
+    ]
+    wiring_markers = [
+        (makefile, "TYPOS_VERSION"),
+        (makefile, "typos@$(TYPOS_VERSION)"),
+        (makefile, "--config typos.toml --force-exclude"),
+        (ci_workflow, "make markdownlint"),
+        (agents, "en-GB-oxendict spelling with `typos`"),
+        (guide, "## Spelling gate"),
+    ]
+    if en_gb_oxendict:
+        for path in generated_paths:
+            assert path.exists(), f"expected {path} for the spelling-gate variant"
+        for text, marker in wiring_markers:
+            assert marker in text, (
+                f"expected spelling-gate wiring marker {marker!r} in rendered output"
+            )
+    else:
+        for path in generated_paths:
+            assert not path.exists(), f"expected no {path} when the gate is off"
+        for text, _marker in wiring_markers:
+            assert "typos" not in text.lower(), (
+                "expected no typos wiring in toggle-off rendered output"
+            )
