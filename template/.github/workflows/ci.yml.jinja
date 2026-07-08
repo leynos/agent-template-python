@@ -12,7 +12,7 @@ jobs:
       CS_ACCESS_TOKEN: ${{ "{{" }} secrets.CS_ACCESS_TOKEN {{ "}}" }}
       CODESCENE_CLI_SHA256: ${{ "{{" }} vars.CODESCENE_CLI_SHA256 {{ "}}" }}
       {% if use_rust %}
-      WHITAKER_INSTALLER_REV: f768c2e53c47df13658af1168a67851d388750bf
+      WHITAKER_INSTALLER_VERSION: '0.2.5'
       CARGO_TERM_COLOR: always
       BUILD_PROFILE: debug
       {% endif %}
@@ -50,10 +50,8 @@ jobs:
         env:
           RUSTFLAGS: ""
         run: |
-          cargo install --locked \
-            --git https://github.com/leynos/whitaker \
-            --rev "${WHITAKER_INSTALLER_REV}" \
-            whitaker-installer
+          cargo binstall --no-confirm \
+            whitaker-installer@"${WHITAKER_INSTALLER_VERSION}"
           whitaker-installer --cranelift
           cargo install --locked cargo-audit
 
