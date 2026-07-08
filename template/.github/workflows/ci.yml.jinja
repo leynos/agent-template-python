@@ -50,7 +50,7 @@ jobs:
         env:
           RUSTFLAGS: ""
         run: |
-          cargo binstall --no-confirm \
+          cargo binstall --no-confirm --locked \
             whitaker-installer@"${WHITAKER_INSTALLER_VERSION}"
           whitaker-installer --cranelift
           cargo install --locked cargo-audit
@@ -80,7 +80,7 @@ jobs:
         run: make audit
 
       - name: Test and Measure Coverage
-        uses: leynos/shared-actions/.github/actions/generate-coverage@296dc4aa07acf3a7f60a54fb6bccb5672a597479
+        uses: leynos/shared-actions/.github/actions/generate-coverage@455d9ed03477c0026da96c2541ca26569a74acac
         with:
           output-path: coverage.xml
           format: cobertura
@@ -92,10 +92,14 @@ jobs:
       - name: Install CodeScene Coverage CLI
         if: env.CS_ACCESS_TOKEN != ''
         run: |
-          curl -fsSL https://downloads.codescene.io/enterprise/cli/install-cs-coverage-tool.sh | bash -s -- -y
+          curl -fsSL --output install-cs-coverage-tool.sh \
+            https://downloads.codescene.io/enterprise/cli/install-cs-coverage-tool.sh
           if [ -n "${CODESCENE_CLI_SHA256:-}" ]; then
             echo "${CODESCENE_CLI_SHA256}  install-cs-coverage-tool.sh" | sha256sum -c -
+          else
+            echo "::notice::CODESCENE_CLI_SHA256 is not set; skipping installer checksum verification"
           fi
+          bash install-cs-coverage-tool.sh -y
 
       - name: Upload coverage to CodeScene
         if: env.CS_ACCESS_TOKEN != ''
