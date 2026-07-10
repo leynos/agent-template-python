@@ -218,7 +218,7 @@ def _read_metadata(path: pathlib.Path) -> dict[str, object]:
     """Read best-effort HTTP freshness metadata."""
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError, json.JSONDecodeError:
+    except (FileNotFoundError, json.JSONDecodeError):
         return {}
     return value if isinstance(value, dict) else {}
 
@@ -235,7 +235,13 @@ def _valid_cache(cache: pathlib.Path) -> bool:
     """Return whether *cache* contains a valid shared dictionary."""
     try:
         load_dictionary(cache)
-    except FileNotFoundError, OSError, TypeError, ValueError, tomllib.TOMLDecodeError:
+    except (
+        FileNotFoundError,
+        OSError,
+        TypeError,
+        ValueError,
+        tomllib.TOMLDecodeError,
+    ):
         return False
     return True
 
@@ -256,7 +262,7 @@ def _remote_is_not_newer(
         return email.utils.parsedate_to_datetime(
             modified
         ) <= email.utils.parsedate_to_datetime(saved_modified)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return modified == saved_modified
 
 
@@ -371,7 +377,7 @@ def _refresh_http(
         if _valid_cache(cache):
             return RefreshResult("stale-cache", cache)
         raise
-    except OSError, urllib.error.URLError:
+    except (OSError, urllib.error.URLError):
         if _valid_cache(cache):
             return RefreshResult("stale-cache", cache)
         raise
