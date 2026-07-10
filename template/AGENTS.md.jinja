@@ -64,7 +64,7 @@
   commit, ensure all of the following are met:
   - New functionality or behaviour changes are fully validated by relevant unit
     and behavioural tests.
-  - Bug fixes include a failing test before the fix and a passing test afterward.
+  - Bug fixes include a failing test before the fix and a passing test afterwards.
   - Code passes lint checks.
   - Formatting is correct and validated.
 - **For Python files:**
@@ -100,10 +100,11 @@
   {% endif %}
   - **Markdown files (`.md` only):**
     - **Linting:** Passes markdown lint checks (`make markdownlint`).
+    - **Spelling:** Passes the en-GB-oxendict gate (`make spelling`).
     - **Mermaid diagrams:** Passes validation using nixie (`make nixie`).
 - **Committing:**
   - Only changes that meet all quality gates should be committed.
-  - Write clear, descriptive commit messages that summarise the change, following:
+  - Write clear, descriptive commit messages that summarize the change, following:
     - **Imperative mood** in the subject line (for example, "Fix bug", "Add feature").
     - **Subject line length:** around 50 characters or fewer.
     - **Body:** Separate subject from body with a blank line. Explain *what* and
@@ -288,7 +289,7 @@ project:
 - Use `pytest` fixtures for shared setup in Python work. Use `rstest` fixtures for
   shared setup in Rust work.
 - Replace duplicated tests with `#[rstest(...)]` parameterized cases in Rust and
-  equivalent fixture-driven parameterisation in Python.
+  equivalent fixture-driven parameterization in Python.
 - Prefer `mockall` for ad hoc mocks and stubs.
 - For testing reliant on environment variables, use dependency injection and the
   `mockable` crate where feasible. If mockable cannot be used, environment
@@ -352,7 +353,13 @@ project:
 
 ## Markdown guidance
 
-- Validate Markdown files using `make markdownlint`.
+- Validate Markdown files using `make markdownlint`. This also runs the pinned
+  en-GB-oxendict spelling gate.
+- The spelling configuration `typos.toml` is generated. Generic Oxford stems
+  belong in the shared base in `leynos/agent-helper-scripts`; project-specific
+  accepted words, patterns, and exclusions belong in `typos.local.toml`.
+  Regenerate with `uv run scripts/generate_typos_config.py` rather than editing
+  `typos.toml` by hand.
 - Run `make fmt` after documentation changes to format Markdown and fix table
   markup.
 - Validate Mermaid diagrams in Markdown by running `make nixie`.
