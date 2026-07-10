@@ -64,6 +64,7 @@ def _assert_agents_make_targets_mirror_makefile(
         "lint",
         "markdownlint",
         "nixie",
+        "spelling",
         "test",
         "typecheck",
     }
@@ -109,6 +110,11 @@ def _assert_documented_command_flags(
         "audit": [
             ("AGENTS.md", "pip-audit"),
             ("Makefile", "pip-audit"),
+        ],
+        "spelling": [
+            ("AGENTS.md", "make spelling"),
+            ("Makefile", "generate_typos_config.py"),
+            ("Makefile", "--config typos.toml --force-exclude"),
         ],
         "test": [
             ("AGENTS.md", "pytest -v -n $(PYTEST_XDIST_WORKERS)"),

@@ -305,6 +305,10 @@ def test_common_make_targets_reports_missing_contracts() -> None:
         "lint-python: build\n"
         "lint: lint-python\n"
         "audit: build\n"
+        "TYPOS_VERSION ?= 1.48.0\n"
+        "spelling:\n"
+        "\tuv run scripts/generate_typos_config.py\n"
+        "\tuv tool run typos --config typos.toml --force-exclude\n"
         "clean:\n"
         "\trm -rf .uv-cache .uv-tools\n"
     )
@@ -441,7 +445,7 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     """
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
-    assert ".PHONY: help check-fmt lint test typecheck" in makefile, (
+    assert ".PHONY: help check-fmt lint spelling test typecheck" in makefile, (
         "expected parent Makefile to mark documented gate targets as phony"
     )
     assert "check-fmt: ## Verify template test formatting" in makefile, (
@@ -463,7 +467,7 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
         "expected parent Makefile to expose a documented typecheck target"
     )
     assert (
-        "$(UV) --with pytest --with pytest-copier --with pyyaml --with syrupy "
+        "$(UV) --with hypothesis --with pytest --with pytest-copier --with pyyaml --with syrupy "
         "--with make-parser ty check tests/" in makefile
     ), "expected parent Makefile typecheck target to run ty with test dependencies"
     assert "test: ## Run template tests" in makefile, (
@@ -482,11 +486,11 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
         "expected parent Makefile to map WITH_ACT to act validation"
     )
     assert (
-        "$(ACT_TEST_ENV) $(UV) --with pytest-copier --with pyyaml --with syrupy "
+        "$(ACT_TEST_ENV) $(UV) --with hypothesis --with pytest-copier --with pyyaml --with syrupy "
         "--with make-parser pytest tests/" in makefile
     ), (
         "expected parent Makefile test target to run pytest through $(UV) with "
-        "pytest-copier, pyyaml, syrupy, make-parser, and act environment wiring"
+        "Hypothesis, pytest-copier, pyyaml, syrupy, make-parser, and act environment wiring"
     )
 
 

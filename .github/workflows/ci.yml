@@ -41,3 +41,6 @@ jobs:
 
       - name: Run template tests
         run: make test
+
+      - name: Check spelling
+        run: make spelling

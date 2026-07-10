@@ -15,10 +15,13 @@ template itself.
 - `make lint` — runs Ruff lint checks and `interrogate --fail-under 100` against
   the `tests/` directory in the parent template test suite.
 - `make typecheck` — runs `ty check` against the parent template test suite,
-  supplying the test dependencies through `uvx`.
+  supplying the test dependencies, including Hypothesis, through `uvx`.
 - `make test` — runs the template test suite via `uvx`, supplying
-  `pytest-copier`, `pyyaml`, `syrupy`, and `make-parser` without a manually
-  managed virtual environment.
+  Hypothesis, `pytest-copier`, `pyyaml`, `syrupy`, and `make-parser` without a
+  manually managed virtual environment.
+- `make spelling` — refreshes the ignored estate-wide dictionary cache, merges
+  `typos.local.toml`, generates `typos.toml`, and checks Markdown plus rendered
+  Markdown template sources with the pinned `typos` version.
 - `make test WITH_ACT=1` — sets `RUN_ACT_VALIDATION=1` inside the pytest
   invocation, enabling the act-backed integration tests that run generated CI
   workflows locally. Requires `act` and Docker to be available.
@@ -31,9 +34,9 @@ template itself.
 The parent repository uses two separate GitHub Actions workflows to keep
 Docker-dependent tests isolated from the standard template test gate:
 
-- `.github/workflows/ci.yml` runs `make test` on every push to `main` and on
-  all pull requests. It installs `markdownlint-cli2` and `mbake` at pinned
-  versions.
+- `.github/workflows/ci.yml` runs `make test` and `make spelling` on every push
+  to `main` and on all pull requests. It installs `markdownlint-cli2` and
+  `mbake` at pinned versions.
 - `.github/workflows/act-validation.yml` runs `make test WITH_ACT=1`. It
   additionally downloads the `act` binary at a pinned `ACT_VERSION`, verifies
   its SHA-256 checksum before extraction, and confirms Docker availability via
@@ -44,7 +47,9 @@ Docker-dependent tests isolated from the standard template test gate:
 ## Makefile Template
 
 `template/Makefile.jinja` defines the generated developer workflow. The default
-`all` target runs build, formatting, linting, typechecking, and tests.
+`all` target runs build, formatting, linting, typechecking, tests, and spelling.
+The spelling recipe runs last so generated configuration cannot race tests when
+callers enable parallel Make execution.
 The generated `audit` target is an explicit security gate run by CI. It runs
 `pip-audit` for every rendered project and, when `use_rust` is enabled, also
 runs `cargo audit` in the Rust extension crate.
@@ -68,7 +73,7 @@ override pins without editing target recipes.
 
 `template/.github/workflows/ci.yml.jinja` mirrors the generated local gates. It
 sets up Python, optionally sets up Rust, runs `make check-fmt`, `make lint`,
-`make typecheck`, and `make audit`, then delegates coverage to
+`make typecheck`, `make spelling`, and `make audit`, then delegates coverage to
 `leynos/shared-actions/.github/actions/generate-coverage`.
 
 The shared coverage action runs Python coverage through xdist-backed SlipCover
@@ -82,6 +87,16 @@ Docker availability, and runs `make test WITH_ACT=1`.
 
 Rust-enabled workflows pass `rust_extension/Cargo.toml` to the coverage action
 because the generated Python project root does not contain a Rust manifest.
+
+## Shared Spelling Configuration
+
+[ADR-003](adr-003-shared-oxford-spelling-base.md) records the shared-base
+decision. Both the parent and generated project keep
+`.typos-oxendict-base.toml` and `.typos-oxendict-base.json` untracked. Generic
+Oxford stems belong in `leynos/agent-helper-scripts`; repository-only accepted
+words, patterns, and file exclusions belong in `typos.local.toml`. Regenerate
+tracked configuration with `uv run scripts/generate_typos_config.py` rather
+than editing `typos.toml`.
 
 ## Rust Integration
 

@@ -76,6 +76,9 @@ jobs:
       - name: Run typechecker
         run: make typecheck
 
+      - name: Check spelling
+        run: make spelling
+
       - name: Audit dependencies
         run: make audit
 

@@ -54,7 +54,8 @@
     lint-python          Run Python linters
     typecheck            Run typechecking
     audit                Audit dependencies for known vulnerabilities
-    markdownlint         Lint Markdown files
+    markdownlint         Lint Markdown files and spelling
+    spelling             Enforce en-GB-oxendict spelling
     nixie                Validate Mermaid diagrams
     test                 Run tests
     help                 Show available targets

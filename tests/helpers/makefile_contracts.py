@@ -43,6 +43,14 @@ def assert_common_make_targets(makefile: str) -> None:
     assert "lint-python: build" in makefile, "Makefile should expose lint-python"
     assert "lint: lint-python" in makefile, "lint should delegate to lint-python"
     assert "audit: build" in makefile, "Makefile should expose audit"
+    assert "spelling:" in makefile, "Makefile should expose spelling"
+    assert "TYPOS_VERSION ?= 1.48.0" in makefile, "Makefile should pin typos"
+    assert "scripts/generate_typos_config.py" in makefile, (
+        "spelling should generate configuration"
+    )
+    assert "--config typos.toml --force-exclude" in makefile, (
+        "spelling should apply generated configuration and exclusions"
+    )
     assert ".uv-cache .uv-tools" in makefile, "clean should remove uv state dirs"
 
 
@@ -107,6 +115,9 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     )
     assert "$(UV_ENV) $(UV) run interrogate --fail-under 100" in makefile, (
         "expected generated lint target to enforce docstring coverage"
+    )
+    assert "+$(MAKE) spelling" in makefile, (
+        "expected generated aggregate gate to serialize spelling last"
     )
     if use_rust:
         assert "TEST_CMD :=" in makefile, (

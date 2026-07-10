@@ -45,6 +45,9 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "make test\n" in ci_workflow, (
         "expected parent CI to run the normal parent test gate"
     )
+    assert "make spelling\n" in ci_workflow, (
+        "expected parent CI to run the spelling gate"
+    )
     assert "uv tool install mdformat-all" not in ci_workflow, (
         "expected parent CI not to install mdformat-all through uv"
     )

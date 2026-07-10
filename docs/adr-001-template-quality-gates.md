@@ -16,9 +16,12 @@ failures are predictable.
 Generated projects use `make all` as the public aggregate gate. The `lint`
 target delegates to language-specific targets:
 
-- `lint-python` runs Ruff, Interrogate (`--fail-under 100`), and Pylint through the PyPy-backed runner.
+- `lint-python` runs Ruff, Interrogate (`--fail-under 100`), and Pylint through
+  the PyPy-backed runner.
 - `lint-rust` is rendered only when `use_rust` is enabled and runs rustdoc,
   Clippy, and Whitaker.
+- `spelling` generates shared en-GB-oxendict policy and runs the pinned
+  `typos` binary after the other aggregate prerequisites complete.
 
 Tool revision pins are exposed as Makefile variables where the generated
 Makefile owns installation or invocation. Generated Continuous Integration

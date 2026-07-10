@@ -128,6 +128,9 @@ def _assert_ci_workflow_contracts(
     assert "make typecheck" in ci_workflow, (
         "expected generated CI workflow to run the typecheck gate"
     )
+    assert "make spelling" in ci_workflow, (
+        "expected generated CI workflow to run the spelling gate"
+    )
     assert "make audit" in ci_workflow, (
         "expected generated CI workflow to run the dependency audit gate"
     )
