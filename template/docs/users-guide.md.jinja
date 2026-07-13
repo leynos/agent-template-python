@@ -49,6 +49,25 @@ Dependabot pull requests; a weekly scheduled audit on the default branch is the
 compensating control. Rust-enabled projects also run `cargo audit` from the
 `rust_extension` crate directory.
 
+{% if mutmut_supported or use_rust %}
+## Scheduled Mutation Testing
+
+The `.github/workflows/mutation-testing.yml` workflow runs mutation testing
+daily at 09:30 UTC and can also be started manually from GitHub Actions. Adjust
+the generated cron schedule to stagger it against other repositories.
+
+{% if mutmut_supported %}
+For projects whose minimum Python version is 3.13 or newer, the workflow runs
+mutmut against `{{ package_name }}/`. The Python mutation job is omitted for
+older baselines because the shared workflow helpers require Python 3.13 or
+newer.
+{% endif %}
+{% if use_rust %}
+Rust-enabled projects also run cargo-mutants against the crate in
+`rust_extension/`, independently of the Python version baseline.
+{% endif %}
+{% endif %}
+
 ## Rust Test Behaviour
 
 Rust-enabled projects use `cargo nextest run` when `cargo-nextest` is available.

@@ -20,13 +20,20 @@ python_version:
   type: str
   default: "3.12"
   help: Minimum supported Python version
+  validator: >-
+    {% if not (python_version | regex_search('^3[.][0-9]+$')) %}
+    Python version must use the 3.X format (for example, 3.12).
+    {% endif %}
 
 # Computed: mutmut mutation testing needs a base interpreter of 3.13 or
 # greater because the shared workflow's helper scripts require >= 3.13.
 
 mutmut_supported:
   type: bool
-  default: "{{ python_version.split('.')[1] | int >= 13 }}"
+  default: >-
+    {{ python_version is string
+       and (python_version | regex_search('^3[.][0-9]+$'))
+       and (python_version.split('.')[1] | int >= 13) }}
   when: false
 
 codescene_project_id:

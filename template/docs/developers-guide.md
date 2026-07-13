@@ -56,6 +56,20 @@ actions under `.github/`.
 - `.github/workflows/get-codescene-sha.yml` is manually dispatched. It fetches
   the CodeScene coverage CLI installer, computes its SHA-256 digest, and writes
   the result to the `CODESCENE_CLI_SHA256` repository variable.
+{% if mutmut_supported or use_rust %}
+- `.github/workflows/mutation-testing.yml` runs daily at 09:30 UTC and supports
+  manual dispatch. It delegates to reusable workflows from `leynos/shared-actions`;
+  stagger the generated cron schedule before adopting it alongside other
+  repositories.
+{% if mutmut_supported %}
+  The mutmut job is generated only when the minimum Python version is 3.13 or
+  newer, because the shared workflow helpers require Python 3.13 or newer.
+{% endif %}
+{% if use_rust %}
+  Rust-enabled projects also receive a cargo-mutants job for `rust_extension/`,
+  independently of the Python version baseline.
+{% endif %}
+{% endif %}
 - `.github/actions/build-wheels` wraps `cibuildwheel` with `uvx` and uploads
   architecture-specific wheel artefacts.
 - `.github/actions/pure-python-wheel` builds a pure Python wheel with
