@@ -40,6 +40,8 @@ from tests.helpers.tooling_contracts import (
     assert_generated_tooling_contracts,
 )
 
+MUTATION_WORKFLOW_PIN = "859416a90eb3987b46a57682c5d6b8964ad3f0a6"
+
 
 def test_python_only_help_output_snapshot(
     copier: CopierFixture, tmp_path: Path, snapshot: SnapshotAssertion
@@ -510,6 +512,7 @@ def test_generated_github_workflows_match_act_validation_contract(
         use_rust=use_rust,
     )
 
+
 @pytest.mark.parametrize(
     ("target_dir", "use_rust", "python_version", "expect_mutmut"),
     [
@@ -600,6 +603,7 @@ def test_generated_mutation_testing_gating(
         assert uses.endswith(f"@{MUTATION_WORKFLOW_PIN}"), (
             f"expected {job_name} to pin the shared mutation workflow"
         )
+
 
 @pytest.mark.parametrize("python_version", ["3", "three.13", "3.13.1", "4.0"])
 def test_python_version_rejects_unexpected_formats(
