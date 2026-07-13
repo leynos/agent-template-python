@@ -553,8 +553,9 @@ def test_generated_mutation_testing_gating(
         renders only with the Rust extension, and the workflow file is
         absent when both gates are off.
     """
-    project = copier.copy(
+    project = render_project(
         tmp_path / target_dir,
+        copier,
         project_name="MutationProj",
         package_name="mutation_pkg",
         use_rust=use_rust,
@@ -598,4 +599,39 @@ def test_generated_mutation_testing_gating(
         uses = str(job.get("uses", "")) if isinstance(job, dict) else ""
         assert uses.endswith(f"@{MUTATION_WORKFLOW_PIN}"), (
             f"expected {job_name} to pin the shared mutation workflow"
+        )
+
+@pytest.mark.parametrize("python_version", ["3", "three.13", "3.13.1", "4.0"])
+def test_python_version_rejects_unexpected_formats(
+    copier: CopierFixture,
+    tmp_path: Path,
+    python_version: str,
+) -> None:
+    """Reject malformed baseline versions at the Copier answer boundary.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory where the rendered project would be created.
+    python_version
+        Invalid version answer supplied to Copier.
+
+    Returns
+    -------
+    None
+        The test passes when Copier reports the version-format validation
+        error before evaluating dependent template answers.
+    """
+    with pytest.raises(
+        ValueError,
+        match=r"Python version must use the 3\.X format",
+    ):
+        render_project(
+            tmp_path / "invalid-python-version",
+            copier,
+            project_name="InvalidVersion",
+            package_name="invalid_version",
+            python_version=python_version,
         )
