@@ -421,6 +421,9 @@ def test_generated_tooling_contracts(
     agents = read_generated_text(project / "AGENTS.md")
     makefile = read_generated_text(project / "Makefile")
     ci_workflow = read_generated_text(project / ".github" / "workflows" / "ci.yml")
+    coverage_main_workflow = read_generated_text(
+        project / ".github" / "workflows" / "coverage-main.yml"
+    )
     act_validation_workflow = read_generated_text(
         project / ".github" / "workflows" / "act-validation.yml"
     )
@@ -443,6 +446,7 @@ def test_generated_tooling_contracts(
         pyproject=pyproject,
         makefile=makefile,
         ci_workflow=ci_workflow,
+        coverage_main_workflow=coverage_main_workflow,
         act_validation_workflow=act_validation_workflow,
         release_workflow=release_workflow,
         build_wheels_workflow=build_wheels_workflow,

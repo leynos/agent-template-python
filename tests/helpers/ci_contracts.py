@@ -71,14 +71,21 @@ def assert_ci_coverage_action_contract(
     assert (
         coverage_step.get("uses")
         == "leynos/shared-actions/.github/actions/generate-coverage"
-        "@296dc4aa07acf3a7f60a54fb6bccb5672a597479"
+        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd"
     ), "expected CI to use the pinned shared coverage action"
+    assert coverage_step.get("if") == "${{ github.event_name == 'pull_request' }}", (
+        "expected CI coverage generation to be guarded to pull requests so "
+        "coverage-main.yml owns the push-to-main upload"
+    )
     coverage_inputs = require_mapping(coverage_step, "with", "coverage step")
     assert coverage_inputs.get("output-path") == "coverage.xml", (
         "expected CI coverage output path to match the act assertion"
     )
     assert coverage_inputs.get("format") == "cobertura", (
         "expected CI coverage format to match the CodeScene upload"
+    )
+    assert coverage_inputs.get("with-ratchet") == "true", (
+        "expected CI coverage to advance the ratchet baseline"
     )
     assert coverage_inputs.get("artefact-name-suffix") == package_name.replace(
         "_", "-"
@@ -90,6 +97,127 @@ def assert_ci_coverage_action_contract(
     else:
         assert "cargo-manifest" not in coverage_inputs, (
             "expected pure-Python variant to omit Rust coverage inputs"
+        )
+
+
+def assert_coverage_main_workflow_contract(
+    *, coverage_main_workflow: str, package_name: str, use_rust: bool
+) -> None:
+    """Assert the generated push-to-main coverage upload workflow contract.
+
+    Parameters
+    ----------
+    coverage_main_workflow : str
+        UTF-8 text of the generated ``coverage-main.yml`` workflow.
+    package_name : str
+        Generated Python import package name used to derive the coverage
+        artefact suffix.
+    use_rust : bool
+        Whether the rendered variant includes the optional Rust extension.
+
+    Returns
+    -------
+    None
+        The helper returns after the coverage-main workflow contract matches
+        expectations.
+
+    Raises
+    ------
+    AssertionError
+        Raised when the triggers, guarded upload, coverage generation, or Rust
+        manifest wiring are wrong.
+
+    Examples
+    --------
+    Validate a rendered coverage-main workflow::
+
+        assert_coverage_main_workflow_contract(
+            coverage_main_workflow=coverage_main_workflow,
+            package_name="example_pkg",
+            use_rust=True,
+        )
+    """
+    # ``on:`` is parsed by PyYAML as the boolean key ``True``, so assert the
+    # triggers against the raw text to stay robust.
+    assert "branches: [main]" in coverage_main_workflow, (
+        "expected coverage-main to upload on push to main"
+    )
+    assert "workflow_dispatch:" in coverage_main_workflow, (
+        "expected coverage-main to allow manual dispatch (automerge pushes do "
+        "not fire push-event workflows)"
+    )
+    parsed = parse_yaml_mapping(coverage_main_workflow, "coverage-main workflow")
+    jobs = require_mapping(parsed, "jobs", "coverage-main workflow")
+    upload_job = require_mapping(jobs, "coverage-upload", "coverage-main jobs")
+    permissions = require_mapping(upload_job, "permissions", "coverage-upload job")
+    assert permissions.get("contents") == "read", (
+        "expected coverage-main upload job to restrict GITHUB_TOKEN to reads"
+    )
+    steps = require_sequence(upload_job, "steps", "coverage-upload job")
+
+    generate_steps = [
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("name") == "Generate coverage"
+    ]
+    assert len(generate_steps) == 1, "expected one shared coverage generation step"
+    generate_step = generate_steps[0]
+    assert (
+        generate_step.get("uses")
+        == "leynos/shared-actions/.github/actions/generate-coverage"
+        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd"
+    ), "expected coverage-main to use the pinned shared coverage action"
+    generate_inputs = require_mapping(generate_step, "with", "coverage generation step")
+    assert generate_inputs.get("output-path") == "coverage.xml", (
+        "expected coverage-main to write cobertura coverage.xml"
+    )
+    assert generate_inputs.get("format") == "cobertura", (
+        "expected coverage-main to generate cobertura coverage for CodeScene"
+    )
+    assert generate_inputs.get("with-ratchet") == "true", (
+        "expected coverage-main to advance the authoritative ratchet baseline"
+    )
+    assert generate_inputs.get("artefact-name-suffix") == package_name.replace(
+        "_", "-"
+    ), "expected package-specific coverage artefact name suffix"
+
+    upload_steps = [
+        step
+        for step in steps
+        if isinstance(step, dict)
+        and step.get("name") == "Upload coverage data to CodeScene"
+    ]
+    assert len(upload_steps) == 1, "expected one guarded CodeScene upload step"
+    upload_step = upload_steps[0]
+    assert (
+        upload_step.get("uses")
+        == "leynos/shared-actions/.github/actions/upload-codescene-coverage"
+        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd"
+    ), "expected coverage-main to use the pinned shared upload action"
+    assert upload_step.get("if") == "env.CS_ACCESS_TOKEN != ''", (
+        "expected the CodeScene upload to skip when the access token is absent"
+    )
+    upload_inputs = require_mapping(upload_step, "with", "CodeScene upload step")
+    assert upload_inputs.get("format") == "cobertura", (
+        "expected the CodeScene upload to send cobertura coverage"
+    )
+    assert upload_inputs.get("path") == "coverage.xml", (
+        "expected the CodeScene upload to read coverage.xml"
+    )
+
+    if use_rust:
+        assert generate_inputs.get("cargo-manifest") == "rust_extension/Cargo.toml", (
+            "expected Rust variant coverage-main to pass the extension manifest"
+        )
+        assert "leynos/shared-actions/.github/actions/setup-rust" in (
+            coverage_main_workflow
+        ), "expected Rust variant coverage-main to set up Rust"
+    else:
+        assert "cargo-manifest" not in coverage_main_workflow, (
+            "expected pure-Python coverage-main to omit Rust coverage inputs"
+        )
+        assert "setup-rust" not in coverage_main_workflow, (
+            "expected pure-Python coverage-main to omit Rust setup"
         )
 
 
@@ -143,6 +271,10 @@ def _assert_ci_workflow_contracts(
     )
     assert "leynos/shared-actions/.github/actions/generate-coverage" in ci_workflow, (
         "expected generated CI workflow to use the shared coverage action"
+    )
+    assert "cs-coverage upload" not in ci_workflow, (
+        "expected the pull-request CI job to defer the CodeScene upload to "
+        "coverage-main.yml"
     )
     if use_rust:
         assert "leynos/shared-actions/.github/actions/setup-rust" in ci_workflow, (

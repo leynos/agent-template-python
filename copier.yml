@@ -20,3 +20,11 @@ python_version:
   type: str
   default: "3.10"
   help: Minimum supported Python version
+
+codescene_project_id:
+  type: str
+  default: ""
+  help: >-
+    CodeScene project id for the coverage gate (leave blank until this repo
+    is onboarded to CodeScene). When set, the value is surfaced in the CI
+    deferred-gate note; token-less repos stay green regardless.
