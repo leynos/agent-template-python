@@ -8,12 +8,23 @@ from here so checkout security behaviour is asserted consistently.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from tests.helpers.generated_files import (
     parse_yaml_mapping,
     require_mapping,
     require_sequence,
+)
+
+# Dependabot owns the shared-actions commit SHA; contract tests assert the
+# reusable action path and that it is pinned to a full 40-hex commit SHA, but
+# not which SHA. See docs/developers-guide.md, "Workflow pins and Dependabot".
+_GENERATE_COVERAGE_USES_RE = re.compile(
+    r"^leynos/shared-actions/\.github/actions/generate-coverage@[0-9a-f]{40}$"
+)
+_UPLOAD_CODESCENE_COVERAGE_USES_RE = re.compile(
+    r"^leynos/shared-actions/\.github/actions/upload-codescene-coverage@[0-9a-f]{40}$"
 )
 
 
@@ -68,11 +79,11 @@ def assert_ci_coverage_action_contract(
     ]
     assert len(coverage_steps) == 1, "expected one shared coverage action step"
     coverage_step = coverage_steps[0]
-    assert (
-        coverage_step.get("uses")
-        == "leynos/shared-actions/.github/actions/generate-coverage"
-        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd"
-    ), "expected CI to use the pinned shared coverage action"
+    coverage_uses = str(coverage_step.get("uses"))
+    assert _GENERATE_COVERAGE_USES_RE.match(coverage_uses), (
+        "expected CI to use the shared coverage action pinned to a 40-hex "
+        f"commit SHA, got {coverage_uses!r}"
+    )
     assert coverage_step.get("if") == "${{ github.event_name == 'pull_request' }}", (
         "expected CI coverage generation to be guarded to pull requests so "
         "coverage-main.yml owns the push-to-main upload"
@@ -162,11 +173,11 @@ def assert_coverage_main_workflow_contract(
     ]
     assert len(generate_steps) == 1, "expected one shared coverage generation step"
     generate_step = generate_steps[0]
-    assert (
-        generate_step.get("uses")
-        == "leynos/shared-actions/.github/actions/generate-coverage"
-        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd"
-    ), "expected coverage-main to use the pinned shared coverage action"
+    generate_uses = str(generate_step.get("uses"))
+    assert _GENERATE_COVERAGE_USES_RE.match(generate_uses), (
+        "expected coverage-main to use the shared coverage action pinned to "
+        f"a 40-hex commit SHA, got {generate_uses!r}"
+    )
     generate_inputs = require_mapping(generate_step, "with", "coverage generation step")
     assert generate_inputs.get("output-path") == "coverage.xml", (
         "expected coverage-main to write cobertura coverage.xml"
@@ -189,11 +200,11 @@ def assert_coverage_main_workflow_contract(
     ]
     assert len(upload_steps) == 1, "expected one guarded CodeScene upload step"
     upload_step = upload_steps[0]
-    assert (
-        upload_step.get("uses")
-        == "leynos/shared-actions/.github/actions/upload-codescene-coverage"
-        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd"
-    ), "expected coverage-main to use the pinned shared upload action"
+    upload_uses = str(upload_step.get("uses"))
+    assert _UPLOAD_CODESCENE_COVERAGE_USES_RE.match(upload_uses), (
+        "expected coverage-main to use the shared upload action pinned to a "
+        f"40-hex commit SHA, got {upload_uses!r}"
+    )
     assert upload_step.get("if") == "env.CS_ACCESS_TOKEN != ''", (
         "expected the CodeScene upload to skip when the access token is absent"
     )
