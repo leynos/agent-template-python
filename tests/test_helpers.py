@@ -26,6 +26,7 @@ from tests.helpers.rendering import read_generated_file
 from tests.helpers.tooling_contracts import (
     assert_ci_coverage_action_contract,
     assert_common_make_targets,
+    assert_coverage_main_workflow_contract,
 )
 from tests.utilities import docker_environment
 
@@ -494,6 +495,114 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     )
 
 
+def _coverage_main_workflow(*, guard: str, rust_setup: str = "") -> str:
+    """Return a minimal generated coverage-main workflow for contract tests."""
+    return f"""\
+name: Coverage (main)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  coverage-upload:
+    permissions:
+      contents: read
+    steps:
+{rust_setup}\
+      - name: Generate coverage
+        uses: leynos/shared-actions/.github/actions/generate-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
+        with:
+          output-path: coverage.xml
+          format: cobertura
+          artefact-name-suffix: helper-pkg
+          with-ratchet: 'true'
+      - name: Upload coverage data to CodeScene
+        if: {guard}
+        uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
+        with:
+          format: cobertura
+          path: coverage.xml
+"""
+
+
+def test_coverage_main_workflow_contract_validates_guarded_upload() -> None:
+    """Validate the push-to-main coverage upload workflow contract.
+
+    Parameters
+    ----------
+    None
+        This test does not use pytest fixtures.
+
+    Returns
+    -------
+    None
+        The test passes when a guarded pure-Python coverage-main workflow is
+        accepted and an unguarded upload is rejected.
+    """
+    assert_coverage_main_workflow_contract(
+        coverage_main_workflow=_coverage_main_workflow(
+            guard="env.CS_ACCESS_TOKEN != ''"
+        ),
+        package_name="helper_pkg",
+        use_rust=False,
+    )
+
+    with pytest.raises(
+        AssertionError,
+        match="expected the CodeScene upload to skip when the access token is absent",
+    ):
+        assert_coverage_main_workflow_contract(
+            coverage_main_workflow=_coverage_main_workflow(guard="always()"),
+            package_name="helper_pkg",
+            use_rust=False,
+        )
+
+
+def test_coverage_main_workflow_contract_requires_rust_setup() -> None:
+    """Validate the Rust variant coverage-main workflow contract.
+
+    Parameters
+    ----------
+    None
+        This test does not use pytest fixtures.
+
+    Returns
+    -------
+    None
+        The test passes when a Rust coverage-main workflow that omits Rust
+        setup and the extension manifest is rejected.
+    """
+    with pytest.raises(
+        AssertionError,
+        match="expected Rust variant coverage-main to pass the extension manifest",
+    ):
+        assert_coverage_main_workflow_contract(
+            coverage_main_workflow=_coverage_main_workflow(
+                guard="env.CS_ACCESS_TOKEN != ''"
+            ),
+            package_name="helper_pkg",
+            use_rust=True,
+        )
+
+    rust_setup = (
+        "      - name: Set up Rust\n"
+        "        uses: leynos/shared-actions/.github/actions/setup-rust"
+        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd\n"
+    )
+    rust_manifest = "          cargo-manifest: rust_extension/Cargo.toml\n"
+    workflow = _coverage_main_workflow(
+        guard="env.CS_ACCESS_TOKEN != ''", rust_setup=rust_setup
+    ).replace(
+        "          with-ratchet: 'true'\n",
+        "          with-ratchet: 'true'\n" + rust_manifest,
+    )
+    assert_coverage_main_workflow_contract(
+        coverage_main_workflow=workflow,
+        package_name="helper_pkg",
+        use_rust=True,
+    )
+
+
 def _ci_workflow(*, persist_credentials: str, coverage_inputs: str) -> str:
     """Return a minimal generated CI workflow for coverage-contract tests."""
     return f"""\
@@ -505,9 +614,11 @@ jobs:
         with:
           persist-credentials: {persist_credentials}
       - name: Test and Measure Coverage
-        uses: leynos/shared-actions/.github/actions/generate-coverage@296dc4aa07acf3a7f60a54fb6bccb5672a597479
+        if: ${{{{ github.event_name == 'pull_request' }}}}
+        uses: leynos/shared-actions/.github/actions/generate-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
         with:
           output-path: coverage.xml
           format: cobertura
+          with-ratchet: 'true'
 {coverage_inputs}\
 """

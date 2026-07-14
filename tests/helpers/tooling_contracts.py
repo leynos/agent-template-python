@@ -21,6 +21,7 @@ from tests.helpers.ci_contracts import (
     _assert_ci_workflow_contracts,
     _parse_ci_workflow,
     assert_ci_coverage_action_contract,
+    assert_coverage_main_workflow_contract,
 )
 from tests.helpers.makefile_contracts import (
     _assert_makefile_contracts,
@@ -33,6 +34,7 @@ from tests.helpers.wheel_contracts import _assert_wheel_workflow_contracts
 __all__ = [
     "assert_ci_coverage_action_contract",
     "assert_common_make_targets",
+    "assert_coverage_main_workflow_contract",
     "assert_generated_tooling_contracts",
 ]
 
@@ -44,6 +46,7 @@ def assert_generated_tooling_contracts(
     pyproject: dict[str, Any],
     makefile: str,
     ci_workflow: str,
+    coverage_main_workflow: str,
     act_validation_workflow: str,
     release_workflow: str,
     build_wheels_workflow: str,
@@ -65,6 +68,8 @@ def assert_generated_tooling_contracts(
         UTF-8 text of the generated Makefile.
     ci_workflow : str
         UTF-8 text of the generated CI workflow.
+    coverage_main_workflow : str
+        UTF-8 text of the generated push-to-main coverage upload workflow.
     act_validation_workflow : str
         UTF-8 text of the generated act-validation workflow.
     release_workflow : str
@@ -99,6 +104,7 @@ def assert_generated_tooling_contracts(
             pyproject=pyproject,
             makefile=makefile,
             ci_workflow=ci_workflow,
+            coverage_main_workflow=coverage_main_workflow,
             act_validation_workflow=act_validation_workflow,
             release_workflow=release_workflow,
             build_wheels_workflow=build_wheels_workflow,
@@ -124,6 +130,11 @@ def assert_generated_tooling_contracts(
     _assert_ci_workflow_contracts(
         parsed_ci_workflow=parsed_ci_workflow,
         ci_workflow=ci_workflow,
+        use_rust=use_rust,
+    )
+    assert_coverage_main_workflow_contract(
+        coverage_main_workflow=coverage_main_workflow,
+        package_name=package_name,
         use_rust=use_rust,
     )
     _assert_act_validation_workflow_contracts(
