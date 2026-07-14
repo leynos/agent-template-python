@@ -395,6 +395,52 @@ def test_ci_coverage_action_contract_validates_rust_manifest_edge() -> None:
     )
 
 
+def test_ci_coverage_action_contract_accepts_any_pinned_sha_rejects_branch_ref() -> (
+    None
+):
+    """Validate the coverage action contract is SHA-value-agnostic but shape-strict.
+
+    Parameters
+    ----------
+    None
+        This test does not use pytest fixtures.
+
+    Returns
+    -------
+    None
+        The test passes when a workflow pinned to a different 40-hex commit
+        SHA is accepted (Dependabot owns the SHA value) and a workflow
+        pinned to a mutable branch ref is rejected.
+    """
+    workflow = _ci_workflow(
+        persist_credentials="false",
+        coverage_inputs="          artefact-name-suffix: helper-pkg\n",
+    )
+
+    dependabot_bumped_workflow = workflow.replace(
+        "927edd45ae77be4251a8a18ca9eb5613a2e32cbd",
+        "0123456789abcdef0123456789abcdef01234567",
+    )
+    assert_ci_coverage_action_contract(
+        ci_workflow=dependabot_bumped_workflow,
+        package_name="helper_pkg",
+        use_rust=False,
+    )
+
+    branch_ref_workflow = workflow.replace(
+        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd", "@main"
+    )
+    with pytest.raises(
+        AssertionError,
+        match="expected CI to use the shared coverage action pinned to a 40-hex",
+    ):
+        assert_ci_coverage_action_contract(
+            ci_workflow=branch_ref_workflow,
+            package_name="helper_pkg",
+            use_rust=False,
+        )
+
+
 def test_parent_makefile_help_target_lists_available_targets() -> None:
     """Validate the parent repository ``help`` target output.
 
@@ -601,6 +647,66 @@ def test_coverage_main_workflow_contract_requires_rust_setup() -> None:
         package_name="helper_pkg",
         use_rust=True,
     )
+
+
+def test_coverage_main_workflow_contract_accepts_any_pinned_sha_rejects_branch_ref() -> (
+    None
+):
+    """Validate the coverage-main contract is SHA-value-agnostic but shape-strict.
+
+    Parameters
+    ----------
+    None
+        This test does not use pytest fixtures.
+
+    Returns
+    -------
+    None
+        The test passes when a coverage-main workflow pinned to a different
+        40-hex commit SHA is accepted (Dependabot owns the SHA value) and a
+        workflow pinned to a mutable branch ref is rejected.
+    """
+    workflow = _coverage_main_workflow(guard="env.CS_ACCESS_TOKEN != ''")
+
+    dependabot_bumped_workflow = workflow.replace(
+        "927edd45ae77be4251a8a18ca9eb5613a2e32cbd",
+        "0123456789abcdef0123456789abcdef01234567",
+    )
+    assert_coverage_main_workflow_contract(
+        coverage_main_workflow=dependabot_bumped_workflow,
+        package_name="helper_pkg",
+        use_rust=False,
+    )
+
+    branch_ref_workflow = workflow.replace(
+        "generate-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd",
+        "generate-coverage@main",
+    )
+    with pytest.raises(
+        AssertionError,
+        match="expected coverage-main to use the shared coverage action pinned "
+        "to a 40-hex",
+    ):
+        assert_coverage_main_workflow_contract(
+            coverage_main_workflow=branch_ref_workflow,
+            package_name="helper_pkg",
+            use_rust=False,
+        )
+
+    upload_branch_ref_workflow = workflow.replace(
+        "upload-codescene-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd",
+        "upload-codescene-coverage@main",
+    )
+    with pytest.raises(
+        AssertionError,
+        match="expected coverage-main to use the shared upload action pinned "
+        "to a 40-hex",
+    ):
+        assert_coverage_main_workflow_contract(
+            coverage_main_workflow=upload_branch_ref_workflow,
+            package_name="helper_pkg",
+            use_rust=False,
+        )
 
 
 def _ci_workflow(*, persist_credentials: str, coverage_inputs: str) -> str:
