@@ -100,8 +100,9 @@ is available. Its mutmut job requires a minimum Python version of 3.13 or newer;
 the hidden `mutmut_supported` Copier answer enforces that gate. The cargo-mutants
 job is gated independently by `use_rust`, so a Rust-enabled project with a
 Python 3.12 baseline still receives Rust mutation testing. Both jobs delegate to
-the reusable workflows pinned at
-`leynos/shared-actions@859416a90eb3987b46a57682c5d6b8964ad3f0a6`.
+reusable `leynos/shared-actions` workflows. Dependabot owns their pinned commit
+SHAs; contract tests and documentation must not duplicate those values because
+Dependabot cannot update them outside the workflow template.
 
 ### Workflow pins and Dependabot
 
