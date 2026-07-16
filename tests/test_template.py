@@ -14,6 +14,7 @@ normal user caches used by those generated projects.
 from __future__ import annotations
 
 import ast
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -39,8 +40,6 @@ from tests.helpers.tooling_contracts import (
     assert_common_make_targets,
     assert_generated_tooling_contracts,
 )
-
-MUTATION_WORKFLOW_PIN = "859416a90eb3987b46a57682c5d6b8964ad3f0a6"
 
 
 def test_python_only_help_output_snapshot(
@@ -598,10 +597,18 @@ def test_generated_mutation_testing_gating(
         assert mutation_inputs.get("python-version") == python_version, (
             "expected the mutmut job to run on the project's baseline Python"
         )
+    expected_workflows = {
+        "mutation": "mutation-mutmut.yml",
+        "mutation-rust": "mutation-cargo.yml",
+    }
     for job_name, job in jobs.items():
         uses = str(job.get("uses", "")) if isinstance(job, dict) else ""
-        assert uses.endswith(f"@{MUTATION_WORKFLOW_PIN}"), (
-            f"expected {job_name} to pin the shared mutation workflow"
+        workflow, separator, revision = uses.partition("@")
+        assert workflow == (
+            f"leynos/shared-actions/.github/workflows/{expected_workflows[job_name]}"
+        ), f"expected {job_name} to use its shared mutation workflow"
+        assert separator and re.fullmatch(r"[0-9a-f]{40}", revision), (
+            f"expected {job_name} to pin the shared mutation workflow to a commit SHA"
         )
 
 
