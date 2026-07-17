@@ -35,7 +35,7 @@ CLIPPY_FLAGS ?= $(CARGO_FLAGS) -- $(RUST_FLAGS)
 TEST_FLAGS ?= $(CARGO_FLAGS)
 TEST_CMD := $(if $(CARGO_AVAILABLE),$(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test),)
 WHITAKER_CARGO_FLAGS ?= --all-targets --all-features
-WHITAKER_INSTALLER_VERSION ?= 0.2.5
+WHITAKER_INSTALLER_VERSION ?= 0.2.6
 WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
 {% endif %}
 
