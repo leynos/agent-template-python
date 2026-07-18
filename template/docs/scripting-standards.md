@@ -30,8 +30,12 @@ as a default.
   inline.
 - Each script starts with an `uv` script block so runtime and dependency
   expectations travel with the file. Prefer the shebang
-  `#!/usr/bin/env -S uv run python` followed by the metadata block shown in the
-  example below.
+  `#!/usr/bin/env -S uv run --script` followed by the metadata block shown in
+  the example below. `uv run --script` reads the PEP 723 inline metadata block
+  and installs its declared dependencies before execution; `uv run python`
+  invokes the interpreter directly and silently ignores the metadata block, so
+  a directly executed script (`./script.py`) fails at import time because its
+  dependencies were never installed.
 - External processes are invoked via
   [`cuprum`](https://github.com/leynos/cuprum/) to provide typed,
   allowlist-based command execution rather than ad‑hoc shell strings. Cuprum's
@@ -435,7 +439,7 @@ except FileNotFoundError:
 ## Cyclopts + cuprum + pathlib together (reference script)
 
 ```python
-#!/usr/bin/env -S uv run python
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.13"
 # dependencies = ["cyclopts>=2.9", "cuprum", "cmd-mox"]
