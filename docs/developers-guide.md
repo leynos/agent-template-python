@@ -31,12 +31,16 @@ template itself.
 
 ## Parent CI Workflows
 
-The parent repository uses two separate GitHub Actions workflows to keep
+The parent repository uses three separate GitHub Actions workflows to keep
 Docker-dependent tests isolated from the standard template test gate:
 
 - `.github/workflows/ci.yml` runs `make test` and `make spelling` on every push
   to `main` and on all pull requests. It installs `markdownlint-cli2` and
-  `mbake` at pinned versions.
+  `mbake` at pinned versions, and skips `make audit` for Dependabot pull
+  requests with
+  `if: github.actor != 'dependabot[bot]'`.
+- `.github/workflows/audit.yml` runs `make audit` on a weekly schedule against
+  the default branch.
 - `.github/workflows/act-validation.yml` runs `make test WITH_ACT=1`. It
   additionally downloads the `act` binary at a pinned `ACT_VERSION`, verifies
   its SHA-256 checksum before extraction, and confirms Docker availability via

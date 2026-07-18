@@ -37,10 +37,13 @@ actions under `.github/`.
   sets up Python 3.13, installs `uv`, validates the generated `Makefile` with
   `mbake`, runs `make build`, `make check-fmt`,
   `make lint` (Ruff + `interrogate --fail-under 100 $(PYTHON_TARGETS)` + Pylint),
-  `make typecheck`, `make spelling`, and `make audit`, then delegates coverage
+  `make typecheck`, `make spelling`, and `make audit` except for Dependabot pull
+  requests via `if: github.actor != 'dependabot[bot]'`, then delegates coverage
   generation to the shared coverage action. When the Rust extension is enabled,
   it also sets up Rust, installs Rust lint and test tools, and passes
   `rust_extension/Cargo.toml` to coverage.
+- `.github/workflows/audit.yml` runs `make audit` against the default branch
+  weekly as the compensating control for the Dependabot CI bypass.
 - `.github/workflows/act-validation.yml` runs rendered workflow validation in a
   separate workflow. It installs `act`, checks Docker availability, and runs
   `make test WITH_ACT=1` outside the coverage path.
