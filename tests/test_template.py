@@ -42,6 +42,41 @@ from tests.helpers.tooling_contracts import (
 )
 
 
+DEVELOPER_MUTATION_INTRO = """\
+- `.github/workflows/mutation-testing.yml` runs daily at 09:30 UTC and supports
+  manual dispatch. It delegates to reusable workflows from `leynos/shared-actions`;
+  stagger the generated cron schedule before adopting it alongside other
+  repositories."""
+DEVELOPER_MUTMUT_GUIDANCE = """\
+  The mutmut job is generated only when the minimum Python version is 3.13 or
+  newer because the shared workflow helpers require Python 3.13 or newer."""
+DEVELOPER_RUST_MUTATION_GUIDANCE = """\
+  Rust-enabled projects also receive a cargo-mutants job for `rust_extension/`,
+  independently of the Python version baseline."""
+USER_MUTATION_INTRO = """\
+## Scheduled Mutation Testing
+
+The `.github/workflows/mutation-testing.yml` workflow runs mutation testing
+daily at 09:30 UTC and can also be started manually from GitHub Actions. Adjust
+the generated cron schedule to stagger it against other repositories."""
+USER_MUTMUT_GUIDANCE = """\
+For projects whose minimum Python version is 3.13 or newer, the workflow runs
+mutmut against `mutation_pkg/`. The Python mutation job is omitted for
+older baselines because the shared workflow helpers require Python 3.13 or
+newer."""
+USER_RUST_MUTATION_GUIDANCE = """\
+Rust-enabled projects also run cargo-mutants against the crate in
+`rust_extension/`, independently of the Python version baseline."""
+
+
+def _rendered_section(text: str, *, start: str, end: str) -> str:
+    """Return an optional rendered section with Jinja-only blank lines collapsed."""
+    if start not in text:
+        return ""
+    section = text.partition(start)[2].partition(end)[0]
+    return re.sub(r"\n{3,}", "\n\n", f"{start}{section}").strip()
+
+
 def test_python_only_help_output_snapshot(
     copier: CopierFixture, tmp_path: Path, snapshot: SnapshotAssertion
 ) -> None:
@@ -563,6 +598,42 @@ def test_generated_mutation_testing_gating(
         use_rust=use_rust,
         python_version=python_version,
     )
+    developer_guide = read_generated_text(project / "docs" / "developers-guide.md")
+    users_guide = read_generated_text(project / "docs" / "users-guide.md")
+    expected_developer_guidance = "\n\n".join(
+        section
+        for section, enabled in (
+            (DEVELOPER_MUTATION_INTRO, expect_mutmut or use_rust),
+            (DEVELOPER_MUTMUT_GUIDANCE, expect_mutmut),
+            (DEVELOPER_RUST_MUTATION_GUIDANCE, use_rust),
+        )
+        if enabled
+    )
+    expected_user_guidance = "\n\n".join(
+        section
+        for section, enabled in (
+            (USER_MUTATION_INTRO, expect_mutmut or use_rust),
+            (USER_MUTMUT_GUIDANCE, expect_mutmut),
+            (USER_RUST_MUTATION_GUIDANCE, use_rust),
+        )
+        if enabled
+    )
+    assert (
+        _rendered_section(
+            developer_guide,
+            start="- `.github/workflows/mutation-testing.yml`",
+            end="- `.github/actions/build-wheels`",
+        )
+        == expected_developer_guidance
+    ), "expected developer mutation guidance to match the active mutation gates"
+    assert (
+        _rendered_section(
+            users_guide,
+            start="## Scheduled Mutation Testing",
+            end="## Rust Test Behaviour",
+        )
+        == expected_user_guidance
+    ), "expected user mutation guidance to match the active mutation gates"
     pyproject = parse_toml_file(project / "pyproject.toml")
     mutmut_config = pyproject.get("tool", {}).get("mutmut")
     if expect_mutmut:
@@ -607,8 +678,12 @@ def test_generated_mutation_testing_gating(
         assert workflow == (
             f"leynos/shared-actions/.github/workflows/{expected_workflows[job_name]}"
         ), f"expected {job_name} to use its shared mutation workflow"
-        assert separator and re.fullmatch(r"[0-9a-f]{40}", revision), (
-            f"expected {job_name} to pin the shared mutation workflow to a commit SHA"
+        assert separator == "@", (
+            f"expected {job_name} shared mutation workflow reference to contain @"
+        )
+        assert re.fullmatch(r"[0-9a-f]{40}", revision), (
+            f"expected {job_name} shared mutation workflow revision to be a "
+            "40-character hexadecimal commit SHA"
         )
 
 
