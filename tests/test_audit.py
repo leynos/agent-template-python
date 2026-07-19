@@ -129,6 +129,9 @@ def test_generated_audit_workflow_has_expected_contract(
     assert isinstance(workflow_triggers, dict), (
         "expected generated audit workflow to include triggers"
     )
+    assert "workflow_dispatch" in workflow_triggers, (
+        "expected generated audit workflow to support manual dispatch"
+    )
     schedule = require_sequence(workflow_triggers, "schedule", "audit workflow trigger")
     assert schedule == [{"cron": "11 7 * * 1"}], (
         "expected generated audit workflow to run weekly"
@@ -143,10 +146,18 @@ def test_generated_audit_workflow_has_expected_contract(
         "expected generated audit workflow to cap audit job runtime"
     )
     steps = require_sequence(audit_job, "steps", "audit workflow audit job")
-    step_names = [step.get("name") for step in steps if isinstance(step, dict)]
-    assert "Audit dependencies" in step_names, (
-        "expected generated audit workflow to run dependency audit"
+    audit_steps = [
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("name") == "Audit dependencies"
+    ]
+    assert len(audit_steps) == 1, (
+        "expected generated audit workflow to include one dependency audit step"
     )
+    assert audit_steps[0].get("run") == "make audit", (
+        "expected generated audit workflow to run the dependency audit target"
+    )
+    step_names = [step.get("name") for step in steps if isinstance(step, dict)]
     rust_step_names = {"Set up Rust", "Install cargo-audit"}
     if use_rust:
         assert rust_step_names.issubset(step_names), (

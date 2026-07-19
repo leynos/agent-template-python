@@ -77,8 +77,11 @@ override pins without editing target recipes.
 
 `template/.github/workflows/ci.yml.jinja` mirrors the generated local gates. It
 sets up Python, optionally sets up Rust, runs `make check-fmt`, `make lint`,
-`make typecheck`, `make spelling`, and `make audit`, then delegates coverage to
-`leynos/shared-actions/.github/actions/generate-coverage`.
+`make typecheck`, `make spelling`, and `make audit` except when
+`github.actor == 'dependabot[bot]'`, then delegates coverage to
+`leynos/shared-actions/.github/actions/generate-coverage`. The scheduled
+`.github/workflows/audit.yml` workflow audits the default branch weekly as the
+compensating control.
 
 The shared coverage action runs Python coverage through xdist-backed SlipCover
 support. Generated pytest discovery is therefore constrained to the top-level
