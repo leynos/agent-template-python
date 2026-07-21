@@ -82,7 +82,12 @@ jobs:
       - name: Check spelling
         run: make spelling
 
+      # Dependency audits report advisories against the whole lockfile, so a
+      # newly published advisory would fail every Dependabot PR regardless of
+      # content and deadlock auto-merge. The scheduled audit workflow covers
+      # Dependabot merges instead.
       - name: Audit dependencies
+        if: github.actor != 'dependabot[bot]'
         run: make audit
 
       # Coverage runs on pull requests only. Pushes to main upload their

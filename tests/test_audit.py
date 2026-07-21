@@ -15,6 +15,11 @@ from pathlib import Path
 import pytest
 from pytest_copier.plugin import CopierFixture
 
+from tests.helpers.generated_files import (
+    parse_yaml_mapping,
+    require_mapping,
+    require_sequence,
+)
 from tests.helpers.rendering import render_project
 
 
@@ -90,6 +95,89 @@ def test_generated_audit_target_runs_expected_tools(
     else:
         assert all(not line.startswith("cargo|") for line in log_lines), (
             "expected pure-Python audit target to omit cargo audit"
+        )
+
+
+@pytest.mark.parametrize(
+    ("target_dir", "project_name", "package_name", "use_rust"),
+    [
+        ("audit-workflow-pure", "AuditWorkflowPure", "audit_workflow_pure", False),
+        ("audit-workflow-rust", "AuditWorkflowRust", "audit_workflow_rust", True),
+    ],
+)
+def test_generated_audit_workflow_has_expected_contract(
+    copier: CopierFixture,
+    tmp_path: Path,
+    target_dir: str,
+    project_name: str,
+    package_name: str,
+    *,
+    use_rust: bool,
+) -> None:
+    """Validate generated scheduled audit workflow structure."""
+    project = render_project(
+        tmp_path / target_dir,
+        copier,
+        project_name=project_name,
+        package_name=package_name,
+        use_rust=use_rust,
+    )
+    workflow_text = (project.path / ".github/workflows/audit.yml").read_text(
+        encoding="utf-8"
+    )
+    workflow = parse_yaml_mapping(workflow_text, "audit workflow")
+    workflow_triggers = workflow.get(True)
+    assert isinstance(workflow_triggers, dict), (
+        "expected generated audit workflow to include triggers"
+    )
+    assert "workflow_dispatch" in workflow_triggers, (
+        "expected generated audit workflow to support manual dispatch"
+    )
+    schedule = require_sequence(workflow_triggers, "schedule", "audit workflow trigger")
+    assert schedule == [{"cron": "11 7 * * 1"}], (
+        "expected generated audit workflow to run weekly"
+    )
+    permissions = require_mapping(workflow, "permissions", "audit workflow")
+    assert permissions == {"contents": "read"}, (
+        "expected generated audit workflow to use read-only contents permission"
+    )
+    jobs = require_mapping(workflow, "jobs", "audit workflow")
+    audit_job = require_mapping(jobs, "audit", "audit workflow jobs")
+    assert audit_job.get("timeout-minutes") == 30, (
+        "expected generated audit workflow to cap audit job runtime"
+    )
+    steps = require_sequence(audit_job, "steps", "audit workflow audit job")
+    audit_steps = [
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("name") == "Audit dependencies"
+    ]
+    assert len(audit_steps) == 1, (
+        "expected generated audit workflow to include one dependency audit step"
+    )
+    assert audit_steps[0].get("run") == "make audit", (
+        "expected generated audit workflow to run the dependency audit target"
+    )
+    step_names = [step.get("name") for step in steps if isinstance(step, dict)]
+    rust_step_names = {"Set up Rust", "Install cargo-audit"}
+    if use_rust:
+        assert rust_step_names.issubset(step_names), (
+            "expected Rust audit workflow to include Rust audit setup"
+        )
+        install_steps = [
+            step
+            for step in steps
+            if isinstance(step, dict) and step.get("name") == "Install cargo-audit"
+        ]
+        assert len(install_steps) == 1, (
+            "expected Rust audit workflow to include one cargo-audit install step"
+        )
+        assert install_steps[0].get("run") == "cargo install --locked cargo-audit", (
+            "expected Rust audit workflow to install cargo-audit with a locked build"
+        )
+    else:
+        assert rust_step_names.isdisjoint(step_names), (
+            "expected pure-Python audit workflow to omit Rust audit setup"
         )
 
 

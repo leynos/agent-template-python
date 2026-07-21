@@ -31,12 +31,16 @@ template itself.
 
 ## Parent CI Workflows
 
-The parent repository uses two separate GitHub Actions workflows to keep
+The parent repository uses three separate GitHub Actions workflows to keep
 Docker-dependent tests isolated from the standard template test gate:
 
 - `.github/workflows/ci.yml` runs `make test` and `make spelling` on every push
   to `main` and on all pull requests. It installs `markdownlint-cli2` and
-  `mbake` at pinned versions.
+  `mbake` at pinned versions, and skips `make audit` for Dependabot pull
+  requests with
+  `if: github.actor != 'dependabot[bot]'`.
+- `.github/workflows/audit.yml` runs `make audit` on a weekly schedule against
+  the default branch.
 - `.github/workflows/act-validation.yml` runs `make test WITH_ACT=1`. It
   additionally downloads the `act` binary at a pinned `ACT_VERSION`, verifies
   its SHA-256 checksum before extraction, and confirms Docker availability via
@@ -73,8 +77,11 @@ override pins without editing target recipes.
 
 `template/.github/workflows/ci.yml.jinja` mirrors the generated local gates. It
 sets up Python, optionally sets up Rust, runs `make check-fmt`, `make lint`,
-`make typecheck`, `make spelling`, and `make audit`, then delegates coverage to
-`leynos/shared-actions/.github/actions/generate-coverage`.
+`make typecheck`, `make spelling`, and `make audit` except when
+`github.actor == 'dependabot[bot]'`, then delegates coverage to
+`leynos/shared-actions/.github/actions/generate-coverage`. The scheduled
+`.github/workflows/audit.yml` workflow audits the default branch weekly as the
+compensating control.
 
 The shared coverage action runs Python coverage through xdist-backed SlipCover
 support. Generated pytest discovery is therefore constrained to the top-level

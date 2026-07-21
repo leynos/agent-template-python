@@ -44,8 +44,10 @@ when it is not already available.
 
 Run `make audit` to check generated project dependencies for known
 vulnerabilities. All generated projects run `pip-audit` against the Python
-environment created by `uv sync --group dev`. Rust-enabled projects also run
-`cargo audit` from the `rust_extension` crate directory.
+environment created by `uv sync --group dev`. CI skips `make audit` for
+Dependabot pull requests; a weekly scheduled audit on the default branch is the
+compensating control. Rust-enabled projects also run `cargo audit` from the
+`rust_extension` crate directory.
 
 ## Rust Test Behaviour
 
