@@ -111,6 +111,7 @@ def test_generated_audit_workflow_has_expected_contract(
     target_dir: str,
     project_name: str,
     package_name: str,
+    *,
     use_rust: bool,
 ) -> None:
     """Validate generated scheduled audit workflow structure."""
@@ -162,6 +163,17 @@ def test_generated_audit_workflow_has_expected_contract(
     if use_rust:
         assert rust_step_names.issubset(step_names), (
             "expected Rust audit workflow to include Rust audit setup"
+        )
+        install_steps = [
+            step
+            for step in steps
+            if isinstance(step, dict) and step.get("name") == "Install cargo-audit"
+        ]
+        assert len(install_steps) == 1, (
+            "expected Rust audit workflow to include one cargo-audit install step"
+        )
+        assert install_steps[0].get("run") == "cargo install --locked cargo-audit", (
+            "expected Rust audit workflow to install cargo-audit with a locked build"
         )
     else:
         assert rust_step_names.isdisjoint(step_names), (
