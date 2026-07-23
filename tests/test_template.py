@@ -20,6 +20,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from hypothesis import HealthCheck, example, given, settings
+from hypothesis import strategies as st
 from pytest_copier.plugin import CopierFixture
 from syrupy.assertion import SnapshotAssertion
 
@@ -687,6 +689,79 @@ def test_generated_mutation_testing_gating(
         )
 
 
+@settings(
+    deadline=None,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)
+@given(minor=st.integers(min_value=0, max_value=20))
+@example(minor=0)
+@example(minor=12)
+@example(minor=13)
+@example(minor=14)
+def test_python_version_minor_controls_mutmut_generation(
+    copier: CopierFixture,
+    tmp_path_factory: pytest.TempPathFactory,
+    minor: int,
+) -> None:
+    """Every valid Python 3 minor consistently controls mutmut generation.
+
+    Parameters
+    ----------
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path_factory
+        Factory creating an isolated destination for every generated example.
+    minor
+        Generated Python minor version in the representative range 0 through
+        20.
+
+    Returns
+    -------
+    None
+        The property holds when Python 3.13 and newer render the mutmut
+        workflow job and configuration, while older minors render neither.
+
+    Notes
+    -----
+    Hypothesis's function-scoped fixture health check is suppressed because
+    ``pytest-copier`` supplies ``copier`` at function scope. Each example is
+    isolated by a fresh destination from ``tmp_path_factory``.
+    """
+    project = render_project(
+        tmp_path_factory.mktemp(f"mutation-property-{minor}"),
+        copier,
+        project_name=f"MutationProperty{minor}",
+        package_name=f"mutation_property_{minor}",
+        use_rust=False,
+        python_version=f"3.{minor}",
+    )
+    workflow_path = project / ".github" / "workflows" / "mutation-testing.yml"
+    pyproject = parse_toml_file(project / "pyproject.toml")
+    mutmut_config = pyproject.get("tool", {}).get("mutmut")
+
+    if minor >= 13:
+        assert workflow_path.exists(), (
+            "expected supported Python minor to render the mutation workflow"
+        )
+        workflow = parse_yaml_mapping(
+            read_generated_text(workflow_path), "mutation workflow"
+        )
+        jobs = require_mapping(workflow, "jobs", "mutation workflow")
+        assert "mutation" in jobs, (
+            "expected supported Python minor to render the mutmut job"
+        )
+        assert mutmut_config is not None, (
+            "expected supported Python minor to render [tool.mutmut]"
+        )
+    else:
+        assert not workflow_path.exists(), (
+            "expected unsupported Python minor to omit the mutation workflow"
+        )
+        assert mutmut_config is None, (
+            "expected unsupported Python minor to omit [tool.mutmut]"
+        )
+
+
 @pytest.mark.parametrize("python_version", ["3", "three.13", "3.13.1", "4.0"])
 def test_python_version_rejects_unexpected_formats(
     copier: CopierFixture,
@@ -707,8 +782,9 @@ def test_python_version_rejects_unexpected_formats(
     Returns
     -------
     None
-        The test passes when Copier reports the version-format validation
-        error before evaluating dependent template answers.
+        The examples cover every rejected grammar shape: a missing minor,
+        non-numeric components, an extra patch component, and a non-3 major.
+        Copier reports the format error before evaluating dependent answers.
     """
     with pytest.raises(
         ValueError,
