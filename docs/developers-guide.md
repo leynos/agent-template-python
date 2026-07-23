@@ -95,6 +95,15 @@ Docker availability, and runs `make test WITH_ACT=1`.
 Rust-enabled workflows pass `rust_extension/Cargo.toml` to the coverage action
 because the generated Python project root does not contain a Rust manifest.
 
+The mutation-testing workflow template is rendered when either mutation engine
+is available. Its mutmut job requires a minimum Python version of 3.13 or newer;
+the hidden `mutmut_supported` Copier answer enforces that gate. The cargo-mutants
+job is gated independently by `use_rust`, so a Rust-enabled project with a
+Python 3.12 baseline still receives Rust mutation testing. Both jobs delegate to
+reusable `leynos/shared-actions` workflows. Dependabot owns their pinned commit
+SHAs; contract tests and documentation must not duplicate those values because
+Dependabot cannot update them outside the workflow template.
+
 ### Workflow pins and Dependabot
 
 Dependabot owns the upgrade of GitHub Actions and reusable workflows,

@@ -1,0 +1,62 @@
+name: Mutation testing
+
+# Thin caller of the shared mutation-testing reusable workflows; caller
+# guides: leynos/shared-actions docs/mutation-mutmut-workflow.md and
+# docs/mutation-cargo-workflow.md.
+# Scheduled runs mutate only files changed within the detection window;
+# manual dispatch runs mutate everything. To test a branch, select it in
+# the Actions "Run workflow" control.
+
+on:
+  schedule:
+    # Stagger this cron per repository so estate runs do not bunch up;
+    # existing repositories occupy the 03:05-09:05 UTC band.
+    - cron: "30 9 * * *" # Daily, 09:30 UTC
+  workflow_dispatch:
+
+# Default the token to no scopes; jobs opt in explicitly.
+permissions: {}
+
+# Serialize runs per ref: a dispatch during a scheduled run (or vice
+# versa) queues rather than racing. Runs are informational, so queued
+# runs wait instead of cancelling.
+concurrency:
+  group: mutation-testing-${{ "{{" }} github.ref {{ "}}" }}
+  cancel-in-progress: false
+
+jobs:
+{%- if mutmut_supported %}
+  mutation:
+    permissions:
+      contents: read
+      id-token: write # OIDC workflow-source resolution
+    uses: leynos/shared-actions/.github/workflows/mutation-mutmut.yml@859416a90eb3987b46a57682c5d6b8964ad3f0a6
+    with:
+      # Flat package layout: the package directory sits at the
+      # repository root, so no module prefix is stripped.
+      paths: "{{ package_name }}/"
+      module-prefix-strip: ""
+      # Always >= 3.13 here: this job renders only when the project's
+      # baseline interpreter satisfies the shared workflow's helper
+      # scripts.
+      python-version: "{{ python_version }}"
+{%- endif %}
+{%- if use_rust %}
+
+  mutation-rust:
+    permissions:
+      contents: read
+      id-token: write # OIDC workflow-source resolution
+    uses: leynos/shared-actions/.github/workflows/mutation-cargo.yml@859416a90eb3987b46a57682c5d6b8964ad3f0a6
+    with:
+      # The extension crate is the only Cargo target and lives outside
+      # the repository root, so it is declared as an extra crate and the
+      # root path list is emptied.
+      paths: ""
+      extra-crate-dirs: "rust_extension"
+      # The shared workflow always fans the root target out on manual
+      # dispatch, and this repository has no root crate, so that leg
+      # fails; keep it to a single shard. Scheduled scoped runs and the
+      # rust_extension target are unaffected.
+      shard-count: 1
+{%- endif %}

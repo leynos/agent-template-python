@@ -43,20 +43,22 @@ def run_quality_gates(project: CopierProject) -> None:
 
 
 def render_project(
-    tmp_path: Path,
+    destination: Path,
     copier: CopierFixture,
     *,
     project_name: str,
     package_name: str,
     use_rust: bool = False,
-    python_version: str = "3.10",
+    python_version: str = "3.12",
 ) -> CopierProject:
     """Render a generated Python project with explicit template answers.
 
     Parameters
     ----------
-    tmp_path : pathlib.Path
-        Temporary directory used as the generated project destination.
+    destination : pathlib.Path
+        Destination directory for the generated project. Callers may pass a
+        subdirectory of their pytest temporary directory to distinguish
+        rendered variants.
     copier : CopierFixture
         ``pytest-copier`` fixture bound to this template repository.
     project_name : str
@@ -65,7 +67,7 @@ def render_project(
         Python import package name answer passed to Copier.
     use_rust : bool, default=False
         Whether to include the optional PyO3 extension.
-    python_version : str, default="3.10"
+    python_version : str, default="3.12"
         Minimum supported Python version answer passed to Copier.
 
     Returns
@@ -79,7 +81,7 @@ def render_project(
         Propagates rendering failures raised by Copier or ``pytest-copier``.
     """
     return copier.copy(
-        tmp_path,
+        destination,
         project_name=project_name,
         package_name=package_name,
         use_rust=use_rust,
