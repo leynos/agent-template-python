@@ -12,6 +12,11 @@ before being considered complete.
 `make lint` runs Ruff, `interrogate --fail-under 100 $(PYTHON_TARGETS)` for
 100% docstring coverage across `$(PYTHON_TARGETS)`, and Pylint.
 
+`make typecheck` runs `ty`, pinned in the dev dependency group
+(`ty==0.0.56`): unpinned installations broke repositories when ty 0.0.56
+landed. Bump the pin deliberately — update the version and fix any new
+diagnostics in the same pull request.
+
 Run `make audit` as the dependency vulnerability gate. It runs `pip-audit` for
 Python dependencies, and Rust-enabled projects also run `cargo audit` from the
 `rust_extension` crate directory.
