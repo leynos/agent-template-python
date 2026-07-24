@@ -100,8 +100,11 @@ make skylos-allow NAME='registered_handler' \
   REASON='Loaded by the plugin registry through its entry-point name'
 ```
 
-The target should delegate to Skylos' documented allowlist command, modify the
-tracked `pyproject.toml`, and fail without both values. It must not scrape the
+The target must fail without both values, then invoke exactly
+`skylos whitelist "$(NAME)" --reason "$(REASON)"` for that one name or pattern.
+Skylos must persist the reasoned entry in the tracked `pyproject.toml` under the
+`[tool.skylos.whitelist]` configuration surface, specifically its
+`[tool.skylos.whitelist.documented]` subsection. The target must not scrape the
 current report, generate a baseline, or accept multiple unexplained findings.
 
 Allowlist entries follow these rules:
@@ -137,8 +140,11 @@ Allowlist entries follow these rules:
    `lint-python` in `template/Makefile.jinja`, and implement the guarded
    `skylos-allow` target.
 2. Extend the template contract tests to prove that rendered projects install
-   Skylos, run it through `make lint`, reject undocumented allowlist additions,
-   and expose the new target through `make help`.
+   Skylos, run it through `make lint`, reject missing `NAME` or `REASON` values,
+   invoke `skylos whitelist "$(NAME)" --reason "$(REASON)"` once, persist the
+   documented entry under `[tool.skylos.whitelist]`, and expose the new target
+   through `make help`. Assert that the target does not scrape reports or
+   generate a baseline.
 3. Update `template/AGENTS.md.jinja` with the dead-code and allowlist policy, and
    update `template/docs/developers-guide.md` with the contributor workflow.
 4. Add or update the parent repository's `docs/users-guide.md` to explain the
