@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -573,8 +574,11 @@ def test_parent_makefile_typecheck_invokes_pinned_ty(tmp_path: Path) -> None:
     environment = os.environ.copy()
     environment["PATH"] = f"{tmp_path}{os.pathsep}{environment['PATH']}"
 
+    make_executable = shutil.which("make")
+    assert make_executable is not None, "expected make to be available on PATH"
+
     result = subprocess.run(
-        ["make", "typecheck"],
+        [make_executable, "typecheck"],
         cwd=REPO_ROOT,
         env=environment,
         check=False,
