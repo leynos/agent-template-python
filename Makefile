@@ -28,7 +28,7 @@ spelling: ## Enforce en-GB-oxendict spelling
 	$(MD_FILES_FIND) | xargs -0 $(TYPOS) --config typos.toml --force-exclude
 
 typecheck: ## Run template test type checks
-	$(UV) --with hypothesis --with pytest --with pytest-copier --with pyyaml --with syrupy --with make-parser ty check tests/
+	$(UV) --with hypothesis --with pytest --with pytest-copier --with pyyaml --with syrupy --with make-parser ty@0.0.56 check tests/
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | \

@@ -32,19 +32,22 @@ def _assert_pyproject_contracts(
     assert isinstance(dev_dependencies, list), (
         "expected generated pyproject.toml to include a dev dependency group"
     )
-    for dependency in [
+    expected_dev_dependencies = {
         "pytest",
         "interrogate",
         "pip-audit",
         "ruff",
         "pyright",
-        "ty",
+        "ty==0.0.56",
         "pytest-timeout",
         "pytest-xdist",
-    ]:
-        assert dependency in dev_dependencies, (
-            f"expected generated dev dependencies to include {dependency}"
-        )
+    }
+    assert set(dev_dependencies) == expected_dev_dependencies, (
+        "expected generated dev dependencies to match the pinned contract"
+    )
+    assert len(dev_dependencies) == len(expected_dev_dependencies), (
+        "expected generated dev dependencies to contain no duplicates"
+    )
     pytest_options = require_mapping(
         require_mapping(pyproject, "tool", "pyproject.toml"),
         "pytest",
