@@ -18,6 +18,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 from hypothesis import HealthCheck, example, given, settings
@@ -446,12 +447,14 @@ def test_generated_tooling_contracts(
     None
         The test passes when the generated tooling contracts are satisfied.
     """
+    python_version = "3.12"
     project = render_project(
         tmp_path / target_dir,
         copier,
         project_name=project_name,
         package_name=package_name,
         use_rust=use_rust,
+        python_version=python_version,
     )
 
     run_quality_gates(project)
@@ -549,6 +552,159 @@ def test_generated_github_workflows_match_act_validation_contract(
     )
 
 
+def _assert_mutation_documentation(
+    *,
+    developer_guide: str,
+    users_guide: str,
+    expect_mutmut: bool,
+    use_rust: bool,
+) -> None:
+    """Assert developer and user guidance matches the active mutation gates."""
+    expected_developer_guidance = "\n\n".join(
+        section
+        for section, enabled in (
+            (DEVELOPER_MUTATION_INTRO, expect_mutmut or use_rust),
+            (DEVELOPER_MUTMUT_GUIDANCE, expect_mutmut),
+            (DEVELOPER_RUST_MUTATION_GUIDANCE, use_rust),
+        )
+        if enabled
+    )
+    expected_user_guidance = "\n\n".join(
+        section
+        for section, enabled in (
+            (USER_MUTATION_INTRO, expect_mutmut or use_rust),
+            (USER_MUTMUT_GUIDANCE, expect_mutmut),
+            (USER_RUST_MUTATION_GUIDANCE, use_rust),
+        )
+        if enabled
+    )
+    assert (
+        _rendered_section(
+            developer_guide,
+            start="- `.github/workflows/mutation-testing.yml`",
+            end="- `.github/actions/build-wheels`",
+        )
+        == expected_developer_guidance
+    ), "expected developer mutation guidance to match the active mutation gates"
+    assert (
+        _rendered_section(
+            users_guide,
+            start="## Scheduled Mutation Testing",
+            end="## Rust Test Behaviour",
+        )
+        == expected_user_guidance
+    ), "expected user mutation guidance to match the active mutation gates"
+
+
+def _assert_mutmut_pyproject_config(
+    *, pyproject: dict[str, Any], package_name: str, expect_mutmut: bool
+) -> None:
+    """Assert ``[tool.mutmut]`` renders only for baselines of 3.13 or greater."""
+    mutmut_config = pyproject.get("tool", {}).get("mutmut")
+    if expect_mutmut:
+        assert mutmut_config == {
+            "source_paths": [f"{package_name}/"],
+            "pytest_add_cli_args_test_selection": ["tests/"],
+        }, "expected mutmut configuration for baselines of 3.13 or greater"
+    else:
+        assert mutmut_config is None, (
+            "expected no mutmut configuration below a 3.13 baseline"
+        )
+
+
+def _assert_mutation_workflow_metadata(workflow: dict[str, Any]) -> None:
+    """Assert the schedule, permissions, and concurrency shared by all callers."""
+    # PyYAML parses the ``on:`` key as the boolean ``True``.
+    triggers = workflow.get(True)
+    assert isinstance(triggers, dict), (
+        "expected the mutation workflow to declare on: triggers"
+    )
+    assert triggers.get("schedule") == [{"cron": "30 9 * * *"}], (
+        "expected the mutation workflow to run daily at 09:30 UTC"
+    )
+    assert "workflow_dispatch" in triggers, (
+        "expected the mutation workflow to allow manual dispatch"
+    )
+    assert workflow.get("permissions") == {}, (
+        "expected the mutation workflow to default the token to no scopes"
+    )
+    concurrency = require_mapping(workflow, "concurrency", "mutation workflow")
+    assert concurrency.get("group") == "mutation-testing-${{ github.ref }}", (
+        "expected per-ref concurrency serialization for the mutation workflow"
+    )
+    assert concurrency.get("cancel-in-progress") is False, (
+        "expected queued mutation runs to wait rather than cancel in progress"
+    )
+
+
+def _assert_mutation_job_gating(
+    *,
+    jobs: dict[str, Any],
+    expect_mutmut: bool,
+    use_rust: bool,
+    package_name: str,
+    python_version: str,
+) -> None:
+    """Assert job presence and shared-workflow inputs for the active gates."""
+    assert ("mutation" in jobs) == expect_mutmut, (
+        "expected the mutmut job only for baselines of 3.13 or greater"
+    )
+    assert ("mutation-rust" in jobs) == use_rust, (
+        "expected the cargo-mutants job only for Rust variants"
+    )
+    if expect_mutmut:
+        mutation_inputs = require_mapping(
+            require_mapping(jobs, "mutation", "mutation workflow jobs"),
+            "with",
+            "mutmut job",
+        )
+        assert mutation_inputs.get("python-version") == python_version, (
+            "expected the mutmut job to run on the project's baseline Python"
+        )
+        assert mutation_inputs.get("paths") == f"{package_name}/", (
+            "expected the mutmut job to mutate the flat-layout package directory"
+        )
+        assert mutation_inputs.get("module-prefix-strip") == "", (
+            "expected the mutmut job to strip no module prefix for a flat layout"
+        )
+    if use_rust:
+        rust_inputs = require_mapping(
+            require_mapping(jobs, "mutation-rust", "mutation workflow jobs"),
+            "with",
+            "cargo-mutants job",
+        )
+        assert rust_inputs.get("paths") == "", (
+            "expected the cargo-mutants job to empty the root path list"
+        )
+        assert rust_inputs.get("extra-crate-dirs") == "rust_extension", (
+            "expected the cargo-mutants job to target the extension crate directory"
+        )
+        assert rust_inputs.get("shard-count") == 1, (
+            "expected the cargo-mutants job to confine the root target to one shard"
+        )
+
+
+def _assert_shared_workflow_shas(jobs: dict[str, Any]) -> None:
+    """Assert every job pins its shared mutation workflow to a commit SHA."""
+    expected_workflows = {
+        "mutation": "mutation-mutmut.yml",
+        "mutation-rust": "mutation-cargo.yml",
+    }
+    for job_name, job in jobs.items():
+        uses = str(job.get("uses", "")) if isinstance(job, dict) else ""
+        workflow_ref, separator, revision = uses.partition("@")
+        assert workflow_ref == (
+            f"leynos/shared-actions/.github/workflows/{expected_workflows[job_name]}"
+        ), f"expected {job_name} to use its shared mutation workflow"
+        assert separator == "@", (
+            f"expected {job_name} shared mutation workflow reference to contain @"
+        )
+        assert re.fullmatch(r"[0-9a-f]{40}", revision), (
+            f"expected {job_name} shared mutation workflow revision to be a "
+            "40-character hexadecimal commit SHA"
+        )
+
+
 @pytest.mark.parametrize(
     ("target_dir", "use_rust", "python_version", "expect_mutmut"),
     [
@@ -589,64 +745,31 @@ def test_generated_mutation_testing_gating(
     None
         The test passes when the mutmut job and ``[tool.mutmut]`` section
         render only for baselines of 3.13 or greater, the cargo-mutants job
-        renders only with the Rust extension, and the workflow file is
-        absent when both gates are off.
+        renders only with the Rust extension, the workflow file is absent when
+        both gates are off, and the rendered schedule, permissions,
+        concurrency, and shared-workflow job inputs match the template
+        contract.
     """
+    package_name = "mutation_pkg"
     project = render_project(
         tmp_path / target_dir,
         copier,
         project_name="MutationProj",
-        package_name="mutation_pkg",
+        package_name=package_name,
         use_rust=use_rust,
         python_version=python_version,
     )
-    developer_guide = read_generated_text(project / "docs" / "developers-guide.md")
-    users_guide = read_generated_text(project / "docs" / "users-guide.md")
-    expected_developer_guidance = "\n\n".join(
-        section
-        for section, enabled in (
-            (DEVELOPER_MUTATION_INTRO, expect_mutmut or use_rust),
-            (DEVELOPER_MUTMUT_GUIDANCE, expect_mutmut),
-            (DEVELOPER_RUST_MUTATION_GUIDANCE, use_rust),
-        )
-        if enabled
+    _assert_mutation_documentation(
+        developer_guide=read_generated_text(project / "docs" / "developers-guide.md"),
+        users_guide=read_generated_text(project / "docs" / "users-guide.md"),
+        expect_mutmut=expect_mutmut,
+        use_rust=use_rust,
     )
-    expected_user_guidance = "\n\n".join(
-        section
-        for section, enabled in (
-            (USER_MUTATION_INTRO, expect_mutmut or use_rust),
-            (USER_MUTMUT_GUIDANCE, expect_mutmut),
-            (USER_RUST_MUTATION_GUIDANCE, use_rust),
-        )
-        if enabled
+    _assert_mutmut_pyproject_config(
+        pyproject=parse_toml_file(project / "pyproject.toml"),
+        package_name=package_name,
+        expect_mutmut=expect_mutmut,
     )
-    assert (
-        _rendered_section(
-            developer_guide,
-            start="- `.github/workflows/mutation-testing.yml`",
-            end="- `.github/actions/build-wheels`",
-        )
-        == expected_developer_guidance
-    ), "expected developer mutation guidance to match the active mutation gates"
-    assert (
-        _rendered_section(
-            users_guide,
-            start="## Scheduled Mutation Testing",
-            end="## Rust Test Behaviour",
-        )
-        == expected_user_guidance
-    ), "expected user mutation guidance to match the active mutation gates"
-    pyproject = parse_toml_file(project / "pyproject.toml")
-    mutmut_config = pyproject.get("tool", {}).get("mutmut")
-    if expect_mutmut:
-        assert mutmut_config == {
-            "source_paths": ["mutation_pkg/"],
-            "pytest_add_cli_args_test_selection": ["tests/"],
-        }, "expected mutmut configuration for baselines of 3.13 or greater"
-    else:
-        assert mutmut_config is None, (
-            "expected no mutmut configuration below a 3.13 baseline"
-        )
 
     workflow_path = project / ".github" / "workflows" / "mutation-testing.yml"
     if not expect_mutmut and not use_rust:
@@ -657,39 +780,23 @@ def test_generated_mutation_testing_gating(
     workflow = parse_yaml_mapping(
         read_generated_text(workflow_path), "mutation workflow"
     )
+    _assert_mutation_workflow_metadata(workflow)
     jobs = require_mapping(workflow, "jobs", "mutation workflow")
-    assert ("mutation" in jobs) == expect_mutmut, (
-        "expected the mutmut job only for baselines of 3.13 or greater"
+    _assert_mutation_job_gating(
+        jobs=jobs,
+        expect_mutmut=expect_mutmut,
+        use_rust=use_rust,
+        package_name=package_name,
+        python_version=python_version,
     )
-    assert ("mutation-rust" in jobs) == use_rust, (
-        "expected the cargo-mutants job only for Rust variants"
-    )
-    if expect_mutmut:
-        mutation_job = require_mapping(jobs, "mutation", "mutation workflow jobs")
-        mutation_inputs = require_mapping(mutation_job, "with", "mutation job")
-        assert mutation_inputs.get("python-version") == python_version, (
-            "expected the mutmut job to run on the project's baseline Python"
-        )
-    expected_workflows = {
-        "mutation": "mutation-mutmut.yml",
-        "mutation-rust": "mutation-cargo.yml",
-    }
-    for job_name, job in jobs.items():
-        uses = str(job.get("uses", "")) if isinstance(job, dict) else ""
-        workflow, separator, revision = uses.partition("@")
-        assert workflow == (
-            f"leynos/shared-actions/.github/workflows/{expected_workflows[job_name]}"
-        ), f"expected {job_name} to use its shared mutation workflow"
-        assert separator == "@", (
-            f"expected {job_name} shared mutation workflow reference to contain @"
-        )
-        assert re.fullmatch(r"[0-9a-f]{40}", revision), (
-            f"expected {job_name} shared mutation workflow revision to be a "
-            "40-character hexadecimal commit SHA"
-        )
+    _assert_shared_workflow_shas(jobs)
 
 
 @settings(
+    # Each example renders a full Copier project, so cap the run to keep CI
+    # runtime predictable; the explicit ``@example`` cases still pin the
+    # boundary minors (0, 12, 13, 14).
+    max_examples=25,
     deadline=None,
     suppress_health_check=[HealthCheck.function_scoped_fixture],
 )

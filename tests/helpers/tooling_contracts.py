@@ -53,6 +53,7 @@ def assert_generated_tooling_contracts(
     build_wheels_action: str,
     pure_wheel_action: str,
     use_rust: bool,
+    python_version: str = "3.12",
 ) -> None:
     """Assert generated Python/Rust tooling contracts from one validator.
 
@@ -60,6 +61,9 @@ def assert_generated_tooling_contracts(
     ----------
     package_name : str
         Generated Python import package name.
+    python_version : str, default="3.12"
+        Minimum supported Python version used to render the project, matched
+        against the generated ``requires-python`` constraint.
     agents : str
         UTF-8 text of the generated ``AGENTS.md`` file.
     pyproject : dict[str, Any]
@@ -118,6 +122,7 @@ def assert_generated_tooling_contracts(
         package_name=package_name,
         pyproject=pyproject,
         use_rust=use_rust,
+        python_version=python_version,
     )
     _assert_agents_contracts(agents)
     _assert_agents_make_targets_mirror_makefile(
