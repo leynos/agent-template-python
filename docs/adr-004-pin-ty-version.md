@@ -13,9 +13,9 @@ resolved the latest release.
 
 `ty` is pre-1.0 and its diagnostics change between releases. When ty 0.0.56
 landed, estate repositories with unpinned installations broke without any code
-change: the falcon-correlate and polythene main branches were red for days.
-An unpinned typechecker makes gate outcomes depend on release timing rather
-than on the code under review.
+change: the falcon-correlate and polythene main branches were red for days. An
+unpinned typechecker makes gate outcomes depend on release timing rather than
+on the code under review.
 
 ## Decision
 

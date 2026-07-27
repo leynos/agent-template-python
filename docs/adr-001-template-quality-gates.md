@@ -31,6 +31,6 @@ execution stay aligned.
 ## Consequences
 
 The generated Makefile remains the primary developer interface, but individual
-lint tiers can be run directly when narrowing failures. Rust-only tooling is not
-rendered for Python-only projects. The repository tests assert key generated
-file contracts instead of adding a snapshot framework to this branch.
+lint tiers can be run directly when narrowing failures. Rust-only tooling is
+not rendered for Python-only projects. The repository tests assert key
+generated file contracts instead of adding a snapshot framework to this branch.

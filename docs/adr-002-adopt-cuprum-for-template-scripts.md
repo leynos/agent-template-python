@@ -26,10 +26,9 @@ commands within `sh.scoped(...)`, and inspect `CommandResult.exit_code`,
 catalogues in a project module, while standalone scripts and tests should keep
 local catalogues scoped to the programs they need.
 
-The generated documentation should signpost
-`docs/scripting-standards.md` from contributor-facing instructions so script
-authors find the `cuprum`, `Cyclopts`, `pathlib`, and `cmd-mox` conventions
-before adding automation.
+The generated documentation should signpost `docs/scripting-standards.md` from
+contributor-facing instructions so script authors find the `cuprum`, `Cyclopts`,
+`pathlib`, and `cmd-mox` conventions before adding automation.
 
 ## Alternatives considered
 
@@ -45,9 +44,9 @@ allowlist without enforcing scoped command construction across the script.
 `plumbum` also makes observability a convention layered around command calls.
 Common logging, tracing, and command auditing would need bespoke wrappers, and
 those wrappers would be easy to bypass when a script author reaches directly for
-`local[...]` or an imported command object. That is acceptable for small private
-scripts, but it is a poor template default because generated projects inherit
-the convention without the local context that produced it.
+`local[...]` or an imported command object. That is acceptable for small
+private scripts, but it is a poor template default because generated projects
+inherit the convention without the local context that produced it.
 
 Finally, `plumbum` raises on non-zero exits by default. That can be convenient
 for short scripts, but it encourages exception-driven control flow for command
@@ -57,10 +56,10 @@ observable values that tests can assert directly with `cmd-mox`.
 ### Use subprocess directly
 
 The standard library `subprocess` module avoids a dependency, but it leaves
-command allowlisting, argument construction, result handling, observability, and
-test-double integration to each script. That would make the template guidance
-longer and less consistent while still failing to provide a central enforcement
-point for external program access.
+command allowlisting, argument construction, result handling, observability,
+and test-double integration to each script. That would make the template
+guidance longer and less consistent while still failing to provide a central
+enforcement point for external program access.
 
 ## Consequences
 
@@ -71,9 +70,8 @@ place to attach logging or auditing, and keeps command results testable as data.
 
 Scripts no longer rely on exception-driven handling of non-zero command exits;
 they must check `CommandResult.exit_code` directly. This is slightly more
-verbose than `plumbum` for trivial calls, but it makes success and failure paths
-clear in both production scripts and tests that mock external executables.
+verbose than `plumbum` for trivial calls, but it makes success and failure
+paths clear in both production scripts and tests that mock external executables.
 
-The template documentation now includes migration guidance for legacy
-`plumbum` usage, but the preferred path for new and updated scripts is
-`cuprum`.
+The template documentation now includes migration guidance for legacy `plumbum`
+usage, but the preferred path for new and updated scripts is `cuprum`.

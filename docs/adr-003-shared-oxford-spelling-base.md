@@ -22,9 +22,10 @@ deterministic, tracked `typos.toml`.
 
 The refresh validates data before atomic replacement, keeps a valid cache when
 its authority is not newer, and supports explicit offline reuse. The generated
-Makefile pins `typos`, exposes `make spelling`, includes spelling in `make all`,
-and runs it through Continuous Integration (CI). The template repository uses
-the same mechanism for its own Markdown and rendered Markdown sources.
+Makefile pins `typos`, exposes `make spelling`, includes spelling in
+`make all`, and runs it through Continuous Integration (CI). The template
+repository uses the same mechanism for its own Markdown and rendered Markdown
+sources.
 
 ## Consequences
 

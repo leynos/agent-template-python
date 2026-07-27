@@ -140,13 +140,13 @@ Allowlist entries follow these rules:
    `lint-python` in `template/Makefile.jinja`, and implement the guarded
    `skylos-allow` target.
 2. Extend the template contract tests to prove that rendered projects install
-   Skylos, run it through `make lint`, reject missing `NAME` or `REASON` values,
-   invoke `skylos whitelist "$(NAME)" --reason "$(REASON)"` once, persist the
-   documented entry under `[tool.skylos.whitelist]`, and expose the new target
-   through `make help`. Assert that the target does not scrape reports or
-   generate a baseline.
-3. Update `template/AGENTS.md.jinja` with the dead-code and allowlist policy, and
-   update `template/docs/developers-guide.md` with the contributor workflow.
+   Skylos, run it through `make lint`, reject missing `NAME` or `REASON`
+   values, invoke `skylos whitelist "$(NAME)" --reason "$(REASON)"` once,
+   persist the documented entry under `[tool.skylos.whitelist]`, and expose the
+   new target through `make help`. Assert that the target does not scrape
+   reports or generate a baseline.
+3. Update `template/AGENTS.md.jinja` with the dead-code and allowlist policy,
+   and update `template/docs/developers-guide.md` with the contributor workflow.
 4. Add or update the parent repository's `docs/users-guide.md` to explain the
    dead-code gate and the generated `make skylos-allow` interface to template
    users.
@@ -159,8 +159,8 @@ Allowlist entries follow these rules:
 - Dynamic Python code can still produce false positives or false negatives;
   contributors must verify findings before removing code.
 - A name-based allowlist can accidentally cover a later symbol with the same
-  name. Narrow entry-point rules and routine review reduce, but do not eliminate,
-  this risk.
+  name. Narrow entry-point rules and routine review reduce, but do not
+  eliminate, this risk.
 - Skylos has a broader and faster-moving feature surface than this template
   needs. The generated configuration and documentation must keep the adopted
   surface limited to local dead-code detection.

@@ -15,11 +15,11 @@ template itself.
 - `make lint` — runs Ruff lint checks and `interrogate --fail-under 100` against
   the `tests/` directory in the parent template test suite.
 - `make typecheck` — runs `ty check` against the parent template test suite,
-  supplying the test dependencies, including Hypothesis, through `uvx`. The `ty`
-  version is pinned (`ty@0.0.56`) because unpinned installations broke estate
-  repositories when ty 0.0.56 landed (falcon-correlate and polythene mains were
-  red for days). Version bumps are deliberate: update the pin, fix any new
-  diagnostics, and land both in one pull request (see ADR-004).
+  supplying the test dependencies, including Hypothesis, through `uvx`. The
+  `ty` version is pinned (`ty@0.0.56`) because unpinned installations broke
+  estate repositories when ty 0.0.56 landed (falcon-correlate and polythene
+  mains were red for days). Version bumps are deliberate: update the pin, fix
+  any new diagnostics, and land both in one pull request (see ADR-004).
 - `make test` — runs the template test suite via `uvx`, supplying
   Hypothesis, `pytest-copier`, `pyyaml`, `syrupy`, and `make-parser` without a
   manually managed virtual environment.
@@ -41,8 +41,7 @@ Docker-dependent tests isolated from the standard template test gate:
 - `.github/workflows/ci.yml` runs `make test` and `make spelling` on every push
   to `main` and on all pull requests. It installs `markdownlint-cli2` and
   `mbake` at pinned versions, and skips `make audit` for Dependabot pull
-  requests with
-  `if: github.actor != 'dependabot[bot]'`.
+  requests with `if: github.actor != 'dependabot[bot]'`.
 - `.github/workflows/audit.yml` runs `make audit` on a weekly schedule against
   the default branch.
 - `.github/workflows/act-validation.yml` runs `make test WITH_ACT=1`. It
@@ -55,15 +54,14 @@ Docker-dependent tests isolated from the standard template test gate:
 ## Makefile Template
 
 `template/Makefile.jinja` defines the generated developer workflow. The default
-`all` target runs build, formatting, linting, typechecking, tests, and spelling.
-The spelling recipe runs last so generated configuration cannot race tests when
-callers enable parallel Make execution. Generated projects pin `ty` in the dev
-dependency group (`ty==0.0.56`), so `make typecheck` resolves the pinned
-typechecker; bumps follow the same deliberate policy as the parent repository
-(ADR-004).
-The generated `audit` target is an explicit security gate run by CI. It runs
-`pip-audit` for every rendered project and, when `use_rust` is enabled, also
-runs `cargo audit` in the Rust extension crate.
+`all` target runs build, formatting, linting, typechecking, tests, and
+spelling. The spelling recipe runs last so generated configuration cannot race
+tests when callers enable parallel Make execution. Generated projects pin `ty`
+in the dev dependency group (`ty==0.0.56`), so `make typecheck` resolves the
+pinned typechecker; bumps follow the same deliberate policy as the parent
+repository (ADR-004). The generated `audit` target is an explicit security gate
+run by CI. It runs `pip-audit` for every rendered project and, when `use_rust`
+is enabled, also runs `cargo audit` in the Rust extension crate.
 
 The generated lint targets are split by language:
 
@@ -76,9 +74,9 @@ The generated lint targets are split by language:
 - `audit` exists for both generated variants and runs `pip-audit`; Rust-enabled
   variants delegate to `rust-audit` for `cargo audit`.
 
-Tool revisions are exposed as Makefile variables such as
-`PYLINT_PYPY_SHIM_REF` and `WHITAKER_INSTALLER_REV`, so generated projects can
-override pins without editing target recipes.
+Tool revisions are exposed as Makefile variables such as `PYLINT_PYPY_SHIM_REF`
+and `WHITAKER_INSTALLER_REV`, so generated projects can override pins without
+editing target recipes.
 
 ## Continuous Integration Strategy
 
@@ -104,15 +102,15 @@ because the generated Python project root does not contain a Rust manifest.
 
 ### Workflow pins and Dependabot
 
-Dependabot owns the upgrade of GitHub Actions and reusable workflows,
-including calls into `leynos/shared-actions`. Contract tests that assert a
-caller's exact commit SHA create a lockstep dependency: every time Dependabot
-opens a bump PR, the test fails until a human edits the pinned constant to
-match. That defeats the purpose of automated dependency updates and turns a
-routine bump into a manual chore.
+Dependabot owns the upgrade of GitHub Actions and reusable workflows, including
+calls into `leynos/shared-actions`. Contract tests that assert a caller's exact
+commit SHA create a lockstep dependency: every time Dependabot opens a bump PR,
+the test fails until a human edits the pinned constant to match. That defeats
+the purpose of automated dependency updates and turns a routine bump into a
+manual chore.
 
-Contract tests may still verify the *shape* of a reusable-workflow caller.
-They must not verify the specific SHA value.
+Contract tests may still verify the *shape* of a reusable-workflow caller. They
+must not verify the specific SHA value.
 
 - Do assert the workflow references the correct reusable workflow path.
 - Do assert the ref is pinned to a full 40-character commit SHA, not a
@@ -154,15 +152,17 @@ When `use_rust` is enabled, the template renders a PyO3 extension under
 Python package imports the Rust-backed implementation.
 
 The generated Rust lint tier uses Clippy and Whitaker. The local Makefile
-installs Whitaker on demand when it is missing. Tests prefer `cargo nextest run`
-when `cargo-nextest` is available and fall back to `cargo test` otherwise.
+installs Whitaker on demand when it is missing. Tests prefer
+`cargo nextest run` when `cargo-nextest` is available and fall back to
+`cargo test` otherwise.
 
 ## Test Strategy
 
 The repository tests render Python-only and Rust-enabled projects with
 `pytest-copier`, then run the generated public gates. Additional generated-file
-assertions check important template contracts such as Makefile target structure,
-Rust documentation output, maturin configuration, and cargo error messaging.
+assertions check important template contracts such as Makefile target
+structure, Rust documentation output, maturin configuration, and cargo error
+messaging.
 
 The optional `act` tests run generated GitHub Actions workflows as black-box
 integration checks. Their parser separates structured-log handling from the

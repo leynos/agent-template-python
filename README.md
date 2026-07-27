@@ -1,8 +1,7 @@
 # Generic Copier Template
 
 This repository provides a [Copier](https://copier.readthedocs.io/) template
-for a Python package.
-It offers two flavours:
+for a Python package. It offers two flavours:
 
 1. **Python Only** – a pure Python implementation.
 2. **Python with Rust** – includes a PyO3 extension.
@@ -12,10 +11,10 @@ Run `copier copy` and answer the prompts to generate a project.
 ## Running Tests
 
 The test suite relies on the `pytest-copier` plugin and renders generated
-projects that run Ruff, Pylint via a PyPy-backed runner, `ty`, pytest, and, when
-the Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust tests.
-Generated Python linting also runs Interrogate as a 100% docstring-coverage
-gate.
+projects that run Ruff, Pylint via a PyPy-backed runner, `ty`, pytest, and,
+when the Rust extension is enabled, Clippy, Whitaker, and nextest-aware Rust
+tests. Generated Python linting also runs Interrogate as a 100%
+docstring-coverage gate.
 
 Run the parent template tests through the repository `Makefile`. Run
 `make help` to list the available parent Makefile targets. Parent gates include
@@ -29,8 +28,8 @@ make test
 
 Run `make test WITH_ACT=1` to include the act-backed workflow integration tests
 when `act` and Docker are available. Parent repository CI runs this mode in a
-separate act-validation workflow so rendered in-template GitHub workflows do not
-hold up the normal template test workflow.
+separate act-validation workflow so rendered in-template GitHub workflows do
+not hold up the normal template test workflow.
 
 Generated projects install and run their own tooling, including Ruff,
 Interrogate, Pylint via PyPy, `ty`, pytest, and, when Rust is enabled, Clippy,
@@ -43,8 +42,8 @@ dependencies into the current Python environment manually.
 
 Figure: The generated `make all` quality gate runs build, formatting, linting,
 typechecking, and testing. Rust-specific lint and test branches run only when
-the Rust extension is enabled. The `audit` target checks Python dependencies
-via `pip-audit` and, when Rust is enabled, Rust dependencies via `cargo audit`.
+the Rust extension is enabled. The `audit` target checks Python dependencies via
+`pip-audit` and, when Rust is enabled, Rust dependencies via `cargo audit`.
 
 ```mermaid
 flowchart LR

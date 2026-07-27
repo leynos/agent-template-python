@@ -1,4 +1,4 @@
-.PHONY: help check-fmt lint spelling test typecheck
+.PHONY: help check-fmt fmt lint spelling test typecheck
 
 MAKEFLAGS += --no-print-directory
 
@@ -18,6 +18,10 @@ test: ## Run template tests
 
 check-fmt: ## Verify template test formatting
 	$(UV) ruff format --check tests/
+
+fmt: ## Format parent tests and Markdown sources
+	$(UV) ruff format tests/
+	mdformat-all
 
 lint: ## Run template test lint checks
 	$(UV) ruff check tests/

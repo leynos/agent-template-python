@@ -4,18 +4,18 @@ This guide explains the contributor workflow for the generated project.
 
 ## Local workflow
 
-The public entrypoint for formatting, linting, typechecking, tests, and spelling
-is `make all`. Narrower Make targets may be invoked when investigating a
-specific failure, and changes should be reconciled with the aggregate gate
+The public entrypoint for formatting, linting, typechecking, tests, and
+spelling is `make all`. Narrower Make targets may be invoked when investigating
+a specific failure, and changes should be reconciled with the aggregate gate
 before being considered complete.
 
 `make lint` runs Ruff, `interrogate --fail-under 100 $(PYTHON_TARGETS)` for
 100% docstring coverage across `$(PYTHON_TARGETS)`, and Pylint.
 
-`make typecheck` runs `ty`, pinned in the dev dependency group
-(`ty==0.0.56`): unpinned installations broke repositories when ty 0.0.56
-landed. Bump the pin deliberately — update the version and fix any new
-diagnostics in the same pull request.
+`make typecheck` runs `ty`, pinned in the dev dependency group (`ty==0.0.56`):
+unpinned installations broke repositories when ty 0.0.56 landed. Bump the pin
+deliberately — update the version and fix any new diagnostics in the same pull
+request.
 
 Run `make audit` as the dependency vulnerability gate. It runs `pip-audit` for
 Python dependencies, and Rust-enabled projects also run `cargo audit` from the
@@ -23,11 +23,11 @@ Python dependencies, and Rust-enabled projects also run `cargo audit` from the
 
 ## Automation scripts
 
-The [Scripting standards](scripting-standards.md) document provides guidance for
-adding or updating helper scripts. New and updated scripts are expected to use
-`Cyclopts` for command-line interfaces, `cuprum` for typed and catalogue-bound
-external command execution, `pathlib` for filesystem paths, and `cmd-mox` for
-tests that mock external executables.
+The [Scripting standards](scripting-standards.md) document provides guidance
+for adding or updating helper scripts. New and updated scripts are expected to
+use `Cyclopts` for command-line interfaces, `cuprum` for typed and
+catalogue-bound external command execution, `pathlib` for filesystem paths, and
+`cmd-mox` for tests that mock external executables.
 
 Script changes should update the scripting guide when they introduce a new
 convention, command catalogue, testing pattern, or operational expectation that
@@ -40,12 +40,12 @@ actions under `.github/`.
 
 - `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests. It
   sets up Python 3.13, installs `uv`, validates the generated `Makefile` with
-  `mbake`, runs `make build`, `make check-fmt`,
-  `make lint` (Ruff + `interrogate --fail-under 100 $(PYTHON_TARGETS)` + Pylint),
-  `make typecheck`, `make spelling`, and `make audit` except for Dependabot pull
-  requests via `if: github.actor != 'dependabot[bot]'`, then delegates coverage
-  generation to the shared coverage action. When the Rust extension is enabled,
-  it also sets up Rust, installs Rust lint and test tools, and passes
+  `mbake`, runs `make build`, `make check-fmt`, `make lint` (Ruff +
+  `interrogate --fail-under 100 $(PYTHON_TARGETS)` + Pylint), `make typecheck`,
+  `make spelling`, and `make audit` except for Dependabot pull requests via
+  `if: github.actor != 'dependabot[bot]'`, then delegates coverage generation
+  to the shared coverage action. When the Rust extension is enabled, it also
+  sets up Rust, installs Rust lint and test tools, and passes
   `rust_extension/Cargo.toml` to coverage.
 - `.github/workflows/audit.yml` runs `make audit` against the default branch
   weekly as the compensating control for the Dependabot CI bypass.
@@ -53,8 +53,9 @@ actions under `.github/`.
   separate workflow. It installs `act`, checks Docker availability, and runs
   `make test WITH_ACT=1` outside the coverage path.
 - `.github/workflows/release.yml` publishes wheels when a `v*.*.*` tag is
-  pushed. It builds a pure Python wheel, creates a GitHub release with generated
-  release notes, downloads wheel artefacts, and uploads them to the tag release.
+  pushed. It builds a pure Python wheel, creates a GitHub release with
+  generated release notes, downloads wheel artefacts, and uploads them to the
+  tag release.
 - `.github/workflows/build-wheels.yml` is a reusable workflow for extension
   builds. It accepts a Python version and builds wheels across Linux, Windows,
   and macOS architectures via `.github/actions/build-wheels`.
