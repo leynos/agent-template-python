@@ -39,19 +39,8 @@ if TYPE_CHECKING:
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-
-
-"""Validate direct helper-module error handling and edge cases.
-The tests in this module exercise support helpers without rendering a full
-Copier project.  They keep helper fallibility contracts explicit by checking
-``pytest.fail`` conversion paths, generated-file schema helpers, and tooling
-contract assertions directly.
-"""
-if TYPE_CHECKING:
-    from pytest_copier.plugin import CopierProject
-REPO_ROOT = Path(__file__).resolve().parent.parent
-_TEST_ACTION_SHA = "0" * 40
-_DEPENDABOT_UPDATED_TEST_ACTION_SHA = "1" * 40
+_TEST_ACTION_SHA: str = "0" * 40
+_DEPENDABOT_UPDATED_TEST_ACTION_SHA: str = "1" * 40
 
 
 @pytest.mark.parametrize(

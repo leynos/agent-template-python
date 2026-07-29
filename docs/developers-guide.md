@@ -55,7 +55,7 @@ Docker-dependent tests isolated from the standard template test gate:
 
 `template/Makefile.jinja` defines the generated developer workflow. The default
 `all` target runs build, formatting, linting, typechecking, tests, and
-spelling. The spelling recipe runs last so generated configuration cannot race
+spelling. The spelling recipe runs last, so generated configuration cannot race
 tests when callers enable parallel Make execution. Generated projects pin `ty`
 in the dev dependency group (`ty==0.0.56`), so `make typecheck` resolves the
 pinned typechecker; bumps follow the same deliberate policy as the parent
