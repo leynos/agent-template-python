@@ -496,7 +496,7 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     """
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
-    assert ".PHONY: help check-fmt lint spelling test typecheck" in makefile, (
+    assert ".PHONY: help check-fmt fmt lint spelling test typecheck" in makefile, (
         "expected parent Makefile to mark documented gate targets as phony"
     )
     assert "check-fmt: ## Verify template test formatting" in makefile, (
