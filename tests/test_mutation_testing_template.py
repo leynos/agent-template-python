@@ -44,9 +44,9 @@ USER_MUTATION_INTRO = """\
 The `.github/workflows/mutation-testing.yml` workflow runs mutation testing
 daily at 09:30 UTC and can also be started manually from GitHub Actions. Adjust
 the generated cron schedule to stagger it against other repositories."""
-USER_MUTMUT_GUIDANCE = """\
+USER_MUTMUT_GUIDANCE_TEMPLATE = """\
 For projects whose minimum Python version is 3.13 or newer, the workflow runs
-mutmut against `mutation_pkg/`. The Python mutation job is omitted for
+mutmut against `{package_name}/`. The Python mutation job is omitted for
 older baselines because the shared workflow helpers require Python 3.13 or
 newer."""
 USER_RUST_MUTATION_GUIDANCE = """\
@@ -68,8 +68,17 @@ def _assert_mutation_documentation(
     users_guide: str,
     expect_mutmut: bool,
     use_rust: bool,
+    package_name: str,
 ) -> None:
-    """Assert developer and user guidance matches the active mutation gates."""
+    """Assert developer and user guidance matches the active mutation gates.
+
+    The user guidance is package-specific, so ``package_name`` is interpolated
+    into the expected text to pin the template's ``{{ package_name }}``
+    substitution rather than a fixed package directory.
+    """
+    user_mutmut_guidance = USER_MUTMUT_GUIDANCE_TEMPLATE.format(
+        package_name=package_name
+    )
     expected_developer_guidance = "\n\n".join(
         section
         for section, enabled in (
@@ -83,7 +92,7 @@ def _assert_mutation_documentation(
         section
         for section, enabled in (
             (USER_MUTATION_INTRO, expect_mutmut or use_rust),
-            (USER_MUTMUT_GUIDANCE, expect_mutmut),
+            (user_mutmut_guidance, expect_mutmut),
             (USER_RUST_MUTATION_GUIDANCE, use_rust),
         )
         if enabled
@@ -216,12 +225,15 @@ def _assert_shared_workflow_shas(jobs: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize(
-    ("target_dir", "use_rust", "python_version", "expect_mutmut"),
+    ("target_dir", "use_rust", "python_version", "expect_mutmut", "package_name"),
     [
-        ("mutation-312-pure", False, "3.12", False),
-        ("mutation-312-rust", True, "3.12", False),
-        ("mutation-313-pure", False, "3.13", True),
-        ("mutation-314-rust", True, "3.14", True),
+        ("mutation-312-pure", False, "3.12", False, "mutation_pkg"),
+        ("mutation-312-rust", True, "3.12", False, "mutation_pkg"),
+        # Render the enabled pure variant under a non-default package name so
+        # the package-specific guidance, mutmut source paths, and workflow
+        # inputs pin the template's substitution rather than a fixed directory.
+        ("mutation-313-pure", False, "3.13", True, "custom_mutation_pkg"),
+        ("mutation-314-rust", True, "3.14", True, "mutation_pkg"),
     ],
 )
 def test_generated_mutation_testing_gating(
@@ -231,6 +243,7 @@ def test_generated_mutation_testing_gating(
     use_rust: bool,
     python_version: str,
     expect_mutmut: bool,
+    package_name: str,
 ) -> None:
     """Rendered mutation testing follows the interpreter and Rust gates.
 
@@ -249,6 +262,9 @@ def test_generated_mutation_testing_gating(
     expect_mutmut
         Whether the baseline interpreter supports the mutmut workflow
         (3.13 or greater).
+    package_name
+        Package name answer passed to Copier. One enabled variant uses a
+        non-default name so package-specific rendering is exercised.
 
     Returns
     -------
@@ -260,7 +276,6 @@ def test_generated_mutation_testing_gating(
         concurrency, and shared-workflow job inputs match the template
         contract.
     """
-    package_name = "mutation_pkg"
     project = render_project(
         tmp_path / target_dir,
         copier,
@@ -274,6 +289,7 @@ def test_generated_mutation_testing_gating(
         users_guide=read_generated_text(project / "docs" / "users-guide.md"),
         expect_mutmut=expect_mutmut,
         use_rust=use_rust,
+        package_name=package_name,
     )
     _assert_mutmut_pyproject_config(
         pyproject=parse_toml_file(project / "pyproject.toml"),
