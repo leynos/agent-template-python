@@ -406,12 +406,14 @@ def test_generated_tooling_contracts(
     None
         The test passes when the generated tooling contracts are satisfied.
     """
+    python_version = "3.12"
     project = render_project(
         tmp_path / target_dir,
         copier,
         project_name=project_name,
         package_name=package_name,
         use_rust=use_rust,
+        python_version=python_version,
     )
 
     run_quality_gates(project)

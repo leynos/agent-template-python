@@ -15,12 +15,16 @@ from tests.helpers.generated_files import require_mapping
 
 
 def _assert_pyproject_contracts(
-    *, package_name: str, pyproject: dict[str, Any], use_rust: bool
+    *,
+    package_name: str,
+    pyproject: dict[str, Any],
+    use_rust: bool,
+    python_version: str,
 ) -> None:
     """Assert generated Python packaging contracts."""
     project = require_mapping(pyproject, "project", "pyproject.toml")
     assert project.get("name"), "expected generated project metadata to include a name"
-    assert project.get("requires-python") == ">=3.10", (
+    assert project.get("requires-python") == f">={python_version}", (
         "expected generated pyproject.toml to use the requested Python version"
     )
     dependency_groups = require_mapping(

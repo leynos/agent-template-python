@@ -39,6 +39,8 @@ if TYPE_CHECKING:
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+_TEST_ACTION_SHA: str = "0" * 40
+_DEPENDABOT_UPDATED_TEST_ACTION_SHA: str = "1" * 40
 
 
 @pytest.mark.parametrize(
@@ -422,8 +424,8 @@ def test_ci_coverage_action_contract_accepts_any_pinned_sha_rejects_branch_ref()
     )
 
     dependabot_bumped_workflow = workflow.replace(
-        "927edd45ae77be4251a8a18ca9eb5613a2e32cbd",
-        "0123456789abcdef0123456789abcdef01234567",
+        _TEST_ACTION_SHA,
+        _DEPENDABOT_UPDATED_TEST_ACTION_SHA,
     )
     assert_ci_coverage_action_contract(
         ci_workflow=dependabot_bumped_workflow,
@@ -431,9 +433,7 @@ def test_ci_coverage_action_contract_accepts_any_pinned_sha_rejects_branch_ref()
         use_rust=False,
     )
 
-    branch_ref_workflow = workflow.replace(
-        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd", "@main"
-    )
+    branch_ref_workflow = workflow.replace(f"@{_TEST_ACTION_SHA}", "@main")
     with pytest.raises(
         AssertionError,
         match="expected CI to use the shared coverage action pinned to a 40-hex",
@@ -496,7 +496,7 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     """
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
-    assert ".PHONY: help check-fmt lint spelling test typecheck" in makefile, (
+    assert ".PHONY: help check-fmt fmt lint spelling test typecheck" in makefile, (
         "expected parent Makefile to mark documented gate targets as phony"
     )
     assert "check-fmt: ## Verify template test formatting" in makefile, (
@@ -614,7 +614,7 @@ jobs:
     steps:
 {rust_setup}\
       - name: Generate coverage
-        uses: leynos/shared-actions/.github/actions/generate-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
+        uses: leynos/shared-actions/.github/actions/generate-coverage@{_TEST_ACTION_SHA}
         with:
           output-path: coverage.xml
           format: cobertura
@@ -622,7 +622,7 @@ jobs:
           with-ratchet: 'true'
       - name: Upload coverage data to CodeScene
         if: {guard}
-        uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
+        uses: leynos/shared-actions/.github/actions/upload-codescene-coverage@{_TEST_ACTION_SHA}
         with:
           format: cobertura
           path: coverage.xml
@@ -691,7 +691,7 @@ def test_coverage_main_workflow_contract_requires_rust_setup() -> None:
     rust_setup = (
         "      - name: Set up Rust\n"
         "        uses: leynos/shared-actions/.github/actions/setup-rust"
-        "@927edd45ae77be4251a8a18ca9eb5613a2e32cbd\n"
+        f"@{_TEST_ACTION_SHA}\n"
     )
     rust_manifest = "          cargo-manifest: rust_extension/Cargo.toml\n"
     workflow = _coverage_main_workflow(
@@ -727,8 +727,8 @@ def test_coverage_main_workflow_contract_accepts_any_pinned_sha_rejects_branch_r
     workflow = _coverage_main_workflow(guard="env.CS_ACCESS_TOKEN != ''")
 
     dependabot_bumped_workflow = workflow.replace(
-        "927edd45ae77be4251a8a18ca9eb5613a2e32cbd",
-        "0123456789abcdef0123456789abcdef01234567",
+        _TEST_ACTION_SHA,
+        _DEPENDABOT_UPDATED_TEST_ACTION_SHA,
     )
     assert_coverage_main_workflow_contract(
         coverage_main_workflow=dependabot_bumped_workflow,
@@ -737,7 +737,7 @@ def test_coverage_main_workflow_contract_accepts_any_pinned_sha_rejects_branch_r
     )
 
     branch_ref_workflow = workflow.replace(
-        "generate-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd",
+        f"generate-coverage@{_TEST_ACTION_SHA}",
         "generate-coverage@main",
     )
     with pytest.raises(
@@ -752,7 +752,7 @@ def test_coverage_main_workflow_contract_accepts_any_pinned_sha_rejects_branch_r
         )
 
     upload_branch_ref_workflow = workflow.replace(
-        "upload-codescene-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd",
+        f"upload-codescene-coverage@{_TEST_ACTION_SHA}",
         "upload-codescene-coverage@main",
     )
     with pytest.raises(
@@ -779,7 +779,7 @@ jobs:
           persist-credentials: {persist_credentials}
       - name: Test and Measure Coverage
         if: ${{{{ github.event_name == 'pull_request' }}}}
-        uses: leynos/shared-actions/.github/actions/generate-coverage@927edd45ae77be4251a8a18ca9eb5613a2e32cbd
+        uses: leynos/shared-actions/.github/actions/generate-coverage@{_TEST_ACTION_SHA}
         with:
           output-path: coverage.xml
           format: cobertura

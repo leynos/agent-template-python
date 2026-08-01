@@ -55,7 +55,7 @@ Docker-dependent tests isolated from the standard template test gate:
 
 `template/Makefile.jinja` defines the generated developer workflow. The default
 `all` target runs build, formatting, linting, typechecking, tests, and
-spelling. The spelling recipe runs last so generated configuration cannot race
+spelling. The spelling recipe runs last, so generated configuration cannot race
 tests when callers enable parallel Make execution. Generated projects pin `ty`
 in the dev dependency group (`ty==0.0.56`), so `make typecheck` resolves the
 pinned typechecker; bumps follow the same deliberate policy as the parent
@@ -100,6 +100,16 @@ Docker availability, and runs `make test WITH_ACT=1`.
 Rust-enabled workflows pass `rust_extension/Cargo.toml` to the coverage action
 because the generated Python project root does not contain a Rust manifest.
 
+The mutation-testing workflow template is rendered when either mutation engine
+is available. Its mutmut job requires a minimum Python version of 3.13 or
+newer; the hidden `mutmut_supported` Copier answer enforces that gate. The
+cargo-mutants job is gated independently by `use_rust`, so a Rust-enabled
+project with a Python 3.12 baseline still receives Rust mutation testing. Both
+jobs delegate to reusable `leynos/shared-actions` workflows. Dependabot owns
+their pinned commit SHAs; contract tests and documentation must not duplicate
+those values because Dependabot cannot update them outside the workflow
+template.
+
 ### Workflow pins and Dependabot
 
 Dependabot owns the upgrade of GitHub Actions and reusable workflows, including
@@ -107,7 +117,8 @@ calls into `leynos/shared-actions`. Contract tests that assert a caller's exact
 commit SHA create a lockstep dependency: every time Dependabot opens a bump PR,
 the test fails until a human edits the pinned constant to match. That defeats
 the purpose of automated dependency updates and turns a routine bump into a
-manual chore.
+manual chore. [ADR-005](adr-005-assert-workflow-shape-not-shas.md) records this
+decision.
 
 Contract tests may still verify the *shape* of a reusable-workflow caller. They
 must not verify the specific SHA value.
