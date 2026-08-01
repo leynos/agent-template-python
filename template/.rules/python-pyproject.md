@@ -139,8 +139,9 @@ dev = [
 `uv sync` include the `dev` group with no extra flags, so a bare `uv sync`
 gives a contributor the full toolchain. Adjust this with:
 
-- `--no-dev` or `--no-default-groups` to exclude development dependencies (for
-  example, when building a wheel or a production install).
+- `--no-dev` to exclude only the `dev` group.
+- `--no-default-groups` to disable configured default groups while still
+  permitting explicit selection of other groups.
 - `--group <name>` or `--only-group <name>` to include or isolate a
   non-default group.
 - `[tool.uv].default-groups` to change which groups sync by default:
