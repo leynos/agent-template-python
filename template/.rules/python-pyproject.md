@@ -106,7 +106,7 @@ Published "extras" that an *end user* opts into to enable an optional feature
 of the package, requested with `package[extra]` syntax (for example,
 `pandas[excel]`). Reach for this only when the extra dependency powers
 user-facing functionality that not everyone needs — never for development
-tooling. Add them with `uv add --optional <extra>`:
+tooling. Add them with `uv add --optional <extra> <package>`:
 
 ```toml
 [project.optional-dependencies]
@@ -122,8 +122,9 @@ Tooling only contributors need: test frameworks, linters, type checkers,
 documentation builders, and property or mutation testers. These are
 **local-only** — PEP 735 dependency groups are *not* included in published
 package metadata (they are not part of the wheel), so they must live here rather
-than in `project.optional-dependencies`. Add them with `uv add --dev` (the
-`dev` group) or `uv add --group <name>`:
+than in `project.optional-dependencies`. Add them with
+`uv add --dev <package>` (the `dev` group) or
+`uv add --group <name> <package>`:
 
 ```toml
 [dependency-groups]
