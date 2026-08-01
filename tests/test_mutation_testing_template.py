@@ -240,10 +240,11 @@ def test_generated_mutation_testing_gating(
     copier: CopierFixture,
     tmp_path: Path,
     target_dir: str,
-    use_rust: bool,
     python_version: str,
-    expect_mutmut: bool,
     package_name: str,
+    *,
+    use_rust: bool,
+    expect_mutmut: bool,
 ) -> None:
     """Rendered mutation testing follows the interpreter and Rust gates.
 
@@ -255,16 +256,16 @@ def test_generated_mutation_testing_gating(
         Temporary directory where the rendered project is created.
     target_dir
         Temporary project directory name for the rendered variant.
-    use_rust
-        Whether the rendered variant includes the optional Rust extension.
     python_version
         Minimum supported Python version answer passed to Copier.
-    expect_mutmut
-        Whether the baseline interpreter supports the mutmut workflow
-        (3.13 or greater).
     package_name
         Package name answer passed to Copier. One enabled variant uses a
         non-default name so package-specific rendering is exercised.
+    use_rust
+        Whether the rendered variant includes the optional Rust extension.
+    expect_mutmut
+        Whether the baseline interpreter supports the mutmut workflow
+        (3.13 or greater).
 
     Returns
     -------

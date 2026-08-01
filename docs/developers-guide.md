@@ -117,7 +117,8 @@ calls into `leynos/shared-actions`. Contract tests that assert a caller's exact
 commit SHA create a lockstep dependency: every time Dependabot opens a bump PR,
 the test fails until a human edits the pinned constant to match. That defeats
 the purpose of automated dependency updates and turns a routine bump into a
-manual chore.
+manual chore. [ADR-005](adr-005-assert-workflow-shape-not-shas.md) records this
+decision.
 
 Contract tests may still verify the *shape* of a reusable-workflow caller. They
 must not verify the specific SHA value.
