@@ -192,18 +192,18 @@ ______________________________________________________________________
 ## 5. Declaring a Build System
 
 PEP 517/518 require a `[build-system]` table to tell tools how to build and
-install your project. A "modern" convention is to specify `setuptools>=61.0`
+install your project. A "modern" convention is to specify `setuptools>=64.0`
 (for editable installs without `setup.py`) or a lighter alternative like
 `flit_core`. Below is the typical setup using setuptools:
 
 ```toml
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=64.0", "wheel"]
 build-backend = "setuptools.build_meta"
 ```
 
 - **`requires`:** A list of packages needed at build time. For editable installs
-  in `uv`, you need at least `setuptools>=61.0` and `wheel`. (Python
+  in `uv`, you need at least `setuptools>=64.0` and `wheel`. (Python
   Packaging[^4], Astral Docs[^7])
 - **`build-backend`:** The entry point for your build backend.
   `setuptools.build_meta` is the PEP 517-compliant backend for setuptools.
@@ -284,7 +284,7 @@ docs = [
 mycli = "my_project.cli:main"
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=64.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.uv]
@@ -320,7 +320,7 @@ package = true
 
 4. **Build System:**
 
-   - `setuptools>=61.0` plus `wheel` ensures both legacy and editable installs
+   - `setuptools>=64.0` plus `wheel` ensures both legacy and editable installs
      work. ✱ Newer versions of setuptools support PEP 660 editable installs
      without a `setup.py` stub. (Python Packaging[^4], Astral Docs[^7])
    - `build-backend = "setuptools.build_meta"` tells `uv` how to compile your
@@ -374,7 +374,7 @@ A "modern" `pyproject.toml` for an Astral `uv` project should:
   `[dependency-groups]` (the `dev` group installs by default).
 - Define any CLI or GUI entry points under `[project.scripts]` or
   `[project.gui-scripts]`.
-- Declare a PEP 517 `[build-system]` (e.g. `setuptools>=61.0`, `wheel`,
+- Declare a PEP 517 `[build-system]` (e.g. `setuptools>=64.0`, `wheel`,
   `setuptools.build_meta`) to support editable installs, or omit it and rely on
   `tool.uv.package = true`.
 - Include a `[tool.uv]` section, at minimum `package = true` if you want `uv` to
