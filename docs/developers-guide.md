@@ -74,8 +74,8 @@ The generated lint targets are split by language:
 - `audit` exists for both generated variants and runs `pip-audit`; Rust-enabled
   variants delegate to `rust-audit` for `cargo audit`.
 
-Tool revisions are exposed as Makefile variables such as `PYLINT_PYPY_SHIM_REF`
-and `WHITAKER_INSTALLER_REV`, so generated projects can override pins without
+Tool revisions are exposed as Makefile variables such as
+`PYLINT_PYPY_SHIM_REF`, so generated projects can override pins without
 editing target recipes.
 
 ## Continuous Integration Strategy
@@ -163,7 +163,8 @@ When `use_rust` is enabled, the template renders a PyO3 extension under
 Python package imports the Rust-backed implementation.
 
 The generated Rust lint tier uses Clippy and Whitaker. The local Makefile
-installs Whitaker on demand when it is missing. Tests prefer
+never installs Whitaker; it fails with a clear error when the wrapper is
+missing, and the developer installs it with `whitaker-installer`. Tests prefer
 `cargo nextest run` when `cargo-nextest` is available and fall back to
 `cargo test` otherwise.
 

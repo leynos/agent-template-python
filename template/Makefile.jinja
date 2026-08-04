@@ -35,7 +35,6 @@ CLIPPY_FLAGS ?= $(CARGO_FLAGS) -- $(RUST_FLAGS)
 TEST_FLAGS ?= $(CARGO_FLAGS)
 TEST_CMD := $(if $(CARGO_AVAILABLE),$(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test),)
 WHITAKER_CARGO_FLAGS ?= --all-targets --all-features
-WHITAKER_INSTALLER_VERSION ?= 0.2.6
 WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHITAKER)),whitaker)
 {% endif %}
 
@@ -106,16 +105,11 @@ define ensure_cargo
 	}
 endef
 
-whitaker: ## Install Whitaker when the generated Rust lint target needs it
-	@if ! command -v $(WHITAKER) >/dev/null 2>&1; then \
-	  test -n "$(CARGO_AVAILABLE)" || { \
-	    printf "Error: cargo is required to install Whitaker, but '%s' was not found on PATH\n" "$(CARGO)" >&2; \
-	    exit 1; \
-	  }; \
-	  $(CARGO) install --locked \
-	    whitaker-installer --version "$(WHITAKER_INSTALLER_VERSION)"; \
-	  PATH="$(HOME)/.cargo/bin:$$PATH" whitaker-installer --cranelift; \
-	fi
+whitaker: ## Verify the Whitaker wrapper is available for the Rust lint target
+	@command -v $(WHITAKER) >/dev/null 2>&1 || { \
+	  printf "Error: whitaker was not found on PATH; install it yourself with whitaker-installer (see https://github.com/leynos/whitaker)\n" >&2; \
+	  exit 1; \
+	}
 
 {% endif %}
 fmt: build $(MDFORMAT_ALL) ## Format sources

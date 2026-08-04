@@ -37,8 +37,9 @@ When the Rust extension is enabled, `lint-rust` runs:
 - `cargo clippy` with the generated Clippy configuration; and
 - Whitaker with `whitaker --all`.
 
-The generated Makefile installs Whitaker on demand before local Rust linting
-when it is not already available.
+The generated Makefile never installs Whitaker; it fails with a clear error
+when the wrapper is missing. Install it yourself with `whitaker-installer`
+(see <https://github.com/leynos/whitaker>) before running local Rust linting.
 
 ## Dependency Auditing
 
