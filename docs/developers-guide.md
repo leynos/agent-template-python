@@ -38,10 +38,12 @@ template itself.
 The parent repository uses three separate GitHub Actions workflows to keep
 Docker-dependent tests isolated from the standard template test gate:
 
-- `.github/workflows/ci.yml` runs `make test` and `make spelling` on every push
-  to `main` and on all pull requests. It installs `markdownlint-cli2` and
-  `mbake` at pinned versions, and skips `make audit` for Dependabot pull
-  requests with `if: github.actor != 'dependabot[bot]'`.
+- `.github/workflows/ci.yml` runs `make test`, `make check-fmt`, and
+  `make spelling` on every push to `main` and on all pull requests. It installs
+  `markdownlint-cli2`, `mbake`, and `mdtablefix` at pinned versions, lints
+  Markdown through the pinned `DavidAnson/markdownlint-cli2-action`, and skips
+  `make audit` for Dependabot pull requests with
+  `if: github.actor != 'dependabot[bot]'`.
 - `.github/workflows/audit.yml` runs `make audit` on a weekly schedule against
   the default branch.
 - `.github/workflows/act-validation.yml` runs `make test WITH_ACT=1`. It
@@ -75,8 +77,8 @@ The generated lint targets are split by language:
   variants delegate to `rust-audit` for `cargo audit`.
 
 Tool revisions are exposed as Makefile variables such as
-`PYLINT_PYPY_SHIM_REF`, so generated projects can override pins without
-editing target recipes.
+`PYLINT_PYPY_SHIM_REF`, so generated projects can override pins without editing
+target recipes.
 
 ## Continuous Integration Strategy
 
@@ -162,9 +164,9 @@ When `use_rust` is enabled, the template renders a PyO3 extension under
 `rust_extension/`. Python packaging is handled by maturin, and the generated
 Python package imports the Rust-backed implementation.
 
-The generated Rust lint tier uses Clippy and Whitaker. The local Makefile
-never installs Whitaker; it fails with a clear error when the wrapper is
-missing, and the developer installs it with `whitaker-installer`. Tests prefer
+The generated Rust lint tier uses Clippy and Whitaker. The local Makefile never
+installs Whitaker; it fails with a clear error when the wrapper is missing, and
+the developer installs it with `whitaker-installer`. Tests prefer
 `cargo nextest run` when `cargo-nextest` is available and fall back to
 `cargo test` otherwise.
 

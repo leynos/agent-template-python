@@ -55,3 +55,14 @@ jobs:
         env:
           ACT_GITHUB_TOKEN: ${{ github.token }}
         run: make test WITH_ACT=1
+
+      - name: Lint Markdown
+        # This job installs markdownlint-cli2 for the rendered project's own
+        # gates, so it also lints this repository's Markdown through the pinned
+        # upstream action, as the estate `markdown-formatting-baseline` rule
+        # requires of every job that provisions the linter. The action reads
+        # .markdownlint-cli2.jsonc from the workspace, so its rules and ignores
+        # match `make fmt`.
+        uses: DavidAnson/markdownlint-cli2-action@4580e1612f6407034edd6c0e4e316d725920867b  # v24.2.0
+        with:
+          globs: '**/*.md'

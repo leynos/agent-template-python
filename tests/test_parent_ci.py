@@ -51,8 +51,25 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "uv tool install mdformat-all" not in ci_workflow, (
         "expected parent CI not to install mdformat-all through uv"
     )
-    assert "mdtablefix" not in ci_workflow, (
-        "expected parent CI not to install Markdown formatting tools"
+    # The estate `markdown-formatting-baseline` rule requires the parent CI to
+    # install the pinned mdtablefix, run `make check-fmt`, and lint Markdown
+    # through the pinned markdownlint-cli2 action.
+    assert (
+        "leynos/shared-actions/.github/actions/install-mdtablefix@"
+        "c5a54701c8603a0fa756a6b34c49bc2af75a6c11" in ci_workflow
+    ), "expected parent CI to install the pinned mdtablefix"
+    assert 'version: "0.6.0"' in ci_workflow, (
+        "expected parent CI to pin mdtablefix at 0.6.0 or later"
+    )
+    assert "make check-fmt\n" in ci_workflow, (
+        "expected parent CI to run the formatting gate"
+    )
+    assert (
+        "DavidAnson/markdownlint-cli2-action@"
+        "4580e1612f6407034edd6c0e4e316d725920867b" in ci_workflow
+    ), "expected parent CI to lint Markdown through the pinned action"
+    assert "globs: '**/*.md'" in ci_workflow, (
+        "expected parent CI to lint every Markdown file"
     )
     assert "make test WITH_ACT=1" not in ci_workflow, (
         "expected parent CI to leave act validation to a separate workflow"

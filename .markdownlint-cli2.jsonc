@@ -20,6 +20,8 @@
     ".uv-tools/**",
     "docs/configuring-a-copier-template.md",
     "docs/creating-a-copier-template.md",
-    "CRUSH.md"
+    "CRUSH.md",
+    ".vtcode/**",
+    "memories/**"
   ]
 }
