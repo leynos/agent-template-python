@@ -45,7 +45,6 @@ jobs:
           )"
           printf '%s  %s\n' "${act_sha256}" "${act_archive}" | sha256sum -c -
           sudo tar -xzf "${act_archive}" -C /usr/local/bin act
-          npm install -g "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}"
           uv tool install "mbake==${MBAKE_VERSION}"
 
       - name: Check Docker runtime

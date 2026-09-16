@@ -36,7 +36,6 @@ jobs:
 
       - name: Install template test tools
         run: |
-          npm install -g "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}"
           uv tool install "mbake==${MBAKE_VERSION}"
 
       - name: Run template tests
