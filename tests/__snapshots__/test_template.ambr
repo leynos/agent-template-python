@@ -47,7 +47,7 @@
   Available targets:
     build                Build virtual-env and install deps
     build-release        Build artefacts (sdist & wheel)
-    clean                Remove build artifacts
+    clean                Remove build artefacts
     fmt                  Format sources
     check-fmt            Verify formatting
     lint                 Run linters

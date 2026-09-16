@@ -77,7 +77,7 @@ def local_socket_dirs() -> tuple[Path, ...]:
     -------
     tuple[pathlib.Path, ...]
         Canonical directories under which local Docker-compatible runtime
-        sockets are trusted for ``DOCKER_HOST`` sanitisation.
+        sockets are trusted for ``DOCKER_HOST`` sanitization.
 
     Raises
     ------
@@ -129,7 +129,7 @@ def user_runtime_socket_dirs() -> tuple[Path, ...]:
 def docker_environment() -> dict[str, str]:
     """Return a sanitized environment for Docker-compatible subprocesses.
 
-    The helper copies ``os.environ``, canonicalises acceptable local Unix
+    The helper copies ``os.environ``, canonicalizes acceptable local Unix
     ``DOCKER_HOST`` values, removes unsafe or malformed values, and falls back
     to the current user's Podman socket when it exists and stays within the
     expected runtime directory.

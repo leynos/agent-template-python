@@ -90,8 +90,12 @@ upload.
 
 ## Shared spelling configuration
 
-Run `make spelling` to enforce en-GB-oxendict spelling. The generator fetches
-the estate-wide base from `leynos/agent-helper-scripts` only when its authority
-is newer than the ignored local cache. A populated cache supports offline
-generation. Add only project-specific terms and exclusions to
-`typos.local.toml`; never edit generated `typos.toml` by hand.
+Run `make spelling` to enforce en-GB-oxendict spelling. The shared
+`typos-config-builder` gate regenerates `typos.toml` from the live estate
+dictionary in `leynos/agent-helper-scripts` and the `typos.local.toml` overlay
+on every run, then checks tracked Markdown. A word added to the shared
+dictionary therefore needs no change here, and `typos.toml` must never be drift
+checked in continuous integration. An ignored local cache keeps the gate usable
+when the authority is temporarily unreachable. Add only narrow
+project-specific terms and exclusions to `typos.local.toml`; never edit
+generated `typos.toml` by hand.

@@ -1,6 +1,6 @@
 """Validate the generated GitHub Actions workflow through act.
 
-This module renders template variants, initialises them as temporary Git
+This module renders template variants, initializes them as temporary Git
 repositories, and runs the generated CI workflow locally with ``act``.  It is a
 black-box integration check for the workflow contract: generated projects should
 use the shared coverage action, exercise Python tests, and exercise Rust checks
@@ -40,7 +40,7 @@ GENERATE_COVERAGE_STEP = "Test and Measure Coverage"
 
 
 def prepare_git_repository(project: CopierProject) -> None:
-    """Initialise a rendered project as a Git repository for act.
+    """Initialize a rendered project as a Git repository for act.
 
     Parameters
     ----------
@@ -84,7 +84,7 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
         Rendered project whose ``.github/workflows/ci.yml`` file should be
         executed.
     artifact_dir
-        Directory where act should write workflow artifacts.
+        Directory where act should write workflow artefacts.
 
     Returns
     -------
@@ -100,7 +100,7 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
     --------
     Run act for a prepared rendered project::
 
-        code, logs = run_act(project, artifact_dir=tmp_path / "artifacts")
+        code, logs = run_act(project, artifact_dir=tmp_path / "artefacts")
     """
     artifact_dir.mkdir(parents=True, exist_ok=True)
     env = docker_environment()
@@ -156,7 +156,7 @@ def test_run_act_forwards_only_explicit_act_github_token(
     monkeypatch
         Pytest fixture used to replace subprocess and environment helpers.
     tmp_path
-        Temporary directory used as the fake rendered project and artifact
+        Temporary directory used as the fake rendered project and artefact
         location.
     env
         Sanitized act subprocess environment returned by ``docker_environment``.
@@ -188,7 +188,7 @@ def test_run_act_forwards_only_explicit_act_github_token(
     monkeypatch.setattr(subprocess, "run", fake_run)
     project = cast("CopierProject", SimpleNamespace(path=tmp_path))
 
-    run_act(project, artifact_dir=tmp_path / "artifacts")
+    run_act(project, artifact_dir=tmp_path / "artefacts")
 
     if expected_secret is None:
         assert "-s" not in captured_command, (
@@ -360,7 +360,7 @@ def assert_act_result(
     Raises
     ------
     AssertionError
-        Raised when required artifacts, log evidence, or a zero return code are
+        Raised when required artefacts, log evidence, or a zero return code are
         missing.
 
     Examples
@@ -387,8 +387,8 @@ def assert_act_result(
 @pytest.mark.parametrize(
     ("name", "package", "use_rust", "artifact_dir"),
     [
-        ("ActPure", "act_pure", False, "pure-artifacts"),
-        ("ActRust", "act_rust", True, "rust-artifacts"),
+        ("ActPure", "act_pure", False, "pure-artefacts"),
+        ("ActRust", "act_rust", True, "rust-artefacts"),
     ],
 )
 @pytest.mark.act
@@ -411,7 +411,7 @@ def test_generated_workflow_runs_with_shared_coverage_action(
     copier
         ``pytest-copier`` fixture used to render the template.
     tmp_path
-        Temporary directory for the rendered project and act artifacts.
+        Temporary directory for the rendered project and act artefacts.
     name
         Project name passed to the Copier template.
     package
@@ -419,7 +419,7 @@ def test_generated_workflow_runs_with_shared_coverage_action(
     use_rust
         Whether to render the Rust-extension variant.
     artifact_dir
-        Directory name, under ``tmp_path``, used for act artifacts.
+        Directory name, under ``tmp_path``, used for act artefacts.
 
     Returns
     -------

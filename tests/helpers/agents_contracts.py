@@ -113,8 +113,7 @@ def _assert_documented_command_flags(
         ],
         "spelling": [
             ("AGENTS.md", "make spelling"),
-            ("Makefile", "generate_typos_config.py"),
-            ("Makefile", "--config typos.toml --force-exclude"),
+            ("Makefile", "gate --repository ."),
         ],
         "test": [
             ("AGENTS.md", "pytest -v -n $(PYTEST_XDIST_WORKERS)"),

@@ -20,8 +20,9 @@ target delegates to language-specific targets:
   the PyPy-backed runner.
 - `lint-rust` is rendered only when `use_rust` is enabled and runs rustdoc,
   Clippy, and Whitaker.
-- `spelling` generates shared en-GB-oxendict policy and runs the pinned
-  `typos` binary after the other aggregate prerequisites complete.
+- `spelling` runs the pinned `typos-config-builder` gate, which regenerates
+  the shared en-GB-oxendict policy and runs Typos, after the other aggregate
+  prerequisites complete.
 
 Tool revision pins are exposed as Makefile variables where the generated
 Makefile owns installation or invocation. Generated Continuous Integration

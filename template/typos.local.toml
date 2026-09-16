@@ -12,7 +12,9 @@ accepted = []
 
 [patterns]
 ignore = [
-  'Center \| Microsoft Learn',
+  # Inline code spans were masked by the previous dictionary snapshot; kept
+  # until the shared dictionary rules on it.
+  '`[^`\n]+`',
 ]
 
 [files]
