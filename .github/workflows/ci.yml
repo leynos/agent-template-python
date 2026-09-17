@@ -17,20 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
 
       - name: Set up Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@4d696e72fff6db49f34302ccf119ba978f1032c9
+        uses: leynos/shared-actions/.github/actions/setup-rust@f68e8e2e05ff03ab91ef01bb7175582a04e3428d
         with:
           toolchain: stable
 
@@ -52,7 +52,7 @@ jobs:
       - name: Install mdtablefix
         # `make check-fmt` runs `mdtablefix --check --git`; 0.6.0 is the
         # first release with `--check` and `--git`.
-        uses: leynos/shared-actions/.github/actions/install-mdtablefix@c5a54701c8603a0fa756a6b34c49bc2af75a6c11
+        uses: leynos/shared-actions/.github/actions/install-mdtablefix@f68e8e2e05ff03ab91ef01bb7175582a04e3428d
         with:
           version: "0.6.0"
 
@@ -65,7 +65,7 @@ jobs:
         # resolved from the registry at run time, and Dependabot manages the
         # pin alongside the other actions. It reads .markdownlint-cli2.jsonc
         # from the workspace, so the rules and ignores match `make markdownlint`.
-        uses: DavidAnson/markdownlint-cli2-action@4580e1612f6407034edd6c0e4e316d725920867b  # v24.2.0
+        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff  # v24.2.0
         with:
           globs: '**/*.md'
 
