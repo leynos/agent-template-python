@@ -2,21 +2,20 @@
 
 ## Status
 
-Accepted. Supersedes
-[ADR-003](adr-003-shared-oxford-spelling-base.md).
+Accepted. Supersedes [ADR-003](adr-003-shared-oxford-spelling-base.md).
 
 ## Context
 
 [ADR-003](adr-003-shared-oxford-spelling-base.md) kept generated projects on
 the estate's en-GB-oxendict policy by vendoring a generator that refreshed a
-cached copy of the shared dictionary, merged it with a local overlay, and
-wrote a tracked `typos.toml` that continuous integration (CI) drift checked.
-Both layers of this template carried that generator, a phrase-check helper,
-a pinned `typos` version, and tests for all of them.
+cached copy of the shared dictionary, merged it with a local overlay, and wrote
+a tracked `typos.toml` that continuous integration (CI) drift checked. Both
+layers of this template carried that generator, a phrase-check helper, a pinned
+`typos` version, and tests for all of them.
 
-A 2026-09-14 estate sweep found fourteen independently maintained copies of
-the phrase-check script and twenty-eight repositories whose pinned `typos`
-version or generator revision had never been bumped since adoption. The
+A 2026-09-14 estate sweep found fourteen independently maintained copies of the
+phrase-check script and twenty-eight repositories whose pinned `typos` version
+or generator revision had never been bumped since adoption. The
 `typos-config-builder` project now packages that whole pipeline behind one
 pinned `gate` command, and reads the shared dictionary in
 `leynos/agent-helper-scripts` live rather than from a vendored snapshot.
