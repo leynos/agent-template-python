@@ -12,7 +12,22 @@ accepted = []
 
 [patterns]
 ignore = [
-  'Center \| Microsoft Learn',
+  # Inline code spans were masked by the previous dictionary snapshot; kept
+  # until the shared dictionary rules on it.
+  '`[^`\n]+`',
+  # GitHub Actions and act spell the concept "artifact". These are composite
+  # action input names, an act command-line flag, the Python parameter bound
+  # to it, published action references, and a quoted upstream log line, not
+  # prose; repository prose uses "artefact".
+  '\bartifact-name\b',
+  '--artifact-server-path',
+  '\bartifact_dir\b',
+  '\b(?:upload|download)-artifact\b',
+  'Provided artifact name input during validation is empty',
+  # GitHub and Cargo environment and event names keep their US spelling.
+  '\bCARGO_TERM_COLOR\b',
+  '\bNO_COLOR\b',
+  '\blabeled, ready_for_review\b',
 ]
 
 [files]

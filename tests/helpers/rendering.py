@@ -19,6 +19,33 @@ from pytest_copier.plugin import CopierFixture, CopierProject
 from tests.helpers.generated_files import read_generated_text
 
 
+def initialize_git_repository(project: CopierProject) -> None:
+    """Track every rendered file in a fresh repository-local Git index.
+
+    The generated ``spelling`` target runs the shared ``typos-config-builder``
+    gate, which enumerates tracked files through ``git ls-files``. Copier
+    renders into a plain directory, so the rendered project must become a Git
+    repository with a populated index before the gate can run.
+
+    Parameters
+    ----------
+    project : CopierProject
+        Rendered ``pytest-copier`` project to initialize.
+
+    Returns
+    -------
+    None
+        The helper returns once the rendered files are staged.
+
+    Raises
+    ------
+    RuntimeError
+        Raised by ``pytest-copier`` when a Git command exits unsuccessfully.
+    """
+    project.run("git init --quiet .")
+    project.run("git add -A .")
+
+
 def run_quality_gates(project: CopierProject) -> None:
     """Run the rendered project's public quality gate.
 
@@ -31,15 +58,23 @@ def run_quality_gates(project: CopierProject) -> None:
     Returns
     -------
     None
-        The helper returns after the generated ``make all`` target succeeds.
+        The helper returns after the generated ``make all`` target succeeds
+        and leaves no untracked generated configuration behind.
 
     Raises
     ------
     AssertionError
         Raised by ``pytest-copier`` when the generated command exits
-        unsuccessfully.
+        unsuccessfully, or when the gate leaves an untracked ``typos.toml``
+        in the rendered project.
     """
+    initialize_git_repository(project)
     project.run("make all")
+    status = project.run("git status --porcelain")
+    assert "typos.toml" not in status, (
+        "the spelling gate regenerates typos.toml on every run, so the "
+        "rendered project must ignore it; git status reported:\n" + status
+    )
 
 
 def render_project(

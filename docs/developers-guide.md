@@ -23,9 +23,9 @@ template itself.
 - `make test` — runs the template test suite via `uvx`, supplying
   Hypothesis, `pytest-copier`, `pyyaml`, `syrupy`, and `make-parser` without a
   manually managed virtual environment.
-- `make spelling` — refreshes the ignored estate-wide dictionary cache, merges
-  `typos.local.toml`, generates `typos.toml`, and checks Markdown plus rendered
-  Markdown template sources with the pinned `typos` version.
+- `make spelling` — runs the shared `typos-config-builder` gate over every
+  tracked file, so Markdown and the `*.md.jinja` template sources are both
+  checked for en-GB-oxendict spelling.
 - `make test WITH_ACT=1` — sets `RUN_ACT_VALIDATION=1` inside the pytest
   invocation, enabling the act-backed integration tests that run generated CI
   workflows locally. Requires `act` and Docker to be available.
@@ -148,13 +148,21 @@ as a test assertion on the SHA string.
 
 ## Shared Spelling Configuration
 
-[ADR-003](adr-003-shared-oxford-spelling-base.md) records the shared-base
-decision. Both the parent and generated project keep
-`.typos-oxendict-base.toml` and `.typos-oxendict-base.json` untracked. Generic
-Oxford stems belong in `leynos/agent-helper-scripts`; repository-only accepted
-words, patterns, and file exclusions belong in `typos.local.toml`. Regenerate
-tracked configuration with `uv run scripts/generate_typos_config.py` rather
-than editing `typos.toml`.
+[ADR-006](adr-006-shared-typos-config-builder-gate.md) records the shared
+`typos-config-builder` gate, superseding the vendored generator of
+[ADR-003](adr-003-shared-oxford-spelling-base.md). Both the parent and the
+generated project keep `.typos-oxendict-base.toml` and
+`.typos-oxendict-base.json` untracked. Generic Oxford stems belong in
+`leynos/agent-helper-scripts`; repository-only accepted words, patterns, and
+file exclusions belong in `typos.local.toml`.
+
+`make spelling` regenerates `typos.toml` from the live shared dictionary and
+the overlay on every run, so a word added to the shared dictionary reaches this
+repository with no local change. Because the dictionary is live, `typos.toml`
+must never be drift checked in continuous integration, and hand edits to it are
+overwritten on the next run. The parent keeps its `typos.toml` tracked as a
+convenience snapshot; generated projects ignore theirs, so a rendered project
+stays clean after its first gate run.
 
 ## Rust Integration
 
