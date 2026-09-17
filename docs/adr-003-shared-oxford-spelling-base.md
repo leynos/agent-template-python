@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Superseded on 2026-09-17 by
+[ADR-006](adr-006-shared-typos-config-builder-gate.md).
 
 ## Context
 

@@ -14,6 +14,7 @@ jobs:
     env:
       ACT_VERSION: v0.2.84
       MBAKE_VERSION: 1.4.6
+      WHITAKER_INSTALLER_VERSION: 0.2.6
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4
@@ -32,6 +33,14 @@ jobs:
         uses: leynos/shared-actions/.github/actions/setup-rust@4d696e72fff6db49f34302ccf119ba978f1032c9
         with:
           toolchain: stable
+
+      - name: Install Whitaker for rendered Rust projects
+        env:
+          RUSTFLAGS: ""
+        run: |
+          cargo binstall --no-confirm --locked \
+            whitaker-installer@"${WHITAKER_INSTALLER_VERSION}"
+          whitaker-installer --cranelift
 
       - name: Install template test tools
         run: |

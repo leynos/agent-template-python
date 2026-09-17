@@ -10,11 +10,11 @@ generated-file I/O here so template tests share one error-reporting boundary.
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 from typing import Any
 
 import pytest
+import tomllib
 import yaml
 
 

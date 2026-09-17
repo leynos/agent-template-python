@@ -312,10 +312,11 @@ def test_common_make_targets_reports_missing_contracts() -> None:
         "lint-python: build\n"
         "lint: lint-python\n"
         "audit: build\n"
-        "TYPOS_VERSION ?= 1.48.0\n"
+        "TYPOS_CONFIG_BUILDER_VERSION ?= v0.1.1\n"
         "spelling:\n"
-        "\tuv run scripts/generate_typos_config.py\n"
-        "\tuv tool run typos --config typos.toml --force-exclude\n"
+        "\tuv tool run --from "
+        '"git+https://github.com/leynos/typos-config-builder.git@v0.1.1" '
+        "typos-config-builder gate --repository .\n"
         "clean:\n"
         "\trm -rf .uv-cache .uv-tools\n"
     )

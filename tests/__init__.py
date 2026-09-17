@@ -7,7 +7,7 @@ loaded from :mod:`tests.conftest`.
 
 Import the package directly when a test only needs package discovery, or import
 specific utilities from their modules when using them in assertions. Importing
-``tests`` has no side effects beyond normal package initialisation; runtime
+``tests`` has no side effects beyond normal package initialization; runtime
 probing for tools such as Docker, Podman, or ``act`` stays inside fixtures and
 helper functions.
 

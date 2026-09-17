@@ -1,6 +1,6 @@
 """Configure shared pytest fixtures for template validation.
 
-This module centralises fixtures and runtime probes used by the repository's
+This module centralizes fixtures and runtime probes used by the repository's
 test suite.  It tells ``pytest-copier`` which template files to copy into its
 temporary repository and gates local ``act`` workflow validation behind explicit
 environment and container-runtime checks.

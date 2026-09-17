@@ -117,7 +117,7 @@ def test_correct_uv_shebang_installs_declared_dependency(tmp_path: Path) -> None
     script_path.write_text(script_source, encoding="utf-8")
     script_path.chmod(script_path.stat().st_mode | stat.S_IEXEC)
 
-    result = subprocess.run(  # noqa: S603 - argv is the freshly written temp script.
+    result = subprocess.run(
         [str(script_path)],
         capture_output=True,
         text=True,

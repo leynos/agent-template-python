@@ -44,12 +44,14 @@ def assert_common_make_targets(makefile: str) -> None:
     assert "lint: lint-python" in makefile, "lint should delegate to lint-python"
     assert "audit: build" in makefile, "Makefile should expose audit"
     assert "spelling:" in makefile, "Makefile should expose spelling"
-    assert "TYPOS_VERSION ?= 1.48.0" in makefile, "Makefile should pin typos"
-    assert "scripts/generate_typos_config.py" in makefile, (
-        "spelling should generate configuration"
+    assert "TYPOS_CONFIG_BUILDER_VERSION ?= v0.1.1" in makefile, (
+        "Makefile should pin the shared typos-config-builder"
     )
-    assert "--config typos.toml --force-exclude" in makefile, (
-        "spelling should apply generated configuration and exclusions"
+    assert "git+https://github.com/leynos/typos-config-builder.git@" in makefile, (
+        "spelling should install the builder from its pinned repository"
+    )
+    assert "gate --repository ." in makefile, (
+        "spelling should run the shared gate over the generated repository"
     )
     assert ".uv-cache .uv-tools" in makefile, "clean should remove uv state dirs"
 
@@ -59,30 +61,30 @@ def _parse_makefile_rules(makefile: str) -> dict[str, list[str]]:
     target_names = set(
         re.findall(r"^([a-zA-Z][a-zA-Z_-]*):", makefile, flags=re.MULTILINE)
     )
-    normalised_targets = {
+    normalized_targets = {
         target: target.replace("-", "_") for target in target_names if "-" in target
     }
 
-    def normalise_target(match: re.Match[str]) -> str:
+    def normalize_target(match: re.Match[str]) -> str:
         """Replace hyphenated target names with parser-compatible aliases."""
         target = match.group(1)
-        return normalised_targets.get(target, target) + ":"
+        return normalized_targets.get(target, target) + ":"
 
-    normalised_makefile = re.sub(
+    normalized_makefile = re.sub(
         r"^([a-zA-Z][a-zA-Z_-]*):",
-        normalise_target,
+        normalize_target,
         makefile.replace("?=", "="),
         flags=re.MULTILINE,
     )
     with tempfile.TemporaryDirectory() as tmp_dir:
         makefile_path = Path(tmp_dir) / "Makefile"
-        makefile_path.write_text(normalised_makefile, encoding="utf-8")
+        makefile_path.write_text(normalized_makefile, encoding="utf-8")
         parsed = make_parser.make_load(makefile_path)
-    normalised_rules = parsed["rules"]
+    normalized_rules = parsed["rules"]
     return {
-        target: normalised_rules[normalised_targets.get(target, target)]["commands"]
+        target: normalized_rules[normalized_targets.get(target, target)]["commands"]
         for target in target_names
-        if normalised_targets.get(target, target) in normalised_rules
+        if normalized_targets.get(target, target) in normalized_rules
     }
 
 
