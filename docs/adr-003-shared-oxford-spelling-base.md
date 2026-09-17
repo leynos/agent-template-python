@@ -2,10 +2,8 @@
 
 ## Status
 
-Accepted. Amended 2026-09-16: the vendored generator and rollout modules were
-replaced by the shared `typos-config-builder` gate, which implements the same
-decision. The gate reads the live shared dictionary on every run and writes
-`typos.toml` in place, so the configuration is no longer drift checked.
+Superseded on 2026-09-17 by
+[ADR-006](adr-006-shared-typos-config-builder-gate.md).
 
 ## Context
 

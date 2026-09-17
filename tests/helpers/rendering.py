@@ -58,16 +58,23 @@ def run_quality_gates(project: CopierProject) -> None:
     Returns
     -------
     None
-        The helper returns after the generated ``make all`` target succeeds.
+        The helper returns after the generated ``make all`` target succeeds
+        and leaves no untracked generated configuration behind.
 
     Raises
     ------
     AssertionError
         Raised by ``pytest-copier`` when the generated command exits
-        unsuccessfully.
+        unsuccessfully, or when the gate leaves an untracked ``typos.toml``
+        in the rendered project.
     """
     initialize_git_repository(project)
     project.run("make all")
+    status = project.run("git status --porcelain")
+    assert "typos.toml" not in status, (
+        "the spelling gate regenerates typos.toml on every run, so the "
+        "rendered project must ignore it; git status reported:\n" + status
+    )
 
 
 def render_project(

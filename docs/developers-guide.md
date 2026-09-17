@@ -148,9 +148,10 @@ as a test assertion on the SHA string.
 
 ## Shared Spelling Configuration
 
-[ADR-003](adr-003-shared-oxford-spelling-base.md) records the shared-base
-decision; the shared `typos-config-builder` gate now implements it. Both the
-parent and the generated project keep `.typos-oxendict-base.toml` and
+[ADR-006](adr-006-shared-typos-config-builder-gate.md) records the shared
+`typos-config-builder` gate, superseding the vendored generator of
+[ADR-003](adr-003-shared-oxford-spelling-base.md). Both the parent and the
+generated project keep `.typos-oxendict-base.toml` and
 `.typos-oxendict-base.json` untracked. Generic Oxford stems belong in
 `leynos/agent-helper-scripts`; repository-only accepted words, patterns, and
 file exclusions belong in `typos.local.toml`.
@@ -159,7 +160,9 @@ file exclusions belong in `typos.local.toml`.
 the overlay on every run, so a word added to the shared dictionary reaches this
 repository with no local change. Because the dictionary is live, `typos.toml`
 must never be drift checked in continuous integration, and hand edits to it are
-overwritten on the next run.
+overwritten on the next run. The parent keeps its `typos.toml` tracked as a
+convenience snapshot; generated projects ignore theirs, so a rendered project
+stays clean after its first gate run.
 
 ## Rust Integration
 
