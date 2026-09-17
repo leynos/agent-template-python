@@ -22,6 +22,15 @@ _MARKDOWNLINT_CLI2_ACTION_USES_RE = re.compile(
     re.MULTILINE,
 )
 
+# The estate `markdown-formatting-baseline` rule has the parent workflows lint
+# Markdown through the pinned `DavidAnson/markdownlint-cli2-action`, whose
+# release carries the linter and its whole dependency graph. No parent job may
+# therefore install the linter from the npm registry, and no parent job needs a
+# markdownlint-cli2 version pin of its own.
+_NPM_MARKDOWNLINT_CLI2_INSTALL = (
+    'npm install -g "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}"'
+)
+
 
 def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     """Validate parent CI splits normal and act-enabled test gates.
@@ -46,13 +55,15 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "permissions:\n  contents: read" in ci_workflow, (
         "expected parent CI to restrict GITHUB_TOKEN to repository contents reads"
     )
-    assert "MARKDOWNLINT_CLI2_VERSION: 0.22.1" in ci_workflow, (
-        "expected parent CI to pin markdownlint-cli2"
-    )
     assert "MBAKE_VERSION: 1.4.6" in ci_workflow, "expected parent CI to pin mbake"
-    assert 'npm install -g "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}"' in (
-        ci_workflow
-    ), "expected parent CI to install pinned markdownlint-cli2"
+    assert _NPM_MARKDOWNLINT_CLI2_INSTALL not in ci_workflow, (
+        "expected parent CI not to install markdownlint-cli2 through npm, because "
+        "the pinned markdownlint-cli2 action provides it"
+    )
+    assert "MARKDOWNLINT_CLI2_VERSION" not in ci_workflow, (
+        "expected parent CI not to pin markdownlint-cli2 itself, because the "
+        "pinned markdownlint-cli2 action carries its own version"
+    )
     assert 'uv tool install "mbake==${MBAKE_VERSION}"' in ci_workflow, (
         "expected parent CI to install pinned mbake"
     )
@@ -103,9 +114,18 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "sha256sum -c -" in act_workflow, (
         "expected parent act-validation workflow to verify the act archive checksum"
     )
-    assert 'npm install -g "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}"' in (
-        act_workflow
-    ), "expected parent act-validation workflow to install pinned markdownlint-cli2"
+    assert _NPM_MARKDOWNLINT_CLI2_INSTALL not in act_workflow, (
+        "expected parent act-validation workflow not to install markdownlint-cli2 "
+        "through npm, because the pinned markdownlint-cli2 action provides it"
+    )
+    assert "MARKDOWNLINT_CLI2_VERSION" not in act_workflow, (
+        "expected parent act-validation workflow not to pin markdownlint-cli2 "
+        "itself, because the pinned markdownlint-cli2 action carries its own version"
+    )
+    assert _MARKDOWNLINT_CLI2_ACTION_USES_RE.search(act_workflow), (
+        "expected parent act-validation workflow to lint Markdown through "
+        "markdownlint-cli2-action pinned to a full 40-character commit SHA"
+    )
     assert 'uv tool install "mbake==${MBAKE_VERSION}"' in act_workflow, (
         "expected parent act-validation workflow to install pinned mbake"
     )

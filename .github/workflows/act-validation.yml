@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ACT_VERSION: v0.2.84
-      MARKDOWNLINT_CLI2_VERSION: 0.22.1
       MBAKE_VERSION: 1.4.6
     steps:
       - name: Check out repository
@@ -56,10 +55,11 @@ jobs:
         run: make test WITH_ACT=1
 
       - name: Lint Markdown
-        # This job installs markdownlint-cli2 for the rendered project's own
-        # gates, so it also lints this repository's Markdown through the pinned
-        # upstream action, as the estate `markdown-formatting-baseline` rule
-        # requires of every job that provisions the linter. The action reads
+        # The upstream action rather than an npm installation of our own: its
+        # release carries the linter's whole dependency graph, so nothing is
+        # resolved from the registry at run time, and Dependabot manages the pin
+        # alongside the other actions, as the estate
+        # `markdown-formatting-baseline` rule requires. The action reads
         # .markdownlint-cli2.jsonc from the workspace, so its rules and ignores
         # match `make fmt`.
         uses: DavidAnson/markdownlint-cli2-action@4580e1612f6407034edd6c0e4e316d725920867b  # v24.2.0
