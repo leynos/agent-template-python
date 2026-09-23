@@ -280,6 +280,22 @@ project:
   tailoring is needed. Combine approaches: use `newt-hype` for the common case,
   tuple structs for outliers, and `the-newtype` to unify behaviour when
   defining traits across wrappers.
+- Model mutually exclusive states explicitly. When a state carrier contains
+  correlated booleans, `Option` fields, sentinel values, or fields that must
+  change together, ask whether they are disguising an enum with state-specific
+  payloads.
+- Choose state representation by who selects the transition. When the caller
+  chooses a small, finite sequence of operations, typestate may make illegal
+  call sequences unrepresentable. When input, a parser token, frame, socket
+  event, channel event, or scheduler chooses the next state, prefer a runtime
+  ADT; use an explicit stack or other runtime structure for unbounded state.
+- Encapsulate transitions and mandatory finalization in the state owner.
+  Prefer semantic transition/result enums over mutating several correlated
+  fields and returning flags; consuming methods should perform required
+  cleanup rather than making callers remember multi-step ceremony.
+- Keep genuinely independent booleans as booleans. Introduce an ADT to remove
+  impossible combinations or express domain alternatives, not merely to
+  avoid `bool`.
 - Use `cap_std` and `cap_std::fs_utf8` / `camino` in place of `std::fs` and
   `std::path` for enhanced cross-platform support and capability oriented
   filesystem access.
