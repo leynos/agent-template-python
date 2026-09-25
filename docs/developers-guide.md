@@ -76,9 +76,9 @@ The generated lint targets are split by language:
 - `audit` exists for both generated variants and runs `pip-audit`; Rust-enabled
   variants delegate to `rust-audit` for `cargo audit`.
 
-Tool revisions are exposed as Makefile variables such as
-`PYLINT_PYPY_SHIM_REF`, so generated projects can override pins without editing
-target recipes.
+Tool revisions are exposed as Makefile variables such as `PYLINT_VERSION` and
+`PYLINT_PYTHON`, so generated projects can override pins without editing target
+recipes.
 
 ## Continuous Integration Strategy
 
