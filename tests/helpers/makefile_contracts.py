@@ -106,8 +106,14 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     assert "PYTHON_TARGETS ?=" in makefile, (
         "expected generated Makefile to define Python target selection"
     )
-    assert "PYLINT_PYPY_SHIM_REF ?=" in makefile, (
-        "expected generated Makefile to expose the Pylint shim revision"
+    assert "PYLINT_PYTHON ?= pypy@3.12" in makefile, (
+        "expected generated Makefile to pin PyPy to its minor version"
+    )
+    assert "PYLINT_VERSION ?=" in makefile, (
+        "expected generated Makefile to expose the Pylint release pin"
+    )
+    assert "--from 'pylint==$(PYLINT_VERSION)' pylint" in makefile, (
+        "expected generated Pylint command to run the pinned release"
     )
     assert "test: build $(VENV_TOOLS)" in makefile, (
         "expected generated Makefile test target to depend on the project env"

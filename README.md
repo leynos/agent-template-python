@@ -57,7 +57,7 @@ flowchart LR
 
     Lint --> RuffCheck[ruff check]
     Lint --> Interrogate[interrogate --fail-under 100]
-    Lint --> PylintPyPy[pylint-pypy via PyPy]
+    Lint --> PylintPyPy[pylint via PyPy 3.12]
     Typecheck --> TyCheck[ty check]
     Audit --> PipAudit[pip-audit]
     Test --> Pytest[pytest -v -n auto]
