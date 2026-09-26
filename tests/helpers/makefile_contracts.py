@@ -109,8 +109,8 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     assert "PYLINT_PYTHON ?= pypy@3.12" in makefile, (
         "expected generated Makefile to pin PyPy to its minor version"
     )
-    assert "PYLINT_VERSION ?=" in makefile, (
-        "expected generated Makefile to expose the Pylint release pin"
+    assert "PYLINT_VERSION ?= 4.0.9" in makefile, (
+        "expected generated Makefile to default to the reviewed Pylint release"
     )
     assert "--from 'pylint==$(PYLINT_VERSION)' pylint" in makefile, (
         "expected generated Pylint command to run the pinned release"
