@@ -80,6 +80,15 @@ Tool revisions are exposed as Makefile variables such as `PYLINT_VERSION` and
 `PYLINT_PYTHON`, so generated projects can override pins without editing target
 recipes.
 
+The generated Pylint tier runs the pinned `PYLINT_VERSION` through
+`uv tool run --managed-python`. `PYLINT_PYTHON` follows the project's
+`python_version` answer: `pypy@3.12` for a 3.12 or older baseline, which PyPy 8
+parses, and CPython at the baseline for anything newer, because no managed PyPy
+parses Python 3.13 or later syntax. `syntax-error` stays enabled in the
+generated policy, so a module the interpreter cannot parse fails the lint.
+`tests/test_generated_pylint_tier.py` renders both shapes and runs the rendered
+`$(PYLINT)` against the baseline's newest syntax and an unparsable module.
+
 ## Continuous Integration Strategy
 
 `template/.github/workflows/ci.yml.jinja` mirrors the generated local gates. It

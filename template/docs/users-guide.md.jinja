@@ -18,9 +18,9 @@ these targets in order:
 
 The `lint-python` target runs Ruff, then Interrogate with
 `interrogate --fail-under 100 $(PYTHON_TARGETS)` to enforce 100% docstring
-coverage for the Python targets, then a pinned Pylint (`PYLINT_VERSION`) on uv-managed PyPy 3.12
+coverage for the Python targets, then a pinned Pylint (`PYLINT_VERSION`) on uv-managed {% if (python_version.split('.')[1] | int) <= 12 %}PyPy 3.12{% else %}CPython {{ python_version }}{% endif %}
 (`PYLINT_PYTHON`), installed through `uv tool run`. `syntax-error` stays
-enabled, so a module that PyPy cannot parse fails the lint rather than being
+enabled, so a module that the interpreter cannot parse fails the lint rather than being
 skipped.
 
 The spelling target regenerates `typos.toml` from the live shared dictionary
