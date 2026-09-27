@@ -44,7 +44,7 @@ def assert_common_make_targets(makefile: str) -> None:
     assert "lint: lint-python" in makefile, "lint should delegate to lint-python"
     assert "audit: build" in makefile, "Makefile should expose audit"
     assert "spelling:" in makefile, "Makefile should expose spelling"
-    assert "TYPOS_CONFIG_BUILDER_VERSION ?= v0.1.1" in makefile, (
+    assert "TYPOS_CONFIG_BUILDER_VERSION ?= v0.1.2" in makefile, (
         "Makefile should pin the shared typos-config-builder"
     )
     assert "git+https://github.com/leynos/typos-config-builder.git@" in makefile, (
