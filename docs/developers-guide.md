@@ -65,11 +65,17 @@ repository (ADR-004). The generated `audit` target is an explicit security gate
 run by CI. It runs `pip-audit` for every rendered project and, when `use_rust`
 is enabled, also runs `cargo audit` in the Rust extension crate.
 
+Generated projects ship `docs/scripting-standards.md`
+(`template/docs/scripting-standards.md` here), which sets the conventions for
+automation scripts: `cuprum` for process execution, Cyclopts for command-line
+interfaces, `pathlib` for paths, and `cmd-mox` for testing commands. Read it
+before adding a script to the template or to a generated project.
+
 The generated lint targets are split by language:
 
 - `lint-python` runs Ruff, `interrogate --fail-under 100` for 100% docstring
-  coverage across `$(PYTHON_TARGETS)`, and Pylint via the pinned PyPy-backed
-  runner.
+  coverage across `$(PYTHON_TARGETS)`, and a pinned Pylint on uv-managed PyPy
+  3.12 or CPython at the project baseline (see below).
 - `lint-rust` exists only when `use_rust` is enabled and runs rustdoc, Clippy,
   and Whitaker.
 - `lint` delegates to the applicable language-specific targets.
