@@ -13,6 +13,7 @@ correct workflow passes whether or not it discriminates anything.
 
 from __future__ import annotations
 
+import re
 import typing as typ
 from pathlib import Path
 
@@ -31,6 +32,12 @@ FORK_CONDITION = "github.event.pull_request.head.repo.fork"
 PLACED_JOBS = [
     ("act-validation.yml", "act-validation", "ubicloud-standard-4", 45),
 ]
+
+# The estate shape: a condition, a quoted hosted arm and a quoted other arm.
+_ESTATE_SHAPE = re.compile(
+    r"\$\{\{\s*(?P<condition>[^&|]+?)\s*&&\s*'(?P<hosted>[^']*)'"
+    r"\s*\|\|\s*'(?P<other>[^']*)'\s*\}\}"
+)
 
 Origin = typ.Literal["push", "same-repository", "fork"]
 ORIGINS: tuple[Origin, ...] = ("push", "same-repository", "fork")
@@ -71,19 +78,12 @@ def selected_runner(runs_on: object, origin: Origin) -> str | None:
         ``<fork> && '<hosted>' || '<label>'`` shape. A literal label is not
         the shape: a lane that never falls back cannot serve a fork.
     """
-    if not isinstance(runs_on, str):
+    shape = (
+        _ESTATE_SHAPE.fullmatch(runs_on.strip()) if isinstance(runs_on, str) else None
+    )
+    if shape is None or shape["condition"] != FORK_CONDITION:
         return None
-    text = runs_on.strip()
-    if not (text.startswith("${{") and text.endswith("}}")):
-        return None
-    condition, has_fork_arm, arms = text[3:-2].strip().partition(" && ")
-    fork_arm, has_other_arm, other_arm = arms.partition(" || ")
-    if not (has_fork_arm and has_other_arm) or condition.strip() != FORK_CONDITION:
-        return None
-    chosen = (fork_arm if origin == "fork" else other_arm).strip()
-    if len(chosen) >= 2 and chosen[0] == "'" and chosen[-1] == "'":
-        return chosen[1:-1]
-    return None
+    return shape["hosted" if origin == "fork" else "other"]
 
 
 def placement_faults(runs_on: object, label: str) -> list[str]:
