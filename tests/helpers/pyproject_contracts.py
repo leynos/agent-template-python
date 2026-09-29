@@ -65,6 +65,20 @@ def _assert_pyproject_contracts(
     assert pytest_ini_options.get("testpaths") == ["tests"], (
         "expected generated pytest discovery to be limited to the tests tree"
     )
+    pylint_messages = require_mapping(
+        require_mapping(
+            require_mapping(pyproject, "tool", "pyproject.toml"),
+            "pylint",
+            "pyproject.toml tool",
+        ),
+        "messages control",
+        "pyproject.toml tool.pylint",
+    )
+    # A disabled syntax-error lets a module the interpreter cannot parse pass
+    # with no messages at all, so it is never linted.
+    assert "syntax-error" not in pylint_messages.get("disable", []), (
+        "expected generated Pylint policy to report unparsable modules"
+    )
 
     build_system = require_mapping(pyproject, "build-system", "pyproject.toml")
     if use_rust:
