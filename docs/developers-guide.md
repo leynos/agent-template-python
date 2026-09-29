@@ -53,6 +53,22 @@ Docker-dependent tests isolated from the standard template test gate:
   only to the nested act test step so actions requiring `github.token` behave
   like they do on GitHub-hosted runners.
 
+`act-validation` runs on `ubicloud-standard-4`. `runs-on` selects it with the
+estate expression
+`${{ github.event.pull_request.head.repo.fork &&
+'ubuntu-latest' || 'ubicloud-standard-4' }}`.
+A pull request from a fork cannot obtain an Ubicloud runner, so it falls back
+to `ubuntu-latest`; a push has no pull request, so the fork value is null and
+it selects Ubicloud. The larger class is for the disk: the nested act
+containers filled a `standard-2` runner (`ENOSPC`), and on `standard-4` the act
+step used about 10 GB of 83 GB free. An Ubicloud runner is a self-hosted
+just-in-time runner, so GitHub's six-hour cap for hosted jobs does not bound
+it; the job states its own `timeout-minutes: 45`, about twice its measured 21
+minutes. `tests/test_parent_runner_placement.py` evaluates the expression for a
+push, a same-repository pull request and a fork, rejects a literal label,
+inverted arms, another label and another condition, and asserts an exact
+inventory of the jobs that can land on Ubicloud with their ceilings.
+
 ## Makefile Template
 
 `template/Makefile.jinja` defines the generated developer workflow. The default
