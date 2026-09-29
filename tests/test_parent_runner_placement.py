@@ -134,21 +134,114 @@ def placed_jobs(
     ]
 
 
-def load_documents() -> dict[str, dict[str, typ.Any]]:
-    """Return every parent workflow, parsed, keyed by file name.
+class WorkflowReadError(AssertionError):
+    """Report a workflow the contract could not read, naming the file."""
+
+
+def parse_document(name: str, text: str) -> dict[str, typ.Any]:
+    """Parse one workflow's text into a mapping.
+
+    Parameters
+    ----------
+    name
+        The file name, used to say which workflow failed.
+    text
+        The workflow's source.
+
+    Returns
+    -------
+    dict[str, typing.Any]
+        The parsed document.
+
+    Raises
+    ------
+    WorkflowReadError
+        If the text is not YAML or does not parse to a mapping, so a broken
+        workflow fails the contract loudly instead of dropping out of it.
+    """
+    try:
+        document = yaml.safe_load(text)
+    except yaml.YAMLError as error:
+        message = f"{name} is not valid YAML: {error}"
+        raise WorkflowReadError(message) from error
+    if not isinstance(document, dict):
+        message = f"{name} does not parse to a mapping"
+        raise WorkflowReadError(message)
+    return document
+
+
+def load_documents(directory: Path = WORKFLOWS) -> dict[str, dict[str, typ.Any]]:
+    """Read and parse every workflow under a directory, keyed by file name.
+
+    Parameters
+    ----------
+    directory
+        The workflow directory; the repository's own by default.
 
     Returns
     -------
     dict[str, dict[str, typing.Any]]
         File name to parsed document.
+
+    Raises
+    ------
+    WorkflowReadError
+        If the directory or a file cannot be read, a file is not a workflow
+        mapping, or no workflow is found at all.
     """
-    found = {
-        path.name: yaml.safe_load(path.read_text(encoding="utf-8"))
-        for path in sorted(WORKFLOWS.iterdir())
-        if path.suffix.lower() in {".yml", ".yaml"}
-    }
-    assert found, f"no workflow parsed under {WORKFLOWS}"
+    try:
+        paths = sorted(
+            path
+            for path in directory.iterdir()
+            if path.suffix.lower() in {".yml", ".yaml"}
+        )
+        found = {
+            path.name: parse_document(path.name, path.read_text(encoding="utf-8"))
+            for path in paths
+        }
+    except OSError as error:
+        message = f"cannot read workflows under {directory}: {error}"
+        raise WorkflowReadError(message) from error
+    if not found:
+        message = f"no workflow parsed under {directory}"
+        raise WorkflowReadError(message)
     return found
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        ("on: [push\n", "not valid YAML"),
+        ("- on: push\n", "does not parse to a mapping"),
+    ],
+    ids=["not-yaml", "not-a-mapping"],
+)
+def test_an_unreadable_workflow_is_refused_by_name(text: str, reason: str) -> None:
+    """Refuse a broken workflow, naming it, rather than skip it.
+
+    Parameters
+    ----------
+    text
+        A workflow source that cannot be a mapping.
+    reason
+        The reason the error must give.
+    """
+    with pytest.raises(WorkflowReadError, match=reason):
+        parse_document("broken.yml", text)
+
+
+def test_a_missing_or_empty_directory_is_refused(tmp_path: Path) -> None:
+    """Refuse a directory that is absent or holds no workflow.
+
+    Parameters
+    ----------
+    tmp_path
+        A scratch directory.
+    """
+    with pytest.raises(WorkflowReadError, match="cannot read workflows"):
+        load_documents(tmp_path / "absent")
+    with pytest.raises(WorkflowReadError, match="no workflow parsed"):
+        load_documents(tmp_path)
 
 
 @pytest.mark.parametrize(
