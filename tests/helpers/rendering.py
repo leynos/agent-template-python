@@ -12,6 +12,7 @@ Tooling contract tests call these helpers before passing rendered text into
 from __future__ import annotations
 
 import shlex
+import subprocess
 from pathlib import Path
 
 from pytest_copier.plugin import CopierFixture, CopierProject
@@ -46,6 +47,31 @@ def initialize_git_repository(project: CopierProject) -> None:
     project.run("git add -A .")
 
 
+def typos_toml_is_ignored(project: CopierProject) -> bool:
+    """Report whether Git ignores the rendered project's ``typos.toml``.
+
+    ``git check-ignore --quiet`` exits ``0`` for an ignored path and ``1`` for
+    a path Git would track, so the exit status is read directly rather than
+    through ``CopierProject.run``, which raises on any non-zero exit.
+
+    Parameters
+    ----------
+    project : CopierProject
+        Rendered ``pytest-copier`` project that is already a Git repository.
+
+    Returns
+    -------
+    bool
+        ``True`` when a rule in the rendered project ignores ``typos.toml``.
+    """
+    result = subprocess.run(
+        ["git", "check-ignore", "--quiet", "typos.toml"],
+        cwd=project.path,
+        check=False,
+    )
+    return result.returncode == 0
+
+
 def run_quality_gates(project: CopierProject) -> None:
     """Run the rendered project's public quality gate.
 
@@ -59,21 +85,21 @@ def run_quality_gates(project: CopierProject) -> None:
     -------
     None
         The helper returns after the generated ``make all`` target succeeds
-        and leaves no untracked generated configuration behind.
+        and the regenerated ``typos.toml`` is visible to Git.
 
     Raises
     ------
     AssertionError
         Raised by ``pytest-copier`` when the generated command exits
-        unsuccessfully, or when the gate leaves an untracked ``typos.toml``
-        in the rendered project.
+        unsuccessfully, or when the gate leaves a ``typos.toml`` that Git
+        would not report for committing.
     """
     initialize_git_repository(project)
     project.run("make all")
     status = project.run("git status --porcelain")
-    assert "typos.toml" not in status, (
-        "the spelling gate regenerates typos.toml on every run, so the "
-        "rendered project must ignore it; git status reported:\n" + status
+    assert "typos.toml" in status, (
+        "the spelling gate regenerates typos.toml and the estate commits it, "
+        "so git status must report it; git status reported:\n" + status
     )
 
 
