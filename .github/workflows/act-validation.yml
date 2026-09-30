@@ -53,6 +53,8 @@ jobs:
           whitaker-installer --cranelift
 
       - name: Install template test tools
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           act_archive=act_Linux_x86_64.tar.gz
           act_url="https://github.com/nektos/act/releases/download/${ACT_VERSION}/${act_archive}"
