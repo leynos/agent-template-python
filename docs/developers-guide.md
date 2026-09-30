@@ -193,9 +193,9 @@ file exclusions belong in `typos.local.toml`.
 the overlay on every run, so a word added to the shared dictionary reaches this
 repository with no local change. Because the dictionary is live, `typos.toml`
 must never be drift checked in continuous integration, and hand edits to it are
-overwritten on the next run. The parent keeps its `typos.toml` tracked as a
-convenience snapshot; generated projects ignore theirs, so a rendered project
-stays clean after its first gate run.
+overwritten on the next run. The parent and generated projects both track
+`typos.toml` and commit the regenerated file, so a rendered project shows it as
+a new file after its first gate run.
 
 ## Rust Integration
 

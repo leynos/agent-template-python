@@ -12,6 +12,8 @@ Tooling contract tests call these helpers before passing rendered text into
 from __future__ import annotations
 
 import shlex
+import subprocess
+import typing as typ
 from pathlib import Path
 
 from pytest_copier.plugin import CopierFixture, CopierProject
@@ -46,6 +48,50 @@ def initialize_git_repository(project: CopierProject) -> None:
     project.run("git add -A .")
 
 
+def typos_toml_is_ignored(
+    project: CopierProject,
+    run: typ.Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run,
+) -> bool:
+    """Report whether Git ignores the rendered project's ``typos.toml``.
+
+    ``git check-ignore --quiet`` exits ``0`` for an ignored path and ``1`` for
+    a path Git would track. Any other status (``128`` for a fatal error such as
+    a missing repository) is a failure of the query itself, so it raises rather
+    than reading as "not ignored". ``--no-index`` evaluates the ignore rules
+    even after the path has been staged, which ``git add -A`` may already have
+    done for a file the rules would otherwise exclude.
+
+    Parameters
+    ----------
+    project : CopierProject
+        Rendered ``pytest-copier`` project that is already a Git repository.
+    run : collections.abc.Callable, default=subprocess.run
+        Process runner, injectable so the exit-status handling can be tested
+        without a repository.
+
+    Returns
+    -------
+    bool
+        ``True`` when a rule in the rendered project ignores ``typos.toml``.
+
+    Raises
+    ------
+    RuntimeError
+        Raised when Git exits with a status other than ``0`` or ``1``, or
+        cannot be started.
+    """
+    command = ["git", "check-ignore", "--quiet", "--no-index", "typos.toml"]
+    try:
+        result = run(command, cwd=project.path, check=False)
+    except OSError as error:
+        message = f"could not start {shlex.join(command)}: {error}"
+        raise RuntimeError(message) from error
+    if result.returncode not in {0, 1}:
+        message = f"{shlex.join(command)} exited with status {result.returncode}"
+        raise RuntimeError(message)
+    return result.returncode == 0
+
+
 def run_quality_gates(project: CopierProject) -> None:
     """Run the rendered project's public quality gate.
 
@@ -59,21 +105,24 @@ def run_quality_gates(project: CopierProject) -> None:
     -------
     None
         The helper returns after the generated ``make all`` target succeeds
-        and leaves no untracked generated configuration behind.
+        and the regenerated ``typos.toml`` is visible to Git.
 
     Raises
     ------
     AssertionError
         Raised by ``pytest-copier`` when the generated command exits
-        unsuccessfully, or when the gate leaves an untracked ``typos.toml``
-        in the rendered project.
+        unsuccessfully, or when the gate leaves a ``typos.toml`` that Git
+        would not report for committing.
     """
     initialize_git_repository(project)
     project.run("make all")
-    status = project.run("git status --porcelain")
-    assert "typos.toml" not in status, (
-        "the spelling gate regenerates typos.toml on every run, so the "
-        "rendered project must ignore it; git status reported:\n" + status
+    assert (project.path / "typos.toml").is_file(), (
+        "the spelling gate must generate typos.toml in the rendered project"
+    )
+    entries = project.run("git status --porcelain").splitlines()
+    assert "?? typos.toml" in entries, (
+        "the spelling gate regenerates typos.toml and the estate commits it, "
+        "so git status must list it as an untracked file; got:\n" + "\n".join(entries)
     )
 
 

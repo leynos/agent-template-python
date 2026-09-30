@@ -26,7 +26,7 @@ skipped.
 The spelling target regenerates `typos.toml` from the live shared dictionary
 and the `typos.local.toml` overlay on every run, so `typos.toml` is never drift
 checked in continuous integration. Run `make spelling` directly when updating
-documentation; an ignored local cache remains usable when the shared source is
+documentation; commit the regenerated `typos.toml`. An ignored local cache remains usable when the shared source is
 temporarily offline.
 
 Pytest discovery is limited to the top-level `tests/` tree. Keep generated

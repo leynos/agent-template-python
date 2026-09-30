@@ -54,3 +54,21 @@ it; the parent keeps its copy tracked only as a convenience snapshot.
 - A shared-dictionary change can turn a previously passing repository red with
   no local commit. That is the accepted cost of one estate-wide policy, and the
   reason the configuration must never be drift checked.
+
+## Addendum, 2026-09-29: generated projects track typos.toml
+
+The Decision above records that generated projects ignore `typos.toml`. That is
+reversed: `template/.gitignore` no longer lists it, and a rendered project
+commits the regenerated file, as the parent repository already does.
+
+The estate rule is that the regenerated `typos.toml` is committed. The canonical
+`AGENTS.md` spelling block from `typos-config-builder`, which every consumer
+copies verbatim, says so, and agent-template-rust records the same practice.
+Ignoring the file here made the block's instruction to commit it contradict the
+generated project's own ignore rule. The file is still never drift checked: it
+changes whenever the shared dictionary does, so a commit of the regenerated
+file is a routine follow-up, not a failure. Only the local dictionary cache
+remains ignored.
+
+The consequence for consumers of the template is that a re-render shows
+`typos.toml` as a new tracked file.
