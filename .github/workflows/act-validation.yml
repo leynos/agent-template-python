@@ -40,8 +40,9 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
 
       - name: Set up Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@774cc5a01e457714aede66e14a97b3e257812fc2
+        uses: leynos/shared-actions/.github/actions/setup-rust@6cec89bac47a21cf756d68d638a9a510998e57f8
         with:
+          expect-cache: any
           toolchain: stable
 
       - name: Install Whitaker for rendered Rust projects
