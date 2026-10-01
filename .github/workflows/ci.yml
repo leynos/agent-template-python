@@ -10,7 +10,6 @@ permissions:
 
 env:
   MBAKE_VERSION: 1.4.6
-  WHITAKER_INSTALLER_VERSION: 0.2.6
 
 jobs:
   test:
@@ -35,12 +34,9 @@ jobs:
           toolchain: stable
 
       - name: Install Whitaker for rendered Rust projects
-        env:
-          RUSTFLAGS: ""
-        run: |
-          cargo binstall --no-confirm --locked \
-            whitaker-installer@"${WHITAKER_INSTALLER_VERSION}"
-          whitaker-installer --cranelift
+        uses: leynos/shared-actions/.github/actions/install-whitaker@6dea5677a84fec60ca51b07202570e3af12ffdb4
+        with:
+          cranelift: true
 
       - name: Install template test tools
         run: |
