@@ -29,7 +29,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
 
       - name: Set up Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@abf0dcf2686de1eaf79b6dc9a16662b631bed149
+        uses: leynos/shared-actions/.github/actions/setup-rust@7d751eded578e48dacf43ab173d5820e6437c474
         with:
           toolchain: stable
 
