@@ -83,7 +83,7 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
         "expected parent CI to install mdtablefix pinned to a full "
         "40-character commit SHA"
     )
-    assert 'version: "0.6.0"' in ci_workflow, (
+    assert 'version: "0.6.1"' in ci_workflow, (
         "expected parent CI to pin mdtablefix at 0.6.0 or later"
     )
     assert "make check-fmt\n" in ci_workflow, (
