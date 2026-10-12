@@ -132,8 +132,8 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "uv tool install mdformat-all" not in act_workflow, (
         "expected parent act-validation workflow not to install mdformat-all through uv"
     )
-    assert "mdtablefix" not in act_workflow, (
-        "expected parent act-validation workflow not to install Markdown formatting tools"
+    assert _INSTALL_MDTABLEFIX_USES_RE.search(act_workflow), (
+        "expected act-validation to install pinned mdtablefix before generated gates"
     )
     assert "docker info" in act_workflow, (
         "expected parent act-validation workflow to verify Docker before act tests"

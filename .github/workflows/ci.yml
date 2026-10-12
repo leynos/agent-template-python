@@ -41,9 +41,11 @@ jobs:
       - name: Install template test tools
         run: |
           uv tool install "mbake==${MBAKE_VERSION}"
-
-      - name: Run template tests
-        run: make test
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          npm install -g @action-validator/core@0.6.0 @action-validator/cli@0.6.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Install mdtablefix
         # `make check-fmt` runs `mdtablefix --check --git`; 0.6.0 is the
@@ -51,6 +53,9 @@ jobs:
         uses: leynos/shared-actions/.github/actions/install-mdtablefix@c17d433f99daa94e53ca5eb566088518a312cb71
         with:
           version: "0.6.1"
+
+      - name: Run template tests
+        run: make test
 
       - name: Check formatting
         run: make check-fmt

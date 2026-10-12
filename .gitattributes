@@ -1,0 +1,2 @@
+# Syrupy indents blank lines in its generated multiline snapshots.
+tests/__snapshots__/*.ambr whitespace=-blank-at-eol

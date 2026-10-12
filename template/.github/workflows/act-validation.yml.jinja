@@ -24,18 +24,18 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: '3.13'
+          python-version: '{{ python_version }}'
 
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
 
-      {% if use_rust %}
+{% if use_rust %}
       - name: Set up Rust
         uses: leynos/shared-actions/.github/actions/setup-rust@18bed1ca49a6de3d8882bd72635a32ae3f023d57
         with:
           toolchain: stable
 
-      {% endif %}
+{% endif %}
       - name: Install act
         env:
           GITHUB_TOKEN: ${{ '{{' }} github.token {{ '}}' }}
@@ -46,7 +46,8 @@ jobs:
           act_sha256="$(
             curl -fsSL --header "Authorization: Bearer ${GITHUB_TOKEN}" \
               "https://api.github.com/repos/nektos/act/releases/tags/${ACT_VERSION}" |
-              python -c 'import json, sys; release = json.load(sys.stdin); print(next(asset["digest"].split(":", 1)[1] for asset in release["assets"] if asset["name"] == "act_Linux_x86_64.tar.gz"))'
+              jq -r --arg archive "${act_archive}" \
+                '.assets[] | select(.name == $archive) | .digest | ltrimstr("sha256:")'
           )"
           printf '%s  %s\n' "${act_sha256}" "${act_archive}" | sha256sum -c -
           sudo tar -xzf "${act_archive}" -C /usr/local/bin act

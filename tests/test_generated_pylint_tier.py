@@ -29,6 +29,7 @@ _PROBE_TARGET = "jm-pylint-probe"
 # aliases on 3.12, and PEP 758 unparenthesized ``except`` lists on 3.14.
 _BASELINE_SYNTAX = {
     "3.12": '"""Probe module."""\n\ntype Alias = list[int]\n',
+    "3.13": '"""Probe module."""\n\ntype Alias[T = int] = list[T]\n',
     "3.14": (
         '"""Probe module."""\n\n\n'
         "def probe() -> int:\n"
@@ -39,7 +40,11 @@ _BASELINE_SYNTAX = {
         "        return 0\n"
     ),
 }
-_EXPECTED_INTERPRETER = {"3.12": "pypy@3.12", "3.14": "3.14"}
+_EXPECTED_INTERPRETER = {
+    "3.12": "pypy@3.12",
+    "3.13": "cpython@3.13",
+    "3.14": "cpython@3.14",
+}
 
 
 def _run_rendered_pylint(
@@ -78,7 +83,7 @@ def _run_rendered_pylint(
     )
 
 
-@pytest.mark.parametrize("python_version", ["3.12", "3.14"])
+@pytest.mark.parametrize("python_version", ["3.12", "3.13", "3.14"])
 def test_rendered_pylint_tier_parses_the_baseline_and_fails_on_a_parse_error(
     copier: CopierFixture, tmp_path: Path, python_version: str
 ) -> None:

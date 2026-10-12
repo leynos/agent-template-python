@@ -18,6 +18,7 @@
     ".terraform/**",
     "**/.uv-cache/**",
     "**/.uv-tools/**",
+    "**/.tools/**",
     "CRUSH.md"
   ]
 }

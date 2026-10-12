@@ -19,10 +19,12 @@ use_rust:
 python_version:
   type: str
   default: "3.12"
-  help: Minimum supported Python version
+  help: Minimum supported Python version (3.12 or newer)
   validator: >-
     {% if not (python_version | regex_search('^3[.][0-9]+$')) %}
     Python version must use the 3.X format (for example, 3.12).
+    {% elif python_version.split(".")[1] | int < 12 %}
+    Python version must be 3.12 or newer.
     {% endif %}
 
 # Computed: mutmut mutation testing needs a base interpreter of 3.13 or

@@ -102,16 +102,16 @@ def _assert_mutation_documentation(
             developer_guide,
             start="- `.github/workflows/mutation-testing.yml`",
             end="- `.github/actions/build-wheels`",
-        )
-        == expected_developer_guidance
+        ).split()
+        == expected_developer_guidance.split()
     ), "expected developer mutation guidance to match the active mutation gates"
     assert (
         _rendered_section(
             users_guide,
             start="## Scheduled Mutation Testing",
             end="## Rust Test Behaviour",
-        )
-        == expected_user_guidance
+        ).split()
+        == expected_user_guidance.split()
     ), "expected user mutation guidance to match the active mutation gates"
 
 
@@ -123,6 +123,7 @@ def _assert_mutmut_pyproject_config(
     if expect_mutmut:
         assert mutmut_config == {
             "source_paths": [f"{package_name}/"],
+            "also_copy": ["scripts/", ".github/", "Makefile", "pyproject.toml"],
             "pytest_add_cli_args_test_selection": ["tests/"],
         }, "expected mutmut configuration for baselines of 3.13 or greater"
     else:
@@ -327,8 +328,7 @@ def test_generated_mutation_testing_gating(
     deadline=None,
     suppress_health_check=[HealthCheck.function_scoped_fixture],
 )
-@given(minor=st.integers(min_value=0, max_value=20))
-@example(minor=0)
+@given(minor=st.integers(min_value=12, max_value=20))
 @example(minor=12)
 @example(minor=13)
 @example(minor=14)

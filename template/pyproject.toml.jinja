@@ -12,7 +12,10 @@ dev = [
     "pytest",
     "interrogate",
     "pip-audit",
-    "ruff",
+    "ruff==0.16.8",
+    "cyclopts==4.25.2",
+    "pyyaml==6.0.3",
+    "types-pyyaml",
     "pyright",
     "ty==0.0.56",
     "pytest-timeout",
@@ -22,7 +25,7 @@ dev = [
 [tool.ruff]
 line-length = 88
 preview = true
-target-version = "py{{ python_version.replace('.', '') }}"
+target-version = "py{{ python_version.replace(".", "") }}"
 
 [tool.ruff.lint]
 select = [
@@ -32,7 +35,6 @@ select = [
     "I",        # Sort imports properly
     "UP",       # Warn if certain things can changed due to newer Python versions
     "C4",       # Catch incorrect use of comprehensions, dict, list, etc
-    "FA",       # Enforce from __future__ import annotations
     "ISC",      # Good use of string concatenation
     "ICN",      # Use common import conventions
     "RET",      # Good return practices
@@ -56,29 +58,31 @@ select = [
     "RSE",
     "PERF",
     "TRY",
+    "ASYNC",
     "D",
+    "DOC",
     "ANN",
     "C90",
     "PLR",
-    "PLE4703",
-    "PLR0202",
-    "PLR0203",
-    "PLR0914",
-    "PLR0916",
-    "PLR1702",
-    "PLR6104",
-    "PLR6201",
-    "PLR6301",
-    "PLW0108",
-    "RUF036",
-    "RUF053",
-    "RUF055",
-    "RUF064",
-    "RUF066",
+    "modified-iterating-set",
+    "no-classmethod-decorator",
+    "no-staticmethod-decorator",
+    "too-many-locals",
+    "too-many-boolean-expressions",
+    "too-many-nested-blocks",
+    "non-augmented-assignment",
+    "literal-membership",
+    "no-self-use",
+    "unnecessary-lambda",
+    "none-not-at-end-of-union",
+    "class-with-mixed-type-vars",
+    "unnecessary-regular-expression",
+    "non-octal-permissions",
+    "property-without-return",
 ]
 extend-ignore = [
-    "D203",  # Conflicts with D211; prefer enforcing no blank line before class docstring.
-    "D213",  # Conflicts with D212; keep summary on the first line.
+    "incorrect-blank-line-before-class",  # Conflicts with D211; prefer enforcing no blank line before class docstring.
+    "multi-line-summary-second-line",  # Conflicts with D212; keep summary on the first line.
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -162,6 +166,7 @@ max-bool-expr = 2
 max-locals = 10
 
 [tool.pylint.main]
+py-version = "{{ python_version }}"
 recursive = true
 max-module-lines = 400
 
@@ -291,6 +296,42 @@ enable = [
     "too-many-statements",
 ]
 
+# Scan the checkout so scripts and Python action implementations cannot fall
+# outside the gate. Runtime entry points remain distinct from exceptions.
+[tool.df12_skylos]
+roots = ["."]
+python = "3.14"
+
+[tool.skylos]
+exclude = [".venv", ".uv-cache", ".uv-tools", ".tools", ".git"]
+
+[tool.skylos.gate]
+strict = true
+
+{% if use_rust %}
+[[tool.skylos.dead_code.entrypoints]]
+type = "function"
+name = "_{{ package_name }}_rs"
+path = "rust_extension/src/lib.rs"
+reason = "CPython calls this PyO3 module initializer when importlib.import_module loads the native extension; the static scan does not model PyO3's native export."
+{% endif %}
+
+[tool.nose]
+version = "0.20.0"
+roots = ["."]
+mode = "syntax,semantic,near"
+min-size = 24
+surface = "all"
+top = 0
+exclude = [".venv/**", ".uv-cache/**", ".uv-tools/**", ".tools/**", ".git/**"]
+
+# Skylos treats test-classified paths as entry points, so Vulture supplies
+# dead-helper detection there. Names collected by pytest are entry points;
+# their function bodies and all other definitions remain checked.
+[tool.vulture]
+ignore_names = ["test_*", "pytestmark"]
+min_confidence = 60
+
 {%- if mutmut_supported %}
 
 [tool.mutmut]
@@ -299,6 +340,7 @@ enable = [
 # `also_copy` or guard themselves with a skipif. See the shared-actions
 # caller guide (docs/mutation-mutmut-workflow.md).
 source_paths = ["{{ package_name }}/"]
+also_copy = ["scripts/", ".github/", "Makefile", "pyproject.toml"]
 pytest_add_cli_args_test_selection = ["tests/"]
 {%- endif %}
 

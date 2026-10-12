@@ -9,13 +9,33 @@ spelling is `make all`. Narrower Make targets may be invoked when investigating
 a specific failure, and changes should be reconciled with the aggregate gate
 before being considered complete.
 
-`make lint` runs Ruff, `interrogate --fail-under 100 $(PYTHON_TARGETS)` for
-100% docstring coverage across `$(PYTHON_TARGETS)`, and Pylint.
+`make lint` checks tracked and untracked Python sources discovered by Git,
+including sources under hidden action directories. It runs Ruff 0.16.8,
+Interrogate for 100% docstring coverage, Pylint, the DF12 Python lint plugin,
+Ambrleaks on `tests/`, the strict Skylos gate and Vulture on test helpers, the
+shared Nose duplication gate, and workflow/action validation. Pylint's base
+sweep runs on PyPy 3.12 when the selected Python baseline is exactly 3.12; for
+a newer baseline it runs on CPython at that baseline. The baseline is the
+selected `python_version`, with 3.12 as the minimum supported version. The DF12
+Python Lints v0.4.0, Ambrleaks, Skylos, Vulture, and duplication tools run as
+isolated tools on Python 3.14.
 
-`make typecheck` runs `ty`, pinned in the dev dependency group (`ty==0.0.56`):
-unpinned installations broke repositories when ty 0.0.56 landed. Bump the pin
-deliberately — update the version and fix any new diagnostics in the same pull
-request.
+Rust-enabled projects declare only the PyO3 module initializer as a runtime
+entrypoint. The native import tests exercise that boundary, and unused sibling
+functions remain blocking.
+
+`make typecheck` runs `ty`, pinned at `0.0.56`: unpinned installations broke
+repositories when ty 0.0.56 landed. Bump the pin deliberately — update the
+version and fix any new diagnostics in the same pull request.
+
+Ruff and `ty` run from isolated tools on Python 3.14; their versions are pinned
+to Ruff 0.16.8 and `ty` 0.0.56. `make check-fmt` and `make fmt` also check or
+apply Markdown table formatting with mdtablefix 0.6.1.
+
+`make lint-actions` validates YAML under `.github/` with yamllint 1.38.0,
+workflow syntax with actionlint, composite actions with action-validator, and
+shell scripts with shellcheck. `make markdownlint` runs markdownlint-cli2 and
+the spelling gate. Spelling uses `typos-config-builder` with scope `all`.
 
 Run `make audit` as the dependency vulnerability gate. It runs `pip-audit` for
 Python dependencies, and Rust-enabled projects also run `cargo audit` from the
@@ -39,14 +59,15 @@ The generated repository includes GitHub Actions workflows and local composite
 actions under `.github/`.
 
 - `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests. It
-  sets up Python 3.13, installs `uv`, validates the generated `Makefile` with
-  `mbake`, runs `make build`, `make check-fmt`, `make lint` (Ruff +
-  `interrogate --fail-under 100 $(PYTHON_TARGETS)` + Pylint), `make typecheck`,
-  `make spelling`, and `make audit` except for Dependabot pull requests via
-  `if: github.actor != 'dependabot[bot]'`, then delegates coverage generation
-  to the shared coverage action. When the Rust extension is enabled, it also
-  sets up Rust, installs Rust lint and test tools, and passes
-  `rust_extension/Cargo.toml` to coverage.
+  sets up the selected `python_version` baseline (at least 3.12), installs
+  `uv`, validates the generated `Makefile` with `mbake`, installs CLI tools,
+  then runs `make build`, `make check-fmt`, `make lint`, `make typecheck`,
+  `make markdownlint`, and `make audit` except for Dependabot pull requests via
+  `if: github.actor != 'dependabot[bot]'`. The Markdown target includes
+  repository-wide spelling. CI delegates coverage generation to the shared
+  coverage action. When the Rust extension is enabled, it also sets up Rust,
+  installs Rust lint and test tools, and passes `rust_extension/Cargo.toml` to
+  coverage.
 - `.github/workflows/audit.yml` runs `make audit` against the default branch
   weekly as the compensating control for the Dependabot CI bypass.
 - `.github/workflows/act-validation.yml` runs rendered workflow validation in a
@@ -64,9 +85,9 @@ actions under `.github/`.
   the result to the `CODESCENE_CLI_SHA256` repository variable.
 {% if mutmut_supported or use_rust %}
 - `.github/workflows/mutation-testing.yml` runs daily at 09:30 UTC and supports
-  manual dispatch. It delegates to reusable workflows from `leynos/shared-actions`;
-  stagger the generated cron schedule before adopting it alongside other
-  repositories.
+  manual dispatch. It delegates to reusable workflows from
+  `leynos/shared-actions`; stagger the generated cron schedule before adopting
+  it alongside other repositories.
 {% if mutmut_supported %}
   The mutmut job is generated only when the minimum Python version is 3.13 or
   newer because the shared workflow helpers require Python 3.13 or newer.
@@ -95,8 +116,8 @@ Run `make spelling` to enforce en-GB-oxendict spelling. The shared
 dictionary in `leynos/agent-helper-scripts` and the `typos.local.toml` overlay
 on every run, then checks tracked Markdown. A word added to the shared
 dictionary therefore needs no change here, and `typos.toml` must never be drift
-checked in continuous integration. `typos.toml` is generated output, but it
-is tracked: commit the regenerated file after a `make spelling` run changes it.
+checked in continuous integration. `typos.toml` is generated output, but it is
+tracked: commit the regenerated file after a `make spelling` run changes it.
 The local cache that keeps the gate usable when the authority is temporarily
 unreachable is ignored by Git. Add only narrow project-specific terms and
 exclusions to `typos.local.toml`; never edit generated `typos.toml` by hand.

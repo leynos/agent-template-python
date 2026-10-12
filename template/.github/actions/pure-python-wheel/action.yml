@@ -11,6 +11,10 @@ inputs:
   artifact-name:
     description: Name of the uploaded artefact
     required: true
+  upload-artefact:
+    description: Whether to upload the wheel (disable for local smoke tests)
+    required: false
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -26,8 +30,11 @@ runs:
       uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb
     - name: Build wheel
       shell: bash
-      run: uv build --wheel --out-dir ${{ inputs.out-dir }}
+      env:
+        OUT_DIR: ${{ inputs.out-dir }}
+      run: uv build --wheel --out-dir "$OUT_DIR"
     - name: Upload wheel artefact
+      if: inputs.upload-artefact == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact-name }}

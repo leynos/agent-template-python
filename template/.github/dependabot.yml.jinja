@@ -10,7 +10,7 @@ updates:
     schedule:
       interval: "weekly"
 
-  {% if use_rust -%}
+{% if use_rust %}
   # Enable version updates for Cargo
   - package-ecosystem: "cargo"
     directory: "/"
@@ -21,7 +21,7 @@ updates:
     schedule:
       interval: "daily"
 
-  {% endif -%}
+{% endif %}
   # Enable version updates for Python (pip / requirements*.txt)
   - package-ecosystem: "pip"
     directory: "/"
