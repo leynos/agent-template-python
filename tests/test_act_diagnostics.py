@@ -243,8 +243,8 @@ def test_archive_error_without_tests_or_coverage_is_rejected(tmp_path: Path) -> 
 
 @pytest.mark.parametrize(
     "report",
-    [None, "<coverage>", "<unrelated />"],
-    ids=["missing", "malformed", "wrong-document"],
+    [None, "<coverage>", "<unrelated />", "<coverage><packages /></coverage>"],
+    ids=["missing", "malformed", "wrong-document", "empty-packages"],
 )
 @pytest.mark.parametrize("code", [0, 1], ids=["success", "archive-failure"])
 def test_result_requires_valid_coverage_xml(

@@ -2,6 +2,10 @@
 
 ## Quality Gates
 
+Before the first quality-gate run, initialize Git at the generated project root
+with `git init`. Python source discovery and Markdown table formatting use Git
+repository metadata.
+
 Generated projects use `make all` as the standard local quality gate. It runs
 these targets in order:
 

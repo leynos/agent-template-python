@@ -418,8 +418,8 @@ def assert_coverage_xml(project: CopierProject | Path) -> None:
         root = ET.parse(report).getroot()
     except (ET.ParseError, OSError) as exc:
         raise AssertionError(f"coverage.xml is not valid XML: {exc}") from exc
-    assert root.tag == "coverage" and root.find("packages") is not None, (
-        "coverage.xml should contain a Cobertura coverage document with packages"
+    assert root.tag == "coverage" and root.find("packages/package") is not None, (
+        "coverage.xml should contain a Cobertura coverage document with package data"
     )
 
 
