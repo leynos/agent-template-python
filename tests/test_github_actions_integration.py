@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -89,7 +90,8 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
     Returns
     -------
     tuple[int, str]
-        Process return code and combined standard output/error logs.
+        Process return code and combined standard output/error logs, also
+        retained in ``artifact_dir / "act.log"``.
 
     Raises
     ------
@@ -129,11 +131,14 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
         cwd=project.path,
         env=env,
         text=True,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         check=False,
         timeout=1200,
     )
-    return completed.returncode, f"{completed.stdout}\n{completed.stderr}"
+    logs = completed.stdout
+    (artifact_dir / "act.log").write_text(logs, encoding="utf-8")
+    return completed.returncode, logs
 
 
 @pytest.mark.parametrize(
@@ -175,7 +180,7 @@ def test_run_act_forwards_only_explicit_act_github_token(
     def fake_run(command: list[str], **_: Any) -> subprocess.CompletedProcess[str]:
         """Capture the act subprocess command without executing it."""
         captured_command.extend(command)
-        return subprocess.CompletedProcess(command, 0, "stdout", "stderr")
+        return subprocess.CompletedProcess(command, 0, "stdout", None)
 
     monkeypatch.setattr(
         "tests.test_github_actions_integration.docker_environment",
@@ -189,6 +194,9 @@ def test_run_act_forwards_only_explicit_act_github_token(
     project = cast("CopierProject", SimpleNamespace(path=tmp_path))
 
     run_act(project, artifact_dir=tmp_path / "artefacts")
+    assert (tmp_path / "artefacts" / "act.log").read_text(encoding="utf-8") == (
+        "stdout"
+    )
 
     if expected_secret is None:
         assert "-s" not in captured_command, (
@@ -311,32 +319,170 @@ def assert_ci_exercised_expected_steps(logs: str, *, use_rust: bool) -> None:
     saw_python = False
     saw_rust = not use_rust
     for event in iter_json_log_events(logs):
-        output = str(event_text(event, "Output", "output", "message", "msg"))
-        step = str(event_text(event, "name", "step_name", "Step", "step"))
+        output = event_text(event, "Output", "output", "message", "msg")
+        step = event_text(event, "name", "step_name", "Step", "step")
         in_coverage_step = GENERATE_COVERAGE_STEP in step
+        step_ids = event.get("stepID", event.get("stepid", []))
+        completed_id = step_ids[-1:] if isinstance(step_ids, list) else []
+        succeeded = (
+            in_coverage_step
+            and event.get("stage") == "Main"
+            and event.get("stepResult") == "success"
+        )
         saw_coverage = saw_coverage or (
             in_coverage_step
             and ("coverage.xml" in output or "Current coverage" in output)
         )
-        saw_python = saw_python or (
-            in_coverage_step and ("run_python.py" in output or "pytest -v" in output)
-        )
-        saw_rust = saw_rust or (
-            in_coverage_step
-            and (
-                "run_rust.py" in output
-                or "cargo nextest" in output
-                or "cargo llvm-cov" in output
-            )
-        )
+        saw_python = saw_python or (succeeded and completed_id == ["python"])
+        saw_rust = saw_rust or (succeeded and completed_id == ["rust"])
 
     assert saw_coverage, f"coverage action step was not observed:\n{logs}"
-    assert saw_python, f"Python tests were not observed:\n{logs}"
-    assert saw_rust, f"Rust tests were not observed:\n{logs}"
+    assert saw_python, f"successful Python tests were not observed:\n{logs}"
+    assert saw_rust, f"successful Rust tests were not observed:\n{logs}"
+
+
+def act_failure_diagnostic(code: int, logs: str) -> str:
+    """Describe the first failed Act step and retain the full log stream.
+
+    Parameters
+    ----------
+    code
+        Non-zero Act process return code.
+    logs
+        Combined Act JSON and unstructured output.
+
+    Returns
+    -------
+    str
+        Return code, structured failure identity, nearby output, and full logs.
+
+    Examples
+    --------
+    Include the diagnostic in an assertion::
+
+        message = act_failure_diagnostic(127, logs)
+    """
+    events = iter_json_log_events(logs)
+    failure = next(
+        (
+            index
+            for index, event in enumerate(events)
+            if event.get("stepResult") == "failure"
+        ),
+        None,
+    )
+    heading = f"Act exited with return code {code}."
+    if failure is None:
+        heading += " No stepResult=failure event was recorded."
+    else:
+        event = events[failure]
+        heading += (
+            f" First failed step: stage={event.get('stage', '<unknown>')};"
+            f" step={event_text(event, 'step', 'Step', 'name', 'step_name')};"
+            f" stepID={event.get('stepID', event.get('stepid', []))}."
+        )
+        nearby = events[max(0, failure - 8) : failure + 3]
+        heading += "\nNearby Act output:\n" + "\n".join(
+            event_text(item, "Output", "output", "message", "msg") for item in nearby
+        )
+    return f"{heading}\nComplete Act logs:\n{logs}"
+
+
+def assert_coverage_xml(project: CopierProject | Path) -> None:
+    """Require a readable Cobertura coverage document.
+
+    Parameters
+    ----------
+    project
+        Project directory containing the generated coverage report.
+
+    Returns
+    -------
+    None
+        Returns when the XML is a coverage document with package data.
+
+    Raises
+    ------
+    AssertionError
+        Raised for missing, malformed, or non-coverage XML.
+
+    Examples
+    --------
+    Validate the generated report before accepting an Act exception::
+
+        assert_coverage_xml(project)
+    """
+    report = project / "coverage.xml"
+    assert report.is_file(), "act workflow should write coverage.xml"
+    try:
+        root = ET.parse(report).getroot()
+    except (ET.ParseError, OSError) as exc:
+        raise AssertionError(f"coverage.xml is not valid XML: {exc}") from exc
+    assert root.tag == "coverage" and root.find("packages") is not None, (
+        "coverage.xml should contain a Cobertura coverage document with packages"
+    )
+
+
+def is_archive_failure(events: list[dict[str, object]]) -> bool:
+    """Recognize only the known coverage output/archive failure sequence.
+
+    Parameters
+    ----------
+    events
+        Ordered Act events including nested and composite failure results.
+
+    Returns
+    -------
+    bool
+        Whether all failed steps belong to the coverage output/archive phase
+        and its two known errors were emitted in that composite action.
+
+    Examples
+    --------
+    Check failure identity before inspecting successful coverage evidence::
+
+        archive_failure = is_archive_failure(iter_json_log_events(logs))
+    """
+    failures = [event for event in events if event.get("stepResult") == "failure"]
+    if not failures:
+        return False
+    first = failures[0]
+    first_ids = first.get("stepID", first.get("stepid", []))
+    first_output = event_text(first, "Output", "output", "message", "msg")
+    if not (
+        isinstance(first_ids, list)
+        and (first_ids[-1:] == ["out"] or "Archive coverage" in first_output)
+    ):
+        return False
+    for event in failures:
+        step_ids = event.get("stepID", event.get("stepid", []))
+        output = event_text(event, "Output", "output", "message", "msg")
+        if (
+            event.get("stage") != "Main"
+            or GENERATE_COVERAGE_STEP not in event_text(event, "step", "Step")
+            or not isinstance(step_ids, list)
+            or step_ids[:1] != first_ids[:1]
+            or not (
+                step_ids[-1:] == ["out"]
+                or "Archive coverage" in output
+                or len(step_ids) == 1
+            )
+        ):
+            return False
+    messages = "\n".join(
+        event_text(event, "Output", "output", "message", "msg")
+        for event in events
+        if event.get("stage") == "Main"
+        and GENERATE_COVERAGE_STEP in event_text(event, "step", "Step")
+    )
+    return (
+        "Parameter INPUT_ARTEFACT_NAME_SUFFIX specified multiple times" in messages
+        and "Provided artifact name input during validation is empty" in messages
+    )
 
 
 def assert_act_result(
-    project: CopierProject, code: int, logs: str, *, use_rust: bool
+    project: CopierProject | Path, code: int, logs: str, *, use_rust: bool
 ) -> None:
     """Assert the act workflow result for a rendered project.
 
@@ -369,19 +515,30 @@ def assert_act_result(
 
         assert_act_result(project, code, logs, use_rust=False)
     """
-    assert_ci_exercised_expected_steps(logs, use_rust=use_rust)
-    if (
-        "Parameter INPUT_ARTEFACT_NAME_SUFFIX specified multiple times" in logs
-        and "Provided artifact name input during validation is empty" in logs
-    ):
+    if code != 0:
+        diagnostic = act_failure_diagnostic(code, logs)
+        events = iter_json_log_events(logs)
+        if not is_archive_failure(events):
+            raise AssertionError(diagnostic)
+        first_failure = next(
+            index
+            for index, event in enumerate(events)
+            if event.get("stepResult") == "failure"
+        )
+        successful_logs = "\n".join(
+            json.dumps(event) for event in events[:first_failure]
+        )
+        try:
+            assert_ci_exercised_expected_steps(successful_logs, use_rust=use_rust)
+            assert_coverage_xml(project)
+        except AssertionError as exc:
+            raise AssertionError(f"{diagnostic}\nCoverage contract: {exc}") from exc
         pytest.xfail(
             "act currently fails in the shared generate-coverage composite "
             "action output/archive phase after tests and coverage succeed"
         )
-    assert code == 0, logs
-    assert (project / "coverage.xml").exists(), (
-        "act workflow should write coverage.xml in the generated project"
-    )
+    assert_ci_exercised_expected_steps(logs, use_rust=use_rust)
+    assert_coverage_xml(project)
 
 
 @pytest.mark.parametrize(

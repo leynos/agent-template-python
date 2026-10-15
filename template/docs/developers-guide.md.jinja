@@ -64,10 +64,11 @@ actions under `.github/`.
   then runs `make build`, `make check-fmt`, `make lint`, `make typecheck`,
   `make markdownlint`, and `make audit` except for Dependabot pull requests via
   `if: github.actor != 'dependabot[bot]'`. The Markdown target includes
-  repository-wide spelling. CI delegates coverage generation to the shared
-  coverage action. When the Rust extension is enabled, it also sets up Rust,
-  installs Rust lint and test tools, and passes `rust_extension/Cargo.toml` to
-  coverage.
+  repository-wide spelling. CI provisions Go and Rust/Cargo toolchains for
+  installing CLI tools, then delegates coverage generation to the shared
+  coverage action. Rust lint and test tools are installed and
+  `rust_extension/Cargo.toml` is passed to coverage only when the Rust
+  extension is enabled.
 - `.github/workflows/audit.yml` runs `make audit` against the default branch
   weekly as the compensating control for the Dependabot CI bypass.
 - `.github/workflows/act-validation.yml` runs rendered workflow validation in a
@@ -91,18 +92,25 @@ actions under `.github/`.
 {% if mutmut_supported %}
   The mutmut job is generated only when the minimum Python version is 3.13 or
   newer because the shared workflow helpers require Python 3.13 or newer.
-{% endif %}
-{% if use_rust %}
+{% endif %}{% if use_rust %}
   Rust-enabled projects also receive a cargo-mutants job for `rust_extension/`,
   independently of the Python version baseline.
-{% endif %}
-{% endif %}
+{% endif %}{% endif %}
 - `.github/actions/build-wheels` wraps `cibuildwheel` with `uvx` and uploads
   architecture-specific wheel artefacts.
 - `.github/actions/pure-python-wheel` builds a pure Python wheel with
   `uv build --wheel` and uploads the resulting artefact.
 - `.github/dependabot.yml` enables dependency update pull requests for GitHub
   Actions and Python packages. Rust-enabled projects also receive Cargo updates.
+
+CI provisions Go 1.25 before installing Actionlint, with module caching
+disabled because the project has no Go module. It also provisions stable
+Rust/Cargo for the `mdtablefix` `cargo-binstall` installer in both pure-Python
+and Rust-enabled projects. These prerequisites do not change the selected
+`python_version` application baseline. In Rust-enabled projects, the Rust lint
+and test cache uses the `rust_extension -> target` workspace while retaining
+the tool-cache directories; Rust-specific cache configuration and tools remain
+conditional on the extension.
 
 The `CS_ACCESS_TOKEN` secret must be configured when CodeScene coverage upload
 is required. The `CODESCENE_CLI_SHA256` variable should be populated using the

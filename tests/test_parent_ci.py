@@ -5,6 +5,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
+from tests.helpers.ci_contracts import assert_go_toolchain_contract
 from tests.helpers.generated_files import read_generated_text
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -51,6 +54,8 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     act_workflow = read_generated_text(
         REPO_ROOT / ".github" / "workflows" / "act-validation.yml"
     )
+    assert_go_toolchain_contract(ci_workflow, "parent CI workflow")
+    assert_go_toolchain_contract(act_workflow, "parent Act workflow")
 
     assert "permissions:\n  contents: read" in ci_workflow, (
         "expected parent CI to restrict GITHUB_TOKEN to repository contents reads"
@@ -145,3 +150,69 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "make test WITH_ACT=1" in act_workflow, (
         "expected parent act-validation workflow to run parent tests with act enabled"
     )
+
+
+def _synthetic_go_workflow(scenario: str) -> str:
+    """Build a small workflow for Go toolchain contract edge cases."""
+    include_setup = scenario != "missing setup"
+    setup_before_install = scenario != "misordered setup"
+    setup_ref = "v6" if scenario == "mutable action ref" else "a" * 40
+    if scenario == "unsupported version":
+        go_version = "1.24.x"
+    elif scenario == "newer supported version":
+        go_version = "1.26.0"
+    else:
+        go_version = "1.25.x"
+    cache = "true" if scenario == "module caching enabled" else "false"
+    setup_step = (
+        "      - name: Set up Go\n"
+        f"        uses: actions/setup-go@{setup_ref}\n"
+        "        with:\n"
+        f"          go-version: '{go_version}'\n"
+        f"          cache: {cache}\n"
+    )
+    install_step = (
+        "      - name: Install CLI tools\n"
+        "        run: |\n"
+        "          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12\n"
+        '          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"\n'
+    )
+    steps = (
+        (setup_step + install_step)
+        if setup_before_install
+        else (install_step + setup_step)
+    )
+    if not include_setup:
+        steps = install_step
+    workflow_header = (
+        "name: Contract test\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n"
+    )
+    return workflow_header + steps
+
+
+def test_parent_ci_go_contract_accepts_newer_supported_version() -> None:
+    """The minimum stays stable when CI selects a later supported Go release."""
+    assert_go_toolchain_contract(
+        _synthetic_go_workflow("newer supported version"), "synthetic newer Go"
+    )
+
+
+@pytest.mark.parametrize(
+    ("scenario", "expected_error"),
+    [
+        ("missing setup", "set up Go before every Go invocation"),
+        ("misordered setup", "set up Go before every Go invocation"),
+        ("unsupported version", "at least 1.25.0"),
+        ("module caching enabled", "disable module caching"),
+        ("mutable action ref", "full 40-hex SHA"),
+    ],
+    ids=["missing", "misordered", "old-version", "cache", "sha-shape"],
+)
+def test_parent_ci_go_contract_rejects_invalid_setup(
+    scenario: str, expected_error: str
+) -> None:
+    """The shared Go contract catches missing or weakened setup requirements."""
+    with pytest.raises(AssertionError, match=expected_error):
+        assert_go_toolchain_contract(
+            _synthetic_go_workflow(scenario), f"synthetic {scenario}"
+        )

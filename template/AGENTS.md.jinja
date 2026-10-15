@@ -103,7 +103,6 @@
     - `make audit` runs `pip-audit`.
   - Temporary lint suppressions must include a link to the planned fix or
     implementation that will remove the suppression.
-
 {% if use_rust %}
   - For Rust files:
     - **Testing:** Passes relevant unit and behavioural tests (`make test`).
@@ -186,9 +185,7 @@
   an invariant over a range of inputs, states, orderings, or transitions.
 - Run relevant unit, behavioural, property, and end-to-end suites before and
   after each change.
-
 {% if use_rust %}
-
 ## Rust specific guidance
 
 This repository is written in Rust and uses Cargo for building and dependency
@@ -370,7 +367,6 @@ project:
   install global recorders or subscribers.
 - Applications should initialize exporters and subscribers early.
 {% endif %}
-
 ## Markdown guidance
 
 - Validate Markdown files using `make markdownlint`.

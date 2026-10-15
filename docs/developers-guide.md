@@ -114,12 +114,23 @@ generated policy, so a module the interpreter cannot parse fails the lint.
 ## Continuous Integration Strategy
 
 `template/.github/workflows/ci.yml.jinja` mirrors the generated local gates. It
-sets up Python, optionally sets up Rust, runs `make check-fmt`, `make lint`,
-`make typecheck`, `make spelling`, and `make audit` except when
-`github.actor == 'dependabot[bot]'`, then delegates coverage to
-`leynos/shared-actions/.github/actions/generate-coverage`. The scheduled
+sets up Python, Go, and Rust toolchains, then runs `make check-fmt`,
+`make lint`, `make typecheck`, `make spelling`, and `make audit` except when
+`github.actor == 'dependabot[bot]'`. It delegates coverage to
+`leynos/shared-actions/.github/actions/generate-coverage`; Rust lint and test
+tools are installed only when the Rust extension is enabled. The scheduled
 `.github/workflows/audit.yml` workflow audits the default branch weekly as the
 compensating control.
+
+The parent and generated CI workflows provision Go 1.25 before installing
+Actionlint. Module caching is disabled because these projects have no Go
+module. Stable Rust/Cargo is also provisioned for the `mdtablefix`
+`cargo-binstall` installer in both pure-Python and Rust-enabled projects; this
+does not change the selected `python_version` application baseline. In
+Rust-enabled projects, the Rust lint and test cache targets
+`rust_extension -> target` and retains the tool-cache directories. That
+Rust-specific cache configuration and the Rust lint and test tools are only
+included when the extension is enabled.
 
 The shared coverage action runs Python coverage through xdist-backed SlipCover
 support. Generated pytest discovery is therefore constrained to the top-level
@@ -218,8 +229,15 @@ structure, Rust documentation output, maturin configuration, and cargo error
 messaging.
 
 The optional `act` tests run generated GitHub Actions workflows as black-box
-integration checks. Their parser separates structured-log handling from the
-domain assertions so workflow format details stay local to the adapter helpers.
+integration checks. On a non-zero result, diagnostics report the return code
+and first failed step, including its stage, identity, and nearby output; the
+complete Act log remains available for diagnosis. Error-looking output alone,
+such as a cache metadata warning, does not establish that a step failed. A
+successful result requires coverage and Python-test evidence, Rust-test
+evidence when the extension is enabled, and a valid `coverage.xml`. The known
+shared archive-phase exception is accepted only after the relevant tests and
+coverage have succeeded and `coverage.xml` is valid, so an earlier workflow
+failure cannot qualify.
 
 ### Test Helper Modules
 
