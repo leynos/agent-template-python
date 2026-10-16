@@ -19,7 +19,7 @@ containers execute in isolation.
 
 - Docker daemon available.
 - `act` installed.
-- Python 3.10+ with `pytest`.
+- Python 3.12+ with `pytest`.
 - Optional but recommended: pin an image to reduce drift:
 
   ```bash

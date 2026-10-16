@@ -620,6 +620,7 @@ jobs:
           output-path: coverage.xml
           format: cobertura
           artefact-name-suffix: helper-pkg
+          publish-artefact: ${{{{ env.ACT != 'true' }}}}
           with-ratchet: 'true'
       - name: Upload coverage data to CodeScene
         if: {guard}
@@ -784,6 +785,7 @@ jobs:
         with:
           output-path: coverage.xml
           format: cobertura
+          publish-artefact: ${{{{ env.ACT != 'true' }}}}
           with-ratchet: 'true'
 {coverage_inputs}\
 """

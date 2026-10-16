@@ -75,11 +75,12 @@ inventory of the jobs that can land on Ubicloud with their ceilings.
 `all` target runs build, formatting, linting, typechecking, tests, and
 spelling. The spelling recipe runs last, so generated configuration cannot race
 tests when callers enable parallel Make execution. Generated projects pin `ty`
-in the dev dependency group (`ty==0.0.56`), so `make typecheck` resolves the
-pinned typechecker; bumps follow the same deliberate policy as the parent
-repository (ADR-004). The generated `audit` target is an explicit security gate
-run by CI. It runs `pip-audit` for every rendered project and, when `use_rust`
-is enabled, also runs `cargo audit` in the Rust extension crate.
+through the `TY_VERSION` Make variable (`0.0.56` by default); `make typecheck`
+uses `$(TY)` to run that version from the isolated `$(LINT_PYTHON)` tool
+environment. Bumps follow the same deliberate policy as the parent repository
+(ADR-004). The generated `audit` target is an explicit security gate run by CI.
+It runs `pip-audit` for every rendered project and, when `use_rust` is enabled,
+also runs `cargo audit` in the Rust extension crate.
 
 Generated projects ship `docs/scripting-standards.md`
 (`template/docs/scripting-standards.md` here), which sets the conventions for
@@ -87,48 +88,112 @@ automation scripts: `cuprum` for process execution, Cyclopts for command-line
 interfaces, `pathlib` for paths, and `cmd-mox` for testing commands. Read it
 before adding a script to the template or to a generated project.
 
-The generated lint targets are split by language:
+The generated `lint` aggregate runs these targets:
 
-- `lint-python` runs Ruff, `interrogate --fail-under 100` for 100% docstring
-  coverage across `$(PYTHON_TARGETS)`, and a pinned Pylint on uv-managed PyPy
-  3.12 or CPython at the project baseline (see below).
+- `lint-python` runs Ruff 0.16.8, `interrogate --fail-under 100` for 100%
+  docstring coverage across `$(PYTHON_TARGETS)`, baseline Pylint, the DF12
+  Python Lints v0.4.0 Pylint plugin, and Ambrleaks against `tests/`.
+- `dead-code` runs Skylos against the repository and Vulture against test
+  sources. `duplication` installs and runs the pinned Nose-based detector
+  against the configured duplication families.
+- `lint-actions` runs yamllint, Actionlint, action-validator, and shellcheck
+  against workflows and local actions.
 - `lint-rust` exists only when `use_rust` is enabled and runs rustdoc, Clippy,
   and Whitaker.
-- `lint` delegates to the applicable language-specific targets.
+- `lint` runs the Python, dead-code, duplication, and Actions targets, plus
+  `lint-rust` when `use_rust` is enabled.
 - `audit` exists for both generated variants and runs `pip-audit`; Rust-enabled
   variants delegate to `rust-audit` for `cargo audit`.
+
+`check-fmt` checks Ruff and mdtablefix formatting; the `fmt` target also sorts
+imports. Rust-enabled projects additionally use `cargo fmt`. The Markdown gate
+is `make markdownlint`, which runs markdownlint-cli2 and repository-wide
+spelling. The default `make all` includes build, formatting, lint, typecheck,
+tests, and spelling.
+
+With default Git source discovery, `fmt`, `check-fmt`, `lint-python`, and
+`typecheck` validate source discovery and stop with a diagnostic before running
+tools when Git or repository metadata is unavailable. `help` and `build` do not
+depend on source discovery; initialize a generated project with `git init`
+before its first quality-gate run. The Makefile captures `git ls-files` output
+once, checks its exit status immediately through GNU Make's `.SHELLSTATUS`, and
+shares the stored source list with each tool; this requires GNU Make 4.2 or
+later.
 
 Tool revisions are exposed as Makefile variables such as `PYLINT_VERSION` and
 `PYLINT_PYTHON`, so generated projects can override pins without editing target
 recipes.
 
+The action checks in `lint-actions` have separate jobs. `action-validator`
+validates each action manifest's metadata. The Make recipe then runs
+`scripts/action_workflow.py` with `uv run --script` for each manifest. For a
+composite action, the script projects its declared inputs as string workflow
+inputs and carries its steps unchanged into a temporary `workflow_dispatch`
+workflow; Actionlint checks that projection on standard input using the action
+path as its filename. This lets Actionlint inspect composite steps without
+replacing action-validator's metadata checks. Node and Docker actions have no
+composite-step projection: the script emits no workflow for them, while
+action-validator still checks their metadata. A file, YAML, or action-shape
+error is written to standard error and exits with status 1.
+
 The generated Pylint tier runs the pinned `PYLINT_VERSION` through
-`uv tool run --managed-python`. `PYLINT_PYTHON` follows the project's
-`python_version` answer: `pypy@3.12` for a 3.12 or older baseline, which PyPy 8
-parses, and CPython at the baseline for anything newer, because no managed PyPy
-parses Python 3.13 or later syntax. `syntax-error` stays enabled in the
-generated policy, so a module the interpreter cannot parse fails the lint.
-`tests/test_generated_pylint_tier.py` renders both shapes and runs the rendered
-`$(PYLINT)` against the baseline's newest syntax and an unparsable module.
+`uv tool run --managed-python`. The project baseline must be at least 3.12;
+`PYLINT_PYTHON` is `pypy@3.12` when the baseline is exactly 3.12 and CPython at
+the selected baseline when it is higher. PyPy 8 parses Python 3.12, while no
+managed PyPy parses Python 3.13 or later syntax. `syntax-error` stays enabled
+in the generated policy, so a module the interpreter cannot parse fails the
+lint. `tests/test_generated_pylint_tier.py` renders both shapes and runs the
+rendered `$(PYLINT)` against the baseline's newest syntax and an unparsable
+module.
 
 ## Continuous Integration Strategy
 
 `template/.github/workflows/ci.yml.jinja` mirrors the generated local gates. It
-sets up Python, optionally sets up Rust, runs `make check-fmt`, `make lint`,
-`make typecheck`, `make spelling`, and `make audit` except when
-`github.actor == 'dependabot[bot]'`, then delegates coverage to
-`leynos/shared-actions/.github/actions/generate-coverage`. The scheduled
+sets up Python, Go, and Rust toolchains, then runs `make check-fmt`,
+`make lint`, `make typecheck`, `make spelling`, and `make audit` except when
+`github.actor == 'dependabot[bot]'`. It delegates coverage to
+`leynos/shared-actions/.github/actions/generate-coverage`; Rust lint and test
+tools are installed only when the Rust extension is enabled. The scheduled
 `.github/workflows/audit.yml` workflow audits the default branch weekly as the
 compensating control.
+
+The parent workflows, generated CI, and Act-validation workflow provision Go
+1.27 before invoking Actionlint 1.7.12, whose minimum is Go 1.25. They disable
+Go module caching because the projects have no Go module, and add `GOPATH/bin`
+to `GITHUB_PATH` after installation. Stable Rust/Cargo is provisioned for the
+`mdtablefix` `cargo-binstall` installer in both pure-Python and Rust-enabled
+projects. These workflow prerequisites do not change the selected
+`python_version` application baseline. For Rust-enabled projects, the Rust lint
+and test cache uses the `rust_extension -> target` workspace and retains the
+cargo-nextest, cargo-audit, and Whitaker tool-cache directories; this
+Rust-specific cache configuration and the Rust lint and test tools are only
+included when the extension is enabled.
 
 The shared coverage action runs Python coverage through xdist-backed SlipCover
 support. Generated pytest discovery is therefore constrained to the top-level
 `tests/` tree via `tool.pytest.ini_options.testpaths`; do not add pytest unit
 tests under package module directories or `unittests/` subdirectories.
 
+Generated CI and the `coverage-main` workflow use the shared
+`generate-coverage` action to install cargo-nextest from an official release.
+The installer verifies both the release archive and executable hashes. A
+checksum mismatch fails before Rust tests or coverage run, so it cannot qualify
+for the Act archive-phase exception. The output script receives the coverage
+path and artefact suffix as explicit arguments, so Act's duplicate `INPUT_*`
+spellings cannot collide during parameter binding.
+
 `template/.github/workflows/act-validation.yml.jinja` keeps rendered workflow
 validation separate from generated application CI. It installs `act`, verifies
 Docker availability, and runs `make test WITH_ACT=1`.
+
+Local Act runs disable only the shared coverage action's artefact publication,
+because the pinned Act 0.2.84 server does not support that upload protocol.
+Tests, coverage generation, output checks, the coverage ratchet, and valid
+`coverage.xml` remain required; the run retains `act.log` and `coverage.xml`
+under `ACT_EVIDENCE_DIR`. Publication stays enabled for generated workflow runs
+on GitHub. The parent Act-validation job uploads both retained coverage reports
+separately; download both reports and validate their XML before treating
+artefact transport as verified.
 
 Rust-enabled workflows pass `rust_extension/Cargo.toml` to the coverage action
 because the generated Python project root does not contain a Rust manifest.
@@ -218,8 +283,15 @@ structure, Rust documentation output, maturin configuration, and cargo error
 messaging.
 
 The optional `act` tests run generated GitHub Actions workflows as black-box
-integration checks. Their parser separates structured-log handling from the
-domain assertions so workflow format details stay local to the adapter helpers.
+integration checks. On a non-zero result, diagnostics report the return code
+and first failed step, including its stage, identity, and nearby output; the
+complete Act log remains available for diagnosis. Error-looking output alone,
+such as a cache metadata warning, does not establish that a step failed. A
+successful result requires coverage and Python-test evidence, Rust-test
+evidence when the extension is enabled, and a valid `coverage.xml`. The known
+shared archive-phase exception is accepted only after the relevant tests and
+coverage have succeeded and `coverage.xml` is valid, so an earlier workflow
+failure cannot qualify.
 
 ### Test Helper Modules
 

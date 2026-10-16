@@ -19,7 +19,7 @@ jobs:
   build-wheels:
     uses: ./.github/workflows/build-wheels.yml
     with:
-      python-version: '3.13'
+      python-version: '{{ python_version }}'
 {% else %}
   pure-wheel:
     runs-on: ubuntu-latest
@@ -31,7 +31,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/pure-python-wheel
         with:
-          python-version: '3.13'
+          python-version: '{{ python_version }}'
           artifact-name: wheels-pure
 {% endif %}
 

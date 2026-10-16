@@ -35,6 +35,12 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Set up Go for Actionlint
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.x'
+          cache: false
+
       - name: Install uv
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
 
@@ -66,6 +72,16 @@ jobs:
       - name: Install documentation tooling
         run: |
           uv tool install "mbake==${MBAKE_VERSION}"
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          npm install -g @action-validator/core@0.6.0 @action-validator/cli@0.6.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install mdtablefix
+        uses: leynos/shared-actions/.github/actions/install-mdtablefix@c17d433f99daa94e53ca5eb566088518a312cb71
+        with:
+          version: '0.6.1'
 
       - name: Check Docker runtime
         run: docker info
@@ -73,7 +89,28 @@ jobs:
       - name: Run template tests with act validation
         env:
           ACT_GITHUB_TOKEN: ${{ github.token }}
+          ACT_EVIDENCE_DIR: ${{ runner.temp }}/act-evidence
         run: make test WITH_ACT=1
+
+      - name: Upload Act diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: act-diagnostic-logs
+          path: |
+            ${{ runner.temp }}/act-evidence/pure-artefacts/act.log
+            ${{ runner.temp }}/act-evidence/rust-artefacts/act.log
+          if-no-files-found: warn
+
+      - name: Upload Act coverage evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: act-coverage-evidence
+          path: |
+            ${{ runner.temp }}/act-evidence/pure-artefacts/coverage.xml
+            ${{ runner.temp }}/act-evidence/rust-artefacts/coverage.xml
+          if-no-files-found: error
 
       - name: Lint Markdown
         # The upstream action rather than an npm installation of our own: its

@@ -11,11 +11,15 @@
   
   """
   
-  from __future__ import annotations
-  
   
   def hello() -> str:
-      """Return a friendly greeting from Python."""
+      """Return a friendly greeting from Python.
+  
+      Returns
+      -------
+      str
+          The generated package greeting.
+      """
       return "hello from Python"
   
   '''
@@ -33,11 +37,15 @@
   
   """
   
-  from __future__ import annotations
-  
   
   def hello() -> str:
-      """Return a friendly greeting from Python."""
+      """Return a friendly greeting from Python.
+  
+      Returns
+      -------
+      str
+          The generated package greeting.
+      """
       return "hello from Python"
   
   '''
@@ -58,6 +66,11 @@
     spelling             Enforce en-GB-oxendict spelling
     nixie                Validate Mermaid diagrams
     test                 Run tests
+    validate             Validate the Makefile
+    dead-code            Run the shared strict Skylos gate
+    install-nose         Install the pinned detector with the shared verified installer
+    duplication          Check every duplication family with the shared gate
+    lint-actions         Validate workflows and local actions
     help                 Show available targets
   
   '''

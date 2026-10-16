@@ -91,21 +91,20 @@ def _assert_documented_command_flags(
     use_rust: bool,
 ) -> None:
     """Assert documented make command flags are present in parsed recipes."""
-    python_targets = f"{package_name} tests"
     command_contracts = {
         "check-fmt": [
             ("AGENTS.md", "ruff format --check $(PYTHON_TARGETS)"),
-            ("Makefile", f"ruff format --check {python_targets}"),
+            ("Makefile", "ruff format --check"),
         ],
         "lint-python": [
             ("AGENTS.md", "ruff check $(PYTHON_TARGETS)"),
             ("AGENTS.md", "interrogate --fail-under 100 $(PYTHON_TARGETS)"),
-            ("Makefile", f"ruff check {python_targets}"),
-            ("Makefile", f"interrogate --fail-under 100 {python_targets}"),
+            ("Makefile", "ruff check"),
+            ("Makefile", "interrogate --fail-under 100"),
         ],
         "typecheck": [
             ("AGENTS.md", "ty check $(PYTHON_TARGETS)"),
-            ("Makefile", f"ty check {python_targets}"),
+            ("Makefile", "ty check"),
         ],
         "audit": [
             ("AGENTS.md", "pip-audit"),

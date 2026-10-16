@@ -48,3 +48,39 @@ managed PyPy parses Python 3.13 or later syntax. The generated Pylint policy no
 longer disables `syntax-error`, so a module the interpreter cannot parse fails
 the lint instead of being skipped. `tests/test_generated_pylint_tier.py`
 renders both shapes and runs the rendered command end to end.
+
+## Addendum (2026-10-15): Python 3.12 baseline and expanded quality gates
+
+Generated projects now require Python 3.12 or newer. Baseline Pylint runs on
+PyPy 3.12 when the selected baseline is exactly 3.12 and on CPython at the
+selected baseline when it is higher.
+
+The generated `lint` aggregate includes Ruff, Interrogate, baseline and DF12
+Pylint, Ambrleaks, Skylos, Vulture, duplication detection, and GitHub Actions
+validation. Rust-enabled projects also run rustdoc, Clippy, and Whitaker.
+Formatting includes Ruff, optional Rust formatting, and mdtablefix;
+`markdownlint` also runs repository-wide spelling.
+
+CI provisions Go 1.27 for Actionlint 1.7.12, whose minimum is Go 1.25, with
+module caching disabled. It also provisions stable Rust/Cargo for installing
+mdtablefix in both generated variants. The Rust lint and test cache uses the
+`rust_extension -> target` workspace and remains conditional on the Rust
+extension. Existing generated projects that record a Python baseline below 3.12
+must update that answer before applying the next applicable template release;
+see the [migration guide](migrating-to-python-3.12.md).
+
+## Addendum (2026-10-16): composite-action validation boundary
+
+`action-validator` validates action metadata. The generated
+`scripts/action_workflow.py` adapter projects composite actions into a temporary
+`workflow_dispatch` workflow so Actionlint can validate their executable steps
+and expressions. It preserves declared string inputs and the composite steps.
+Node and Docker actions produce no projection and remain under
+`action-validator` metadata validation. File, YAML, and action-shape errors
+return status 1 with a diagnostic on standard error; a valid non-composite
+action returns status 0 without workflow output.
+
+This boundary keeps action metadata validation separate from executable
+workflow validation. The developer guide documents its operational invocation,
+and the generated adapter tests cover projection, skipped action types, and
+error diagnostics.

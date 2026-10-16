@@ -17,13 +17,15 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
 from pytest_copier.plugin import CopierFixture
 
-from tests.helpers.rendering import render_project
+from tests.helpers.rendering import initialize_git_repository, render_project
 
 
+@pytest.mark.parametrize("python_version", ["3.12", "3.13", "3.14"])
 def test_generated_make_lint_enforces_interrogate_docstrings(
-    copier: CopierFixture, tmp_path: Path
+    copier: CopierFixture, tmp_path: Path, python_version: str
 ) -> None:
     """Validate rendered ``make lint`` fails on missing private docstrings.
 
@@ -33,6 +35,8 @@ def test_generated_make_lint_enforces_interrogate_docstrings(
         Fixture used to render the template into a temporary project.
     tmp_path : Path
         Temporary directory used as the generated project root.
+    python_version : str
+        Supported baseline used by the generated lint policy.
 
     Returns
     -------
@@ -47,19 +51,21 @@ def test_generated_make_lint_enforces_interrogate_docstrings(
         project_name="LintDocstrings",
         package_name=package_name,
         use_rust=False,
+        python_version=python_version,
     )
+    initialize_git_repository(project)
     make = shutil.which("make")
     assert make is not None, "expected make to be available for generated tests"
 
     passing_result = subprocess.run(
-        [make, "lint"],
+        [make, "check-fmt", "lint"],
         cwd=project.path,
         check=False,
         capture_output=True,
         text=True,
     )
     assert passing_result.returncode == 0, (
-        f"expected generated make lint to pass with complete docstrings:\n"
+        f"expected generated formatting and lint to pass with complete docstrings:\n"
         f"{passing_result.stdout}\n{passing_result.stderr}"
     )
 

@@ -72,3 +72,14 @@ remains ignored.
 
 The consequence for consumers of the template is that a re-render shows
 `typos.toml` as a new tracked file.
+
+## Addendum, 2026-10-16: generated projects check all tracked files
+
+The Decision above says generated projects use the builder's default Markdown
+scope. Generated projects now invoke the spelling gate with `--scope all`, as
+the parent repository does. Both apply the shared en-GB-oxendict policy to all
+tracked files, including prose outside Markdown. In the parent repository this
+also covers template sources such as `*.md.jinja`.
+
+The `make spelling` target remains the single spelling gate, and
+`make markdownlint` runs it after Markdown linting.

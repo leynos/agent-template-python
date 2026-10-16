@@ -23,9 +23,233 @@ from tests.helpers.generated_files import (
 _GENERATE_COVERAGE_USES_RE = re.compile(
     r"^leynos/shared-actions/\.github/actions/generate-coverage@[0-9a-f]{40}$"
 )
+_ACT_ONLY_COVERAGE_PUBLICATION_RE = re.compile(
+    r"^\$\{\{\s*env\.ACT\s*!=\s*'true'\s*\}\}$"
+)
 _UPLOAD_CODESCENE_COVERAGE_USES_RE = re.compile(
     r"^leynos/shared-actions/\.github/actions/upload-codescene-coverage@[0-9a-f]{40}$"
 )
+_SETUP_GO_USES_RE = re.compile(r"^actions/setup-go@[0-9a-fA-F]{40}$")
+_GO_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+|[xX])$")
+_GO_COMMAND_RE = re.compile(r"(?<![\w./-])go\s+[A-Za-z][A-Za-z0-9_-]*(?:\s|$)")
+_ACTIONLINT_INSTALL = "go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12"
+_GOPATH_BIN_EXPORT = 'echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"'
+_RUST_CACHE_DIRECTORIES = (
+    "~/.cargo/bin/cargo-nextest",
+    "~/.cargo/bin/cargo-audit",
+    "~/.cargo/bin/whitaker-installer",
+    "~/.local/bin/whitaker",
+    "~/.local/share/whitaker",
+)
+
+
+def assert_coverage_publication_contract(workflow_text: str, label: str) -> None:
+    """Require hosted coverage publication to be disabled only under Act.
+
+    Parameters
+    ----------
+    workflow_text : str
+        UTF-8 text of a workflow containing the shared coverage action.
+    label : str
+        Description used to identify contract failures.
+
+    Returns
+    -------
+    None
+        The helper returns when the coverage action has the Act-only
+        publication condition.
+
+    Raises
+    ------
+    AssertionError
+        Raised when the coverage action is missing, duplicated, or configured
+        with a publication condition that suppresses hosted uploads or allows
+        local Act uploads.
+    """
+    workflow = parse_yaml_mapping(workflow_text, label)
+    jobs = require_mapping(workflow, "jobs", label)
+    coverage_steps: list[dict[str, Any]] = []
+
+    for job_name, job_value in jobs.items():
+        job_label = f"{label} job {job_name!r}"
+        assert isinstance(job_value, dict), f"expected {job_label} to be a mapping"
+        steps = job_value.get("steps")
+        if not isinstance(steps, list):
+            continue
+        coverage_steps.extend(
+            step
+            for step in steps
+            if isinstance(step, dict)
+            and isinstance(step.get("uses"), str)
+            and step["uses"].startswith(
+                "leynos/shared-actions/.github/actions/generate-coverage@"
+            )
+        )
+
+    assert len(coverage_steps) == 1, (
+        f"expected {label} to contain one shared generate-coverage action"
+    )
+    coverage_inputs = require_mapping(
+        coverage_steps[0], "with", f"{label} generate-coverage step"
+    )
+    publish_condition = coverage_inputs.get("publish-artefact")
+    expected_condition = "${{ env.ACT != 'true' }}"
+    assert isinstance(publish_condition, str) and (
+        _ACT_ONLY_COVERAGE_PUBLICATION_RE.fullmatch(publish_condition.strip())
+    ), (
+        f"expected {label} publish-artefact to use the Act-only condition "
+        f"{expected_condition!r}, got {publish_condition!r}"
+    )
+
+
+def assert_go_toolchain_contract(
+    workflow_text: str,
+    label: str,
+    *,
+    actionlint_step_name: str | None = None,
+) -> None:
+    """Require explicit, pinned Go setup before every Go command.
+
+    The Go version may advance independently of this contract as long as its
+    explicit major/minor/patch selection is at least Go 1.25.0. The setup
+    action ref is checked for full-SHA shape, following ADR-005.
+
+    Parameters
+    ----------
+    workflow_text : str
+        UTF-8 text of a workflow containing Go commands.
+    label : str
+        Description used to identify contract failures.
+    actionlint_step_name : str | None, optional
+        Expected name of the step that installs Actionlint.
+
+    Returns
+    -------
+    None
+        The helper returns when the Go toolchain contract is satisfied.
+
+    Raises
+    ------
+    AssertionError
+        Raised when the workflow violates the Go toolchain contract.
+    """
+    workflow = parse_yaml_mapping(workflow_text, label)
+    jobs = require_mapping(workflow, "jobs", label)
+    found_actionlint_install = False
+
+    for job_name, job_value in jobs.items():
+        job_label = f"{label} job {job_name!r}"
+        assert isinstance(job_value, dict), f"expected {job_label} to be a mapping"
+        steps = require_sequence(job_value, "steps", job_label)
+        setup_indices: list[int] = []
+        go_invocation_indices: list[int] = []
+
+        for index, step_value in enumerate(steps):
+            step_label = f"{job_label} step {index}"
+            assert isinstance(step_value, dict), (
+                f"expected {step_label} to be a mapping"
+            )
+            step = step_value
+            uses = step.get("uses")
+            if isinstance(uses, str) and (
+                uses.startswith("actions/setup-go@") or uses == "actions/setup-go"
+            ):
+                assert _SETUP_GO_USES_RE.fullmatch(uses), (
+                    f"expected {step_label} Go setup to use a full 40-hex SHA, "
+                    f"got {uses!r}"
+                )
+                inputs = require_mapping(step, "with", f"{step_label} Go setup")
+                go_version = inputs.get("go-version")
+                assert isinstance(go_version, str), (
+                    f"expected {step_label} Go setup to select an explicit version"
+                )
+                version_match = _GO_VERSION_RE.fullmatch(go_version.strip())
+                assert version_match is not None, (
+                    f"expected {step_label} Go version to be an explicit version "
+                    f"such as 1.25.x or 1.25.0, got {go_version!r}"
+                )
+                major, minor, patch = version_match.groups()
+                selected_version = (
+                    int(major),
+                    int(minor),
+                    0 if patch.lower() == "x" else int(patch),
+                )
+                assert selected_version >= (1, 25, 0), (
+                    f"expected {step_label} Go version to be at least 1.25.0, "
+                    f"got {go_version!r}"
+                )
+                assert inputs.get("cache") is False, (
+                    f"expected {step_label} Go setup to disable module caching"
+                )
+                setup_indices.append(index)
+
+            run = step.get("run")
+            if not isinstance(run, str):
+                continue
+            if _GO_COMMAND_RE.search(run):
+                go_invocation_indices.append(index)
+            if "go install github.com/rhysd/actionlint/cmd/actionlint@" in run:
+                found_actionlint_install = True
+                if actionlint_step_name is not None:
+                    assert step.get("name") == actionlint_step_name, (
+                        "expected Actionlint installation in "
+                        f"{step_label} to use the {actionlint_step_name!r} step"
+                    )
+                assert _ACTIONLINT_INSTALL in run, (
+                    f"expected {step_label} to preserve Actionlint v1.7.12"
+                )
+                assert _GOPATH_BIN_EXPORT in run, (
+                    f"expected {step_label} to add GOPATH/bin to GITHUB_PATH"
+                )
+
+        for index in go_invocation_indices:
+            assert any(setup_index < index for setup_index in setup_indices), (
+                f"expected {job_label} to set up Go before every Go invocation "
+                f"(first unsatisfied step: {index})"
+            )
+
+    assert found_actionlint_install, f"expected {label} to install Actionlint with Go"
+
+
+def assert_rust_cache_workspace_contract(
+    workflow_text: str, *, use_rust: bool, label: str = "CI workflow"
+) -> None:
+    """Require Rust cache metadata to point at the optional extension crate."""
+    workflow = parse_yaml_mapping(workflow_text, label)
+    jobs = require_mapping(workflow, "jobs", label)
+    lint_test = require_mapping(jobs, "lint-test", f"{label} jobs")
+    steps = require_sequence(lint_test, "steps", f"{label} lint-test job")
+    cache_steps = [
+        step
+        for step in steps
+        if isinstance(step, dict)
+        and step.get("name") == "Cache Rust lint and test tools"
+    ]
+
+    if use_rust:
+        assert len(cache_steps) == 1, (
+            f"expected {label} to cache Rust tools exactly once"
+        )
+        cache_inputs = require_mapping(
+            cache_steps[0], "with", f"{label} Rust cache step"
+        )
+        assert cache_inputs.get("workspaces") == "rust_extension -> target", (
+            f"expected {label} Rust cache to use the extension manifest workspace"
+        )
+        cache_directories = cache_inputs.get("cache-directories")
+        assert isinstance(cache_directories, str), (
+            f"expected {label} to preserve Rust tool cache directories"
+        )
+        assert all(
+            directory in cache_directories for directory in _RUST_CACHE_DIRECTORIES
+        ), f"expected {label} to preserve all Rust tool cache directories"
+    else:
+        assert not cache_steps, (
+            f"expected pure-Python {label} to omit the native Rust cache step"
+        )
+        assert "workspaces:" not in workflow_text, (
+            f"expected pure-Python {label} to omit Rust workspace cache configuration"
+        )
 
 
 def assert_ci_coverage_action_contract(
@@ -66,6 +290,7 @@ def assert_ci_coverage_action_contract(
         )
     """
     parsed_ci_workflow = _parse_ci_workflow(ci_workflow)
+    assert_coverage_publication_contract(ci_workflow, "CI workflow")
     jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
     lint_test = require_mapping(jobs, "lint-test", "CI workflow jobs")
     steps = require_sequence(lint_test, "steps", "CI lint-test job")
@@ -148,6 +373,9 @@ def assert_coverage_main_workflow_contract(
             use_rust=True,
         )
     """
+    assert_coverage_publication_contract(
+        coverage_main_workflow, "coverage-main workflow"
+    )
     # ``on:`` is parsed by PyYAML as the boolean key ``True``, so assert the
     # triggers against the raw text to stay robust.
     assert "branches: [main]" in coverage_main_workflow, (
@@ -255,6 +483,13 @@ def _assert_ci_workflow_contracts(
     jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
     lint_test = require_mapping(jobs, "lint-test", "CI workflow jobs")
     steps = require_sequence(lint_test, "steps", "CI lint-test job")
+    assert_coverage_publication_contract(ci_workflow, "CI workflow")
+    assert_go_toolchain_contract(
+        ci_workflow,
+        "CI workflow",
+        actionlint_step_name="Install CLI tools",
+    )
+    assert_rust_cache_workspace_contract(ci_workflow, use_rust=use_rust)
     assert _checkout_steps_disable_credentials(steps), (
         "expected generated CI workflow to disable checkout credentials"
     )
@@ -267,7 +502,7 @@ def _assert_ci_workflow_contracts(
     assert "make typecheck" in ci_workflow, (
         "expected generated CI workflow to run the typecheck gate"
     )
-    assert "make spelling" in ci_workflow, (
+    assert "make markdownlint" in ci_workflow, (
         "expected generated CI workflow to run the spelling gate"
     )
     assert "make audit" in ci_workflow, (
@@ -319,9 +554,6 @@ def _assert_ci_workflow_contracts(
         assert rust_tool_env.get("RUSTFLAGS") == "", (
             "expected Rust tool installation step to clear inherited RUSTFLAGS"
         )
-        assert "Cache Rust lint and test tools" in ci_workflow, (
-            "expected Rust variant CI to cache Rust tools"
-        )
         assert "cargo-manifest: rust_extension/Cargo.toml" in ci_workflow, (
             "expected Rust variant CI to pass the Rust manifest to coverage"
         )
@@ -329,9 +561,14 @@ def _assert_ci_workflow_contracts(
             "expected Rust variant CI to install cargo-audit"
         )
     else:
-        assert "setup-rust" not in ci_workflow, (
-            "expected pure-Python CI to omit Rust setup"
+        assert "leynos/shared-actions/.github/actions/setup-rust" in ci_workflow, (
+            "expected pure-Python CI to set up Rust for mdtablefix tooling"
         )
+        assert not any(
+            isinstance(step, dict)
+            and step.get("name") == "Install Rust lint and test tools"
+            for step in steps
+        ), "expected pure-Python CI to omit Rust lint and test tool installation"
         assert "cargo-manifest" not in ci_workflow, (
             "expected pure-Python CI to omit Rust coverage inputs"
         )
@@ -344,6 +581,39 @@ def _assert_act_validation_workflow_contracts(
     *, act_validation_workflow: str, use_rust: bool
 ) -> None:
     """Assert generated act-validation workflow contracts."""
+    assert_go_toolchain_contract(
+        act_validation_workflow,
+        "Act Validation workflow",
+        actionlint_step_name="Install Actionlint",
+    )
+    workflow = parse_yaml_mapping(act_validation_workflow, "Act Validation workflow")
+    jobs = require_mapping(workflow, "jobs", "Act Validation workflow")
+    act_validation = require_mapping(
+        jobs, "act-validation", "Act Validation workflow jobs"
+    )
+    steps = require_sequence(
+        act_validation, "steps", "Act Validation workflow act-validation job"
+    )
+    actionlint_indices = [
+        index
+        for index, step in enumerate(steps)
+        if isinstance(step, dict) and step.get("name") == "Install Actionlint"
+    ]
+    test_indices = [
+        index
+        for index, step in enumerate(steps)
+        if isinstance(step, dict)
+        and step.get("name") == "Run tests with act validation"
+    ]
+    assert len(actionlint_indices) == 1, (
+        "expected generated act-validation workflow to install Actionlint once"
+    )
+    assert len(test_indices) == 1, (
+        "expected generated act-validation workflow to run tests once"
+    )
+    assert actionlint_indices[0] < test_indices[0], (
+        "expected generated act-validation workflow to install Actionlint before tests"
+    )
     assert "name: Act Validation" in act_validation_workflow, (
         "expected generated act-validation workflow to be named"
     )
