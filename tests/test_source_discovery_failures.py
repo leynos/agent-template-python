@@ -362,8 +362,12 @@ def test_python_gates_share_one_checked_git_result(
     )
     output = result.stdout + result.stderr
     assert result.returncode == 0, output
-    assert len(git_log.read_text(encoding="utf-8").splitlines()) == 1
-    assert "a second discovery must not run" not in output
+    assert len(git_log.read_text(encoding="utf-8").splitlines()) == 1, (
+        "Expected exactly one Git discovery call across all gates"
+    )
+    assert "a second discovery must not run" not in output, (
+        "A gate performed an unexpected second Git discovery"
+    )
     for tool in ("ruff", "interrogate", "pylint", "ty"):
         commands = [
             line
@@ -375,4 +379,6 @@ def test_python_gates_share_one_checked_git_result(
             arguments = shlex.split(command)
             assert set(sources.split()) <= set(arguments), command
             if not sources:
-                assert "first.py" not in arguments and "second.pyi" not in arguments
+                assert "first.py" not in arguments and "second.pyi" not in arguments, (
+                    "An empty source list left stale source arguments in the command"
+                )
