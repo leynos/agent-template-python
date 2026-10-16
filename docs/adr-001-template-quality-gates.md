@@ -68,3 +68,19 @@ mdtablefix in both generated variants. The Rust lint and test cache uses the
 extension. Existing generated projects that record a Python baseline below 3.12
 must update that answer before applying the next applicable template release;
 see the [migration guide](migrating-to-python-3.12.md).
+
+## Addendum (2026-10-16): composite-action validation boundary
+
+`action-validator` validates action metadata. The generated
+`scripts/action_workflow.py` adapter projects composite actions into a temporary
+`workflow_dispatch` workflow so Actionlint can validate their executable steps
+and expressions. It preserves declared string inputs and the composite steps.
+Node and Docker actions produce no projection and remain under
+`action-validator` metadata validation. File, YAML, and action-shape errors
+return status 1 with a diagnostic on standard error; a valid non-composite
+action returns status 0 without workflow output.
+
+This boundary keeps action metadata validation separate from executable
+workflow validation. The developer guide documents its operational invocation,
+and the generated adapter tests cover projection, skipped action types, and
+error diagnostics.

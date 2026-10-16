@@ -141,6 +141,29 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert evidence_inputs.get("if-no-files-found") == "error", (
         "expected Act evidence upload to fail when no coverage reports exist"
     )
+    log_uploads = [
+        (index, step)
+        for index, step in enumerate(act_steps)
+        if isinstance(step, dict) and step.get("name") == "Upload Act diagnostic logs"
+    ]
+    assert len(log_uploads) == 1, "expected a separate Act diagnostic log upload"
+    log_upload_index, log_upload = log_uploads[0]
+    assert log_upload_index > test_indices[0], "expected logs after Act tests"
+    assert log_upload.get("if") == "always()", "expected logs even after timeouts"
+    assert _UPLOAD_ARTEFACT_USES_RE.fullmatch(str(log_upload.get("uses", ""))), (
+        "expected the log upload action pinned to a full SHA"
+    )
+    log_inputs = require_mapping(log_upload, "with", "Act diagnostic log upload")
+    assert log_inputs.get("name") == "act-diagnostic-logs", (
+        "expected a separate stable diagnostic artefact name"
+    )
+    assert str(log_inputs.get("path", "")).splitlines() == [
+        "${{ runner.temp }}/act-evidence/pure-artefacts/act.log",
+        "${{ runner.temp }}/act-evidence/rust-artefacts/act.log",
+    ], "expected both retained Act logs in the diagnostic artefact"
+    assert log_inputs.get("if-no-files-found") == "warn", (
+        "expected missing logs to warn without weakening strict coverage upload"
+    )
     assert len(actionlint_indices) == 1, (
         "expected parent Act workflow to install Actionlint once"
     )

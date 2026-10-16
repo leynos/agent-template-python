@@ -92,6 +92,16 @@ jobs:
           ACT_EVIDENCE_DIR: ${{ runner.temp }}/act-evidence
         run: make test WITH_ACT=1
 
+      - name: Upload Act diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: act-diagnostic-logs
+          path: |
+            ${{ runner.temp }}/act-evidence/pure-artefacts/act.log
+            ${{ runner.temp }}/act-evidence/rust-artefacts/act.log
+          if-no-files-found: warn
+
       - name: Upload Act coverage evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
