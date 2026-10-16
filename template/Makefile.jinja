@@ -23,7 +23,7 @@ ACT_TEST_ENV = $(if $(filter 1 true yes on,$(WITH_ACT)),RUN_ACT_VALIDATION=1,)
 PYTEST_XDIST_WORKERS ?= auto
 # Discover tracked and new Python sources, including hidden action directories.
 PYTHON_TARGETS_FROM_GIT := $(if $(filter undefined,$(origin PYTHON_TARGETS)),1,0)
-PYTHON_TARGETS ?= $(shell git ls-files --cached --others --exclude-standard '*.py' '*.pyi')
+PYTHON_TARGETS ?=
 RUFF_VERSION ?= 0.16.8
 TY_VERSION ?= 0.0.56
 LINT_PYTHON ?= 3.14
@@ -142,11 +142,12 @@ whitaker: ## Verify the Whitaker wrapper is available for the Rust lint target
 
 {% endif %}
 ifeq ($(PYTHON_TARGETS_FROM_GIT),1)
+# Recipe expansion runs once, after prerequisites; check this capture's status
+# before consumers expand their shared, simply expanded source list.
 check-python-sources:
-	@git ls-files --cached --others --exclude-standard '*.py' '*.pyi' >/dev/null || { \
-	  printf 'Error: git ls-files failed while discovering Python sources for PYTHON_TARGETS\n' >&2; \
-	  exit 1; \
-	}
+	$(eval PYTHON_TARGETS := $(shell git ls-files --cached --others --exclude-standard '*.py' '*.pyi'))
+	$(if $(filter 0,$(.SHELLSTATUS)),,$(error Error: git ls-files failed while discovering Python sources for PYTHON_TARGETS))
+	@:
 else
 check-python-sources:
 	@:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -19,7 +20,11 @@ _DISCOVERY_ERROR = "Error: git ls-files failed while discovering Python sources"
 def _source_discovery_makefile(phony_declaration: str) -> str:
     """Build a small Makefile fixture for source-discovery shape checks."""
     return f"""{phony_declaration}
+PYTHON_TARGETS ?=
 check-python-sources:
+\t$(eval PYTHON_TARGETS := $(shell git ls-files --cached --others --exclude-standard '*.py' '*.pyi'))
+\t$(if $(filter 0,$(.SHELLSTATUS)),,$(error Error: git ls-files failed while discovering Python sources for PYTHON_TARGETS))
+\t@:
 all: check-python-sources build
 fmt: check-python-sources build
 check-fmt: check-python-sources build
@@ -71,6 +76,27 @@ def test_source_discovery_contract_rejects_guard_after_build() -> None:
         ".PHONY: all fmt check-fmt lint-python typecheck check-python-sources"
     ).replace("\nfmt: check-python-sources build", "\nfmt: build check-python-sources")
     with pytest.raises(AssertionError, match="fmt should check Git source discovery"):
+        _assert_python_source_discovery_contract(makefile)
+
+
+@pytest.mark.parametrize("mutation", ["hidden-read", "unchecked-read", "second-read"])
+def test_source_discovery_contract_rejects_unchecked_or_duplicate_reads(
+    mutation: str,
+) -> None:
+    """Reject discovery outside the checked capture or without its status check."""
+    makefile = _source_discovery_makefile(
+        ".PHONY: all fmt check-fmt lint-python typecheck check-python-sources"
+    )
+    match mutation:
+        case "hidden-read":
+            makefile = makefile.replace(
+                "PYTHON_TARGETS ?=", "PYTHON_TARGETS ?= $(shell git ls-files)"
+            )
+        case "unchecked-read":
+            makefile = makefile.replace("$(filter 0,$(.SHELLSTATUS))", "1")
+        case "second-read":
+            makefile += "OTHER_SOURCES = $(shell git ls-files)\n"
+    with pytest.raises(AssertionError, match="Python source discovery should"):
         _assert_python_source_discovery_contract(makefile)
 
 
@@ -193,7 +219,11 @@ def test_python_gate_reports_missing_git_before_build(
 
     assert result.returncode != 0, "lint-python should fail without Git discovery"
     assert _DISCOVERY_ERROR in output, output
-    assert "git" in output.lower() and "not found" in output.lower(), output
+    assert "git" in output.lower(), output
+    assert any(
+        message in output.lower()
+        for message in ("not found", "no such file or directory")
+    ), output
     assert not (home / "uv-calls.log").exists(), (
         "lint-python should stop before invoking build or lint tools"
     )
@@ -278,3 +308,71 @@ def test_explicit_python_targets_override_works_without_git(
     assert any("check tests/override.py" in invocation for invocation in invocations), (
         "typecheck should pass the caller's explicit Python source list to ty"
     )
+
+
+@pytest.mark.parametrize(
+    "sources", ["first.py second.pyi", ""], ids=["sources", "empty"]
+)
+def test_python_gates_share_one_checked_git_result(
+    copier: CopierFixture, tmp_path: Path, sources: str
+) -> None:
+    """Reuse the first successful discovery even if a later Git call would fail."""
+    project = render_project(
+        tmp_path / "single-discovery",
+        copier,
+        project_name="SingleDiscovery",
+        package_name="single_discovery",
+        use_rust=False,
+    )
+    tools = tmp_path / "bin"
+    tools.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
+    git_log = home / "git-calls.log"
+    _write_probe(
+        tools / "git",
+        'if [ -f "$GIT_CALL_LOG" ]; then\n'
+        "  printf '%s\\n' 'fatal: a second discovery must not run' >&2\n"
+        "  exit 23\n"
+        "fi\n"
+        'printf "%s\\n" "$*" > "$GIT_CALL_LOG"\n'
+        'printf "%s\\n" "$DISCOVERED_SOURCES"\n',
+    )
+    _write_probe(tools / "uv", "exit 0\n")
+    environment = _probe_environment(tools, home, git_log=git_log)
+    environment["DISCOVERED_SOURCES"] = sources
+    make = shutil.which("make")
+    assert make is not None, "Source-discovery regressions require make"
+    result = subprocess.run(
+        [
+            make,
+            "--no-print-directory",
+            "-n",
+            "lint-python",
+            "fmt",
+            "check-fmt",
+            "typecheck",
+        ],
+        cwd=project.path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert len(git_log.read_text(encoding="utf-8").splitlines()) == 1
+    assert "a second discovery must not run" not in output
+    for tool in ("ruff", "interrogate", "pylint", "ty"):
+        commands = [
+            line
+            for line in result.stdout.splitlines()
+            if f" {tool} " in line and not line.endswith(" --version")
+        ]
+        assert commands, f"No {tool} consumer was exercised"
+        for command in commands:
+            arguments = shlex.split(command)
+            assert set(sources.split()) <= set(arguments), command
+            if not sources:
+                assert "first.py" not in arguments and "second.pyi" not in arguments

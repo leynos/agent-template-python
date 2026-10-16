@@ -213,6 +213,22 @@ def _assert_python_source_discovery_contract(makefile: str) -> None:
         for declaration in phony_declarations
     ), "Python source discovery should be a phony Make target"
 
+    assert not re.search(
+        r"^PYTHON_TARGETS\s*\?=.*\$\(shell", makefile, flags=re.MULTILINE
+    ), "Python source discovery should not hide a fallible global shell read"
+    checked_capture = (
+        "\t$(eval PYTHON_TARGETS := $(shell git ls-files --cached --others "
+        "--exclude-standard '*.py' '*.pyi'))\n"
+        "\t$(if $(filter 0,$(.SHELLSTATUS)),,$(error Error: git ls-files failed "
+        "while discovering Python sources for PYTHON_TARGETS))"
+    )
+    assert f"check-python-sources:\n{checked_capture}" in makefile, (
+        "Python source discovery should capture and immediately check one Git result"
+    )
+    assert makefile.count("$(shell git ls-files") == 1, (
+        "Python source discovery should reuse one checked Git result"
+    )
+
     for target in ("all", "fmt", "check-fmt", "lint-python", "typecheck"):
         target_prerequisites = prerequisites(target)
         assert target_prerequisites[0] == "check-python-sources", (

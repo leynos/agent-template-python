@@ -113,6 +113,52 @@ def _read_workflow(project: Path, name: str) -> dict[str, Any]:
     )
 
 
+def _mutate_upload_boundary(action: dict[str, Any], mutation: str) -> None:
+    """Apply one named upload-contract mutation, rejecting unknown names.
+
+    Parameters
+    ----------
+    action
+        Parsed action to mutate in place.
+    mutation
+        Explicit upload-boundary mutation name.
+
+    Raises
+    ------
+    ValueError
+        Raised when the requested mutation is not recognized.
+    """
+    inputs = require_mapping(action, "inputs", "pure wheel action")
+    steps = _action_steps(action)
+    build = next(step for step in steps if step.get("name") == "Build wheel")
+    upload = next(step for step in steps if step.get("name") == "Upload wheel artefact")
+    match mutation:
+        case "remove-upload":
+            inputs.pop("upload-artefact")
+        case "boolean-default":
+            inputs["upload-artefact"]["default"] = True
+        case "required-upload":
+            inputs["upload-artefact"]["required"] = True
+        case "remove-condition":
+            upload.pop("if")
+        case "unguarded-upload":
+            upload["if"] = "always()"
+        case "remove-upload-action":
+            upload.pop("uses")
+        case "wrong-upload-action":
+            upload["uses"] = "actions/download-artifact@v4"
+        case "remove-output-env":
+            build["env"].pop("OUT_DIR")
+        case "unquoted-output":
+            build["run"] = build["run"].replace('"$OUT_DIR"', "$OUT_DIR")
+        case "wrong-upload-path":
+            upload["with"]["path"] = "dist/*.whl"
+        case "empty-upload-ref":
+            upload["uses"] = "actions/upload-artifact@"
+        case _:
+            raise ValueError(f"Unknown wheel mutation: {mutation}")
+
+
 @pytest.mark.parametrize(
     ("mutation", "diagnostic"),
     [
@@ -123,6 +169,7 @@ def _read_workflow(project: Path, name: str) -> dict[str, Any]:
         ("unguarded-upload", "explicit true input"),
         ("remove-upload-action", "use the upload-artifact action"),
         ("wrong-upload-action", "use the upload-artifact action"),
+        ("empty-upload-ref", "nonempty ref"),
         ("remove-output-env", "through OUT_DIR"),
         ("unquoted-output", "one argument"),
         ("wrong-upload-path", "selected output directory"),
@@ -135,32 +182,18 @@ def test_pure_wheel_contract_rejects_broken_upload_boundaries(
     action = parse_yaml_mapping(
         read_generated_text(_TEMPLATE_ACTION), "pure wheel action"
     )
-    inputs = require_mapping(action, "inputs", "pure wheel action")
-    steps = _action_steps(action)
-    build = next(step for step in steps if step.get("name") == "Build wheel")
-    upload = next(step for step in steps if step.get("name") == "Upload wheel artefact")
-    if mutation == "remove-upload":
-        inputs.pop("upload-artefact")
-    elif mutation == "boolean-default":
-        inputs["upload-artefact"]["default"] = True
-    elif mutation == "required-upload":
-        inputs["upload-artefact"]["required"] = True
-    elif mutation == "remove-condition":
-        upload.pop("if")
-    elif mutation == "unguarded-upload":
-        upload["if"] = "always()"
-    elif mutation == "remove-upload-action":
-        upload.pop("uses")
-    elif mutation == "wrong-upload-action":
-        upload["uses"] = "actions/download-artifact@v4"
-    elif mutation == "remove-output-env":
-        build["env"].pop("OUT_DIR")
-    elif mutation == "unquoted-output":
-        build["run"] = build["run"].replace('"$OUT_DIR"', "$OUT_DIR")
-    else:
-        upload["with"]["path"] = "dist/*.whl"
+    _mutate_upload_boundary(action, mutation)
     with pytest.raises((AssertionError, pytest.fail.Exception), match=diagnostic):
         _assert_pure_wheel_action_contracts(action)
+
+
+def test_upload_mutation_rejects_unknown_name() -> None:
+    """Prevent misspelled mutation names from exercising a different defect."""
+    action = parse_yaml_mapping(
+        read_generated_text(_TEMPLATE_ACTION), "pure wheel action"
+    )
+    with pytest.raises(ValueError, match="Unknown wheel mutation: unknown"):
+        _mutate_upload_boundary(action, "unknown")
 
 
 def test_pure_wheel_build_preserves_spaced_output_directory(

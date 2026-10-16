@@ -9,6 +9,11 @@ Before the first quality-gate run, initialize Git at the generated project root
 with `git init`. Python source discovery and Markdown table formatting use Git
 repository metadata.
 
+Run `make markdownlint` to lint Markdown and check repository-wide spelling.
+The separate `make spelling` target runs the spelling gate on its own. Run
+`make audit` to audit Python dependencies with `pip-audit`; a project generated
+with the Rust extension also runs `cargo audit` for that crate.
+
 For existing generated projects, see the
 [Python 3.12 migration guide](migrating-to-python-3.12.md) before updating the
 template.

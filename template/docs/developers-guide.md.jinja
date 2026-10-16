@@ -22,9 +22,10 @@ isolated tools on Python 3.14.
 
 With default Git source discovery, `fmt`, `check-fmt`, `lint-python`, and
 `typecheck` stop with a diagnostic before running tools if Git or repository
-metadata is unavailable. `help` and `build` do not depend on source discovery;
-initialize the generated project with `git init` before its first quality-gate
-run.
+metadata is unavailable. GNU Make 4.2 or newer captures one Git result and
+checks its `.SHELLSTATUS` immediately; the tools share that captured source
+list. `help` and `build` do not depend on source discovery; initialize the
+generated project with `git init` before its first quality-gate run.
 
 Rust-enabled projects declare only the PyO3 module initializer as a runtime
 entrypoint. The native import tests exercise that boundary, and unused sibling

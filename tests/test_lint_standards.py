@@ -45,7 +45,13 @@ def test_lint_source_discovery_includes_new_scripts_and_hidden_actions(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text('"""New source."""\n', encoding="utf-8")
     result = subprocess.run(
-        ["make", "-s", "--eval", "probe: ; @echo $(PYTHON_TARGETS)", "probe"],
+        [
+            "make",
+            "-s",
+            "--eval",
+            "probe: check-python-sources ; @echo $(PYTHON_TARGETS)",
+            "probe",
+        ],
         cwd=project.path,
         text=True,
         capture_output=True,

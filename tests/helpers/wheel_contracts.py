@@ -7,6 +7,7 @@ workflow/action files that produce wheel artefacts.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from tests.helpers.generated_files import (
@@ -58,9 +59,9 @@ def _assert_pure_wheel_action_contracts(action: dict[str, Any]) -> None:
     assert upload_step.get("if") == "inputs.upload-artefact == 'true'", (
         "wheel upload should run only for the explicit true input"
     )
-    assert (
-        str(upload_step.get("uses", "")).split("@")[0] == "actions/upload-artifact"
-    ), "wheel upload should use the upload-artifact action"
+    assert re.fullmatch(
+        r"actions/upload-artifact@[^\s@]+", str(upload_step.get("uses", ""))
+    ), "wheel upload should use the upload-artifact action with a nonempty ref"
     upload_inputs = require_mapping(upload_step, "with", "pure wheel upload step")
     assert upload_inputs.get("path") == "${{ inputs.out-dir }}/*.whl", (
         "wheel upload should read wheels from the selected output directory"

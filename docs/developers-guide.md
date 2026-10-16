@@ -75,11 +75,12 @@ inventory of the jobs that can land on Ubicloud with their ceilings.
 `all` target runs build, formatting, linting, typechecking, tests, and
 spelling. The spelling recipe runs last, so generated configuration cannot race
 tests when callers enable parallel Make execution. Generated projects pin `ty`
-in the dev dependency group (`ty==0.0.56`), so `make typecheck` resolves the
-pinned typechecker; bumps follow the same deliberate policy as the parent
-repository (ADR-004). The generated `audit` target is an explicit security gate
-run by CI. It runs `pip-audit` for every rendered project and, when `use_rust`
-is enabled, also runs `cargo audit` in the Rust extension crate.
+through the `TY_VERSION` Make variable (`0.0.56` by default); `make typecheck`
+uses `$(TY)` to run that version from the isolated `$(LINT_PYTHON)` tool
+environment. Bumps follow the same deliberate policy as the parent repository
+(ADR-004). The generated `audit` target is an explicit security gate run by CI.
+It runs `pip-audit` for every rendered project and, when `use_rust` is enabled,
+also runs `cargo audit` in the Rust extension crate.
 
 Generated projects ship `docs/scripting-standards.md`
 (`template/docs/scripting-standards.md` here), which sets the conventions for
@@ -114,11 +115,26 @@ With default Git source discovery, `fmt`, `check-fmt`, `lint-python`, and
 `typecheck` validate source discovery and stop with a diagnostic before running
 tools when Git or repository metadata is unavailable. `help` and `build` do not
 depend on source discovery; initialize a generated project with `git init`
-before its first quality-gate run.
+before its first quality-gate run. The Makefile captures `git ls-files` output
+once, checks its exit status immediately through GNU Make's `.SHELLSTATUS`, and
+shares the stored source list with each tool; this requires GNU Make 4.2 or
+later.
 
 Tool revisions are exposed as Makefile variables such as `PYLINT_VERSION` and
 `PYLINT_PYTHON`, so generated projects can override pins without editing target
 recipes.
+
+The action checks in `lint-actions` have separate jobs. `action-validator`
+validates each action manifest's metadata. The Make recipe then runs
+`scripts/action_workflow.py` with `uv run --script` for each manifest. For a
+composite action, the script projects its declared inputs as string workflow
+inputs and carries its steps unchanged into a temporary `workflow_dispatch`
+workflow; Actionlint checks that projection on standard input using the action
+path as its filename. This lets Actionlint inspect composite steps without
+replacing action-validator's metadata checks. Node and Docker actions have no
+composite-step projection: the script emits no workflow for them, while
+action-validator still checks their metadata. A file, YAML, or action-shape
+error is written to standard error and exits with status 1.
 
 The generated Pylint tier runs the pinned `PYLINT_VERSION` through
 `uv tool run --managed-python`. The project baseline must be at least 3.12;
