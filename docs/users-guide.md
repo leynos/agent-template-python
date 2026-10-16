@@ -9,6 +9,10 @@ Before the first quality-gate run, initialize Git at the generated project root
 with `git init`. Python source discovery and Markdown table formatting use Git
 repository metadata.
 
+For existing generated projects, see the
+[Python 3.12 migration guide](migrating-to-python-3.12.md) before updating the
+template.
+
 Figure 1: Generated project quality-gate flow, read from left to right.
 `make all` runs build, formatting, lint, type, test, and spelling gates.
 Linting covers Git-discovered Python sources with baseline Pylint and isolated

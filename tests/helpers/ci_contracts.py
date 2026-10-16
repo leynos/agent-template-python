@@ -23,6 +23,9 @@ from tests.helpers.generated_files import (
 _GENERATE_COVERAGE_USES_RE = re.compile(
     r"^leynos/shared-actions/\.github/actions/generate-coverage@[0-9a-f]{40}$"
 )
+_ACT_ONLY_COVERAGE_PUBLICATION_RE = re.compile(
+    r"^\$\{\{\s*env\.ACT\s*!=\s*'true'\s*\}\}$"
+)
 _UPLOAD_CODESCENE_COVERAGE_USES_RE = re.compile(
     r"^leynos/shared-actions/\.github/actions/upload-codescene-coverage@[0-9a-f]{40}$"
 )
@@ -40,7 +43,71 @@ _RUST_CACHE_DIRECTORIES = (
 )
 
 
-def assert_go_toolchain_contract(workflow_text: str, label: str) -> None:
+def assert_coverage_publication_contract(workflow_text: str, label: str) -> None:
+    """Require hosted coverage publication to be disabled only under Act.
+
+    Parameters
+    ----------
+    workflow_text : str
+        UTF-8 text of a workflow containing the shared coverage action.
+    label : str
+        Description used to identify contract failures.
+
+    Returns
+    -------
+    None
+        The helper returns when the coverage action has the Act-only
+        publication condition.
+
+    Raises
+    ------
+    AssertionError
+        Raised when the coverage action is missing, duplicated, or configured
+        with a publication condition that suppresses hosted uploads or allows
+        local Act uploads.
+    """
+    workflow = parse_yaml_mapping(workflow_text, label)
+    jobs = require_mapping(workflow, "jobs", label)
+    coverage_steps: list[dict[str, Any]] = []
+
+    for job_name, job_value in jobs.items():
+        job_label = f"{label} job {job_name!r}"
+        assert isinstance(job_value, dict), f"expected {job_label} to be a mapping"
+        steps = job_value.get("steps")
+        if not isinstance(steps, list):
+            continue
+        coverage_steps.extend(
+            step
+            for step in steps
+            if isinstance(step, dict)
+            and isinstance(step.get("uses"), str)
+            and step["uses"].startswith(
+                "leynos/shared-actions/.github/actions/generate-coverage@"
+            )
+        )
+
+    assert len(coverage_steps) == 1, (
+        f"expected {label} to contain one shared generate-coverage action"
+    )
+    coverage_inputs = require_mapping(
+        coverage_steps[0], "with", f"{label} generate-coverage step"
+    )
+    publish_condition = coverage_inputs.get("publish-artefact")
+    expected_condition = "${{ env.ACT != 'true' }}"
+    assert isinstance(publish_condition, str) and (
+        _ACT_ONLY_COVERAGE_PUBLICATION_RE.fullmatch(publish_condition.strip())
+    ), (
+        f"expected {label} publish-artefact to use the Act-only condition "
+        f"{expected_condition!r}, got {publish_condition!r}"
+    )
+
+
+def assert_go_toolchain_contract(
+    workflow_text: str,
+    label: str,
+    *,
+    actionlint_step_name: str | None = None,
+) -> None:
     """Require explicit, pinned Go setup before every Go command.
 
     The Go version may advance independently of this contract as long as its
@@ -104,6 +171,11 @@ def assert_go_toolchain_contract(workflow_text: str, label: str) -> None:
                 go_invocation_indices.append(index)
             if "go install github.com/rhysd/actionlint/cmd/actionlint@" in run:
                 found_actionlint_install = True
+                if actionlint_step_name is not None:
+                    assert step.get("name") == actionlint_step_name, (
+                        "expected Actionlint installation in "
+                        f"{step_label} to use the {actionlint_step_name!r} step"
+                    )
                 assert _ACTIONLINT_INSTALL in run, (
                     f"expected {step_label} to preserve Actionlint v1.7.12"
                 )
@@ -199,6 +271,7 @@ def assert_ci_coverage_action_contract(
         )
     """
     parsed_ci_workflow = _parse_ci_workflow(ci_workflow)
+    assert_coverage_publication_contract(ci_workflow, "CI workflow")
     jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
     lint_test = require_mapping(jobs, "lint-test", "CI workflow jobs")
     steps = require_sequence(lint_test, "steps", "CI lint-test job")
@@ -281,6 +354,9 @@ def assert_coverage_main_workflow_contract(
             use_rust=True,
         )
     """
+    assert_coverage_publication_contract(
+        coverage_main_workflow, "coverage-main workflow"
+    )
     # ``on:`` is parsed by PyYAML as the boolean key ``True``, so assert the
     # triggers against the raw text to stay robust.
     assert "branches: [main]" in coverage_main_workflow, (
@@ -388,7 +464,12 @@ def _assert_ci_workflow_contracts(
     jobs = require_mapping(parsed_ci_workflow, "jobs", "CI workflow")
     lint_test = require_mapping(jobs, "lint-test", "CI workflow jobs")
     steps = require_sequence(lint_test, "steps", "CI lint-test job")
-    assert_go_toolchain_contract(ci_workflow, "CI workflow")
+    assert_coverage_publication_contract(ci_workflow, "CI workflow")
+    assert_go_toolchain_contract(
+        ci_workflow,
+        "CI workflow",
+        actionlint_step_name="Install CLI tools",
+    )
     assert_rust_cache_workspace_contract(ci_workflow, use_rust=use_rust)
     assert _checkout_steps_disable_credentials(steps), (
         "expected generated CI workflow to disable checkout credentials"
@@ -481,6 +562,39 @@ def _assert_act_validation_workflow_contracts(
     *, act_validation_workflow: str, use_rust: bool
 ) -> None:
     """Assert generated act-validation workflow contracts."""
+    assert_go_toolchain_contract(
+        act_validation_workflow,
+        "Act Validation workflow",
+        actionlint_step_name="Install Actionlint",
+    )
+    workflow = parse_yaml_mapping(act_validation_workflow, "Act Validation workflow")
+    jobs = require_mapping(workflow, "jobs", "Act Validation workflow")
+    act_validation = require_mapping(
+        jobs, "act-validation", "Act Validation workflow jobs"
+    )
+    steps = require_sequence(
+        act_validation, "steps", "Act Validation workflow act-validation job"
+    )
+    actionlint_indices = [
+        index
+        for index, step in enumerate(steps)
+        if isinstance(step, dict) and step.get("name") == "Install Actionlint"
+    ]
+    test_indices = [
+        index
+        for index, step in enumerate(steps)
+        if isinstance(step, dict)
+        and step.get("name") == "Run tests with act validation"
+    ]
+    assert len(actionlint_indices) == 1, (
+        "expected generated act-validation workflow to install Actionlint once"
+    )
+    assert len(test_indices) == 1, (
+        "expected generated act-validation workflow to run tests once"
+    )
+    assert actionlint_indices[0] < test_indices[0], (
+        "expected generated act-validation workflow to install Actionlint before tests"
+    )
     assert "name: Act Validation" in act_validation_workflow, (
         "expected generated act-validation workflow to be named"
     )

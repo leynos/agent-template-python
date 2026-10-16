@@ -52,8 +52,12 @@ def test_lint_source_discovery_includes_new_scripts_and_hidden_actions(
         check=True,
     )
     discovered = set(result.stdout.split())
-    assert {"scripts/new_script.py", ".github/actions/new/helper.py"} <= discovered
-    assert "scripts/action_workflow.py" in discovered
+    assert {"scripts/new_script.py", ".github/actions/new/helper.py"} <= discovered, (
+        "Python source discovery omitted a new script or hidden action helper"
+    )
+    assert "scripts/action_workflow.py" in discovered, (
+        "Python source discovery omitted the generated action workflow helper"
+    )
 
     recipes = subprocess.run(
         ["make", "-n", "lint-python"],
@@ -66,6 +70,22 @@ def test_lint_source_discovery_includes_new_scripts_and_hidden_actions(
     for tool in ("ruff", "interrogate", "pylint"):
         commands = [line for line in recipes if f" {tool} " in line]
         assert commands, f"Expected generated lint to invoke {tool}"
+        for command in commands:
+            assert expected <= set(shlex.split(command)), command
+
+    for target, fragment in (
+        ("check-fmt", "format --check"),
+        ("typecheck", "ty check"),
+    ):
+        target_recipes = subprocess.run(
+            ["make", "-n", target],
+            cwd=project.path,
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.splitlines()
+        commands = [line for line in target_recipes if fragment in line]
+        assert commands, f"Expected generated {target} to invoke {fragment}"
         for command in commands:
             assert expected <= set(shlex.split(command)), command
 

@@ -229,15 +229,17 @@ lint-actions: build $(ACTIONLINT) $(ACTION_VALIDATOR) ## Validate workflows and 
 	$(call ensure_tool,shellcheck)
 	$(UV_ENV) $(UV) tool run --from 'yamllint==1.38.0' yamllint --strict .github
 	$(ACTIONLINT)
-	@set -eu; workflow=$$(mktemp /tmp/template-action-XXXXXX.yml); \
-	trap 'rm -f "$$workflow"' EXIT; find .github/actions -type f \( -name action.yml -o -name action.yaml \) -print | \
+	@set -eu; tmpdir=$$(mktemp -d /tmp/template-actions-XXXXXX); \
+	workflow="$$tmpdir/workflow.yml"; actions="$$tmpdir/actions"; \
+	trap 'rm -rf "$$tmpdir"' EXIT; \
+	find .github/actions -type f \( -name action.yml -o -name action.yaml \) -print > "$$actions"; \
 	while IFS= read -r action; do \
 	  $(ACTION_VALIDATOR) "$$action"; \
 	  $(UV_ENV) $(UV) run --script scripts/action_workflow.py "$$action" > "$$workflow"; \
 	  if [ -s "$$workflow" ]; then \
 	    $(ACTIONLINT) -stdin-filename "$$action" - < "$$workflow"; \
 	  fi; \
-	done
+	done < "$$actions"
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | \

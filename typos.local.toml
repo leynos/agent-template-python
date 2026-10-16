@@ -24,6 +24,8 @@ ignore = [
   '\bartifact_dir\b',
   '\b(?:upload|download)-artifact\b',
   'Provided artifact name input during validation is empty',
+  # The upstream API diagnostic names this operation verbatim.
+  '\bCreateArtifact\b',
   # GitHub and Cargo environment and event names keep their US spelling.
   '\bCARGO_TERM_COLOR\b',
   '\bNO_COLOR\b',

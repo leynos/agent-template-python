@@ -45,6 +45,7 @@ extend-ignore-re = [
     "\\b(?:upload|download)-artifact\\b",
     "\\bAppFactory<Ser\\b",
     "\\bCARGO_TERM_COLOR\\b",
+    "\\bCreateArtifact\\b",
     "\\bNO_COLOR\\b",
     "\\bartifact-(?:name|server-path)\\b",
     "\\bartifact-name\\b",

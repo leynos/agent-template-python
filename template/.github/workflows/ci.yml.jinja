@@ -36,7 +36,7 @@ jobs:
       - name: Set up Go for Actionlint
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: '1.25.x'
+          go-version: '1.27.x'
           cache: false
 
       - name: Install uv
@@ -133,11 +133,12 @@ jobs:
 
       - name: Test and Measure Coverage
         if: ${{ "{{" }} github.event_name == 'pull_request' {{ "}}" }}
-        uses: leynos/shared-actions/.github/actions/generate-coverage@18bed1ca49a6de3d8882bd72635a32ae3f023d57
+        uses: leynos/shared-actions/.github/actions/generate-coverage@ec1432aa6fa5379b2dd8f4b3402fd5b250a597bd
         with:
           output-path: coverage.xml
           format: cobertura
           artefact-name-suffix: {{ package_name | lower | replace("_", "-") }}
+          publish-artefact: ${{ "{{" }} env.ACT != 'true' {{ "}}" }}
           with-ratchet: 'true'
 {% if use_rust %}
           cargo-manifest: rust_extension/Cargo.toml

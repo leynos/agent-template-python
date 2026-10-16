@@ -35,7 +35,6 @@ def test_generated_make_lint_enforces_interrogate_docstrings(
         Fixture used to render the template into a temporary project.
     tmp_path : Path
         Temporary directory used as the generated project root.
-
     python_version : str
         Supported baseline used by the generated lint policy.
 

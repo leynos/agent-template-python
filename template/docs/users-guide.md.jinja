@@ -22,8 +22,9 @@ Run `make markdownlint` separately to lint Markdown and run the same spelling
 gate. Run `make audit` separately to check dependencies with `pip-audit` and,
 when Rust is enabled, `cargo audit`.
 
-The generated Python baseline is `{{ python_version }}` and must be at least 3.12. Git
-discovers Python sources from tracked and untracked files, including hidden
+The Python baseline is `{{ python_version }}` (minimum: 3.12).
+
+Git discovers Python sources from tracked and untracked files, including hidden
 action directories. `lint-python` runs Ruff 0.16.8 and Interrogate for 100%
 docstring coverage, followed by the pinned base Pylint (`PYLINT_VERSION`). It
 uses the interpreter selected for the baseline:

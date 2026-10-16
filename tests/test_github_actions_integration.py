@@ -24,6 +24,8 @@ Run this module's collection without enabling act validation::
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -576,7 +578,8 @@ def test_generated_workflow_runs_with_shared_coverage_action(
     use_rust
         Whether to render the Rust-extension variant.
     artifact_dir
-        Directory name, under ``tmp_path``, used for act artefacts.
+        Directory name used for act artefacts under ``ACT_EVIDENCE_DIR`` when
+        configured, or ``tmp_path`` otherwise.
 
     Returns
     -------
@@ -603,7 +606,12 @@ def test_generated_workflow_runs_with_shared_coverage_action(
     )
     prepare_git_repository(project)
 
-    code, logs = run_act(project, artifact_dir=tmp_path / artifact_dir)
+    evidence_root = os.environ.get("ACT_EVIDENCE_DIR")
+    evidence_dir = (Path(evidence_root) if evidence_root else tmp_path) / artifact_dir
+    code, logs = run_act(project, artifact_dir=evidence_dir)
+    coverage_report = project / "coverage.xml"
+    if coverage_report.is_file():
+        shutil.copy2(coverage_report, evidence_dir / "coverage.xml")
 
     workflow = (project / ".github" / "workflows" / "ci.yml").read_text(
         encoding="utf-8"

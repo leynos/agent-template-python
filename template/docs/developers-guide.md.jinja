@@ -103,14 +103,14 @@ actions under `.github/`.
 - `.github/dependabot.yml` enables dependency update pull requests for GitHub
   Actions and Python packages. Rust-enabled projects also receive Cargo updates.
 
-CI provisions Go 1.25 before installing Actionlint, with module caching
-disabled because the project has no Go module. It also provisions stable
-Rust/Cargo for the `mdtablefix` `cargo-binstall` installer in both pure-Python
-and Rust-enabled projects. These prerequisites do not change the selected
-`python_version` application baseline. In Rust-enabled projects, the Rust lint
-and test cache uses the `rust_extension -> target` workspace while retaining
-the tool-cache directories; Rust-specific cache configuration and tools remain
-conditional on the extension.
+CI provisions Go 1.27 before installing Actionlint 1.7.12, whose minimum is Go
+1.25; module caching is disabled because the project has no Go module. It also
+provisions stable Rust/Cargo for the `mdtablefix` `cargo-binstall` installer in
+both pure-Python and Rust-enabled projects. These prerequisites do not change
+the selected `python_version` application baseline. In Rust-enabled projects,
+the Rust lint and test cache uses the `rust_extension -> target` workspace
+while retaining the tool-cache directories; Rust-specific cache configuration
+and tools remain conditional on the extension.
 
 The `CS_ACCESS_TOKEN` secret must be configured when CodeScene coverage upload
 is required. The `CODESCENE_CLI_SHA256` variable should be populated using the

@@ -91,6 +91,13 @@ def _parse_makefile_rules(makefile: str) -> dict[str, list[str]]:
 def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     """Assert generated Makefile contracts for both template variants."""
     assert_common_make_targets(makefile)
+    lint_rule = re.search(r"^lint:([^#\n]*)", makefile, flags=re.MULTILINE)
+    assert lint_rule is not None, "Makefile should expose the aggregate lint target"
+    lint_dependencies = set(lint_rule.group(1).split())
+    required_gates = {"lint-python", "dead-code", "duplication", "lint-actions"}
+    assert required_gates <= lint_dependencies, (
+        f"aggregate lint omitted required gates: {required_gates - lint_dependencies}"
+    )
     assert "WITH_ACT ?= 0" in makefile, (
         "expected generated Makefile to default act validation off"
     )
@@ -128,6 +135,9 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
         "expected generated aggregate gate to serialize spelling last"
     )
     if use_rust:
+        assert re.search(r"^lint:[^#\n]*\blint-rust\b", makefile, re.MULTILINE), (
+            "Rust variant aggregate lint should include lint-rust"
+        )
         assert "TEST_CMD :=" in makefile, (
             "expected Rust variant to select nextest or cargo test"
         )

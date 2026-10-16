@@ -29,9 +29,9 @@ from tests.helpers.rendering import render_project
 
 DEVELOPER_MUTATION_INTRO = """\
 - `.github/workflows/mutation-testing.yml` runs daily at 09:30 UTC and supports
-  manual dispatch. It delegates to reusable workflows from `leynos/shared-actions`;
-  stagger the generated cron schedule before adopting it alongside other
-  repositories."""
+  manual dispatch. It delegates to reusable workflows from
+  `leynos/shared-actions`; stagger the generated cron schedule before adopting
+  it alongside other repositories."""
 DEVELOPER_MUTMUT_GUIDANCE = """\
   The mutmut job is generated only when the minimum Python version is 3.13 or
   newer because the shared workflow helpers require Python 3.13 or newer."""
@@ -102,16 +102,16 @@ def _assert_mutation_documentation(
             developer_guide,
             start="- `.github/workflows/mutation-testing.yml`",
             end="- `.github/actions/build-wheels`",
-        ).split()
-        == expected_developer_guidance.split()
+        ).splitlines()
+        == expected_developer_guidance.splitlines()
     ), "expected developer mutation guidance to match the active mutation gates"
     assert (
         _rendered_section(
             users_guide,
             start="## Scheduled Mutation Testing",
             end="## Rust Test Behaviour",
-        ).split()
-        == expected_user_guidance.split()
+        ).splitlines()
+        == expected_user_guidance.splitlines()
     ), "expected user mutation guidance to match the active mutation gates"
 
 
