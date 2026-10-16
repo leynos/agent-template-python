@@ -7,11 +7,64 @@ workflow/action files that produce wheel artefacts.
 
 from __future__ import annotations
 
+from typing import Any
+
 from tests.helpers.generated_files import (
     parse_yaml_mapping,
     require_mapping,
     require_sequence,
 )
+
+
+def _assert_pure_wheel_action_contracts(action: dict[str, Any]) -> None:
+    """Assert the pure wheel action's optional upload and output-directory wiring.
+
+    Parameters
+    ----------
+    action
+        Parsed pure Python wheel composite action.
+
+    Returns
+    -------
+    None
+        The helper returns after all upload-boundary assertions pass.
+
+    Raises
+    ------
+    AssertionError
+        Raised when the upload guard or output-directory boundary changes.
+    pytest.fail.Exception
+        Raised when a required action mapping or step sequence is missing.
+    """
+    inputs = require_mapping(action, "inputs", "pure wheel action")
+    upload = require_mapping(inputs, "upload-artefact", "pure wheel inputs")
+    assert upload.get("required") is False, "wheel upload should remain optional"
+    assert upload.get("default") == "true", "wheel upload should default to string true"
+    runs = require_mapping(action, "runs", "pure wheel action")
+    steps = require_sequence(runs, "steps", "pure wheel action runs")
+    builds = [step for step in steps if step.get("name") == "Build wheel"]
+    uploads = [step for step in steps if step.get("name") == "Upload wheel artefact"]
+    assert len(builds) == 1, "pure wheel action should contain one build step"
+    assert len(uploads) == 1, "pure wheel action should contain one upload step"
+    build, upload_step = builds[0], uploads[0]
+    environment = require_mapping(build, "env", "pure wheel build step")
+    assert environment.get("OUT_DIR") == "${{ inputs.out-dir }}", (
+        "wheel build should receive the output directory through OUT_DIR"
+    )
+    assert build.get("shell") == "bash", "wheel build should use Bash"
+    assert build.get("run") == 'uv build --wheel --out-dir "$OUT_DIR"', (
+        "wheel build should pass the quoted output directory as one argument"
+    )
+    assert upload_step.get("if") == "inputs.upload-artefact == 'true'", (
+        "wheel upload should run only for the explicit true input"
+    )
+    assert (
+        str(upload_step.get("uses", "")).split("@")[0] == "actions/upload-artifact"
+    ), "wheel upload should use the upload-artifact action"
+    upload_inputs = require_mapping(upload_step, "with", "pure wheel upload step")
+    assert upload_inputs.get("path") == "${{ inputs.out-dir }}/*.whl", (
+        "wheel upload should read wheels from the selected output directory"
+    )
 
 
 def _assert_wheel_workflow_contracts(
@@ -47,4 +100,7 @@ def _assert_wheel_workflow_contracts(
     )
     assert "persist-credentials: false" in pure_wheel_action, (
         "expected pure-wheel action checkout to disable credentials"
+    )
+    _assert_pure_wheel_action_contracts(
+        parse_yaml_mapping(pure_wheel_action, "pure wheel action")
     )

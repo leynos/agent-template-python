@@ -22,6 +22,7 @@ WITH_ACT ?= 0
 ACT_TEST_ENV = $(if $(filter 1 true yes on,$(WITH_ACT)),RUN_ACT_VALIDATION=1,)
 PYTEST_XDIST_WORKERS ?= auto
 # Discover tracked and new Python sources, including hidden action directories.
+PYTHON_TARGETS_FROM_GIT := $(if $(filter undefined,$(origin PYTHON_TARGETS)),1,0)
 PYTHON_TARGETS ?= $(shell git ls-files --cached --others --exclude-standard '*.py' '*.pyi')
 RUFF_VERSION ?= 0.16.8
 TY_VERSION ?= 0.0.56
@@ -64,13 +65,14 @@ WHITAKER ?= $(or $(shell command -v whitaker 2>/dev/null),$(wildcard $(USER_WHIT
 {% endif %}
 
 .PHONY: help all audit clean build build-release lint lint-python fmt check-fmt \
+        check-python-sources \
         markdownlint nixie spelling test typecheck dead-code duplication install-nose lint-actions validate $(TOOLS) $(VENV_TOOLS){% if use_rust %} lint-rust rust-audit whitaker{% endif %}
 
 .DEFAULT_GOAL := all
 # Shared build caches require sequential gates even when make receives -j.
 .NOTPARALLEL:
 
-all: build check-fmt lint typecheck test
+all: check-python-sources build check-fmt lint typecheck test
 	+$(MAKE) spelling
 
 define ensure_uv
@@ -139,7 +141,18 @@ whitaker: ## Verify the Whitaker wrapper is available for the Rust lint target
 	}
 
 {% endif %}
-fmt: build $(MDTABLEFIX) ## Format sources
+ifeq ($(PYTHON_TARGETS_FROM_GIT),1)
+check-python-sources:
+	@git ls-files --cached --others --exclude-standard '*.py' '*.pyi' >/dev/null || { \
+	  printf 'Error: git ls-files failed while discovering Python sources for PYTHON_TARGETS\n' >&2; \
+	  exit 1; \
+	}
+else
+check-python-sources:
+	@:
+endif
+
+fmt: check-python-sources build $(MDTABLEFIX) ## Format sources
 	$(RUFF) format $(PYTHON_TARGETS)
 	$(RUFF) check --select I --fix $(PYTHON_TARGETS)
 {% if use_rust %}
@@ -148,7 +161,7 @@ fmt: build $(MDTABLEFIX) ## Format sources
 {% endif %}
 	$(MDTABLEFIX) --in-place $(MDTABLEFIX_SELECT) $(MDTABLEFIX_RULES)
 
-check-fmt: build $(MDTABLEFIX) ## Verify formatting
+check-fmt: check-python-sources build $(MDTABLEFIX) ## Verify formatting
 	$(RUFF) format --check $(PYTHON_TARGETS)
 {% if use_rust %}
 	$(call ensure_cargo)
@@ -161,7 +174,7 @@ check-fmt: build $(MDTABLEFIX) ## Verify formatting
 
 lint: lint-python dead-code duplication lint-actions{% if use_rust %} lint-rust{% endif %} ## Run linters
 
-lint-python: build ## Run Python linters
+lint-python: check-python-sources build ## Run Python linters
 	$(RUFF) check $(PYTHON_TARGETS)
 	$(UV_ENV) $(UV) run interrogate --fail-under 100 $(PYTHON_TARGETS)
 	$(PYLINT) $(PYLINT_TARGETS)
@@ -176,7 +189,7 @@ lint-rust: build whitaker ## Run Rust linters
 	cd $(RUST_CRATE_DIR) && PATH="$(USER_BIN_PATH):$(PATH)" RUSTFLAGS="$(RUST_FLAGS)" $(WHITAKER) --all -- $(WHITAKER_CARGO_FLAGS)
 {% endif %}
 
-typecheck: build ## Run typechecking
+typecheck: check-python-sources build ## Run typechecking
 	$(TY) --version
 	$(TY) check $(PYTHON_TARGETS)
 

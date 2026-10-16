@@ -98,7 +98,8 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
     Raises
     ------
     subprocess.TimeoutExpired
-        Raised if act exceeds the configured subprocess timeout.
+        Raised if act exceeds the configured subprocess timeout, after partial
+        output is retained in ``artifact_dir / "act.log"``.
 
     Examples
     --------
@@ -128,16 +129,26 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
     act_github_token = env.get("ACT_GITHUB_TOKEN")
     if act_github_token:
         command.extend(["-s", f"GITHUB_TOKEN={act_github_token}"])
-    completed = subprocess.run(
-        command,
-        cwd=project.path,
-        env=env,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-        timeout=1200,
-    )
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=project.path,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+            timeout=1200,
+        )
+    except subprocess.TimeoutExpired as exc:
+        output = exc.output
+        partial_logs = (
+            output.decode("utf-8", errors="replace")
+            if isinstance(output, bytes)
+            else output or ""
+        )
+        (artifact_dir / "act.log").write_text(partial_logs, encoding="utf-8")
+        raise
     logs = completed.stdout
     (artifact_dir / "act.log").write_text(logs, encoding="utf-8")
     return completed.returncode, logs
@@ -608,10 +619,13 @@ def test_generated_workflow_runs_with_shared_coverage_action(
 
     evidence_root = os.environ.get("ACT_EVIDENCE_DIR")
     evidence_dir = (Path(evidence_root) if evidence_root else tmp_path) / artifact_dir
-    code, logs = run_act(project, artifact_dir=evidence_dir)
-    coverage_report = project / "coverage.xml"
-    if coverage_report.is_file():
-        shutil.copy2(coverage_report, evidence_dir / "coverage.xml")
+    try:
+        code, logs = run_act(project, artifact_dir=evidence_dir)
+    finally:
+        coverage_report = project / "coverage.xml"
+        if coverage_report.is_file():
+            evidence_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(coverage_report, evidence_dir / "coverage.xml")
 
     workflow = (project / ".github" / "workflows" / "ci.yml").read_text(
         encoding="utf-8"

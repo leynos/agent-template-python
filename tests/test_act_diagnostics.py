@@ -16,6 +16,7 @@ Run this module's diagnostic checks::
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 from string import ascii_lowercase
@@ -737,3 +738,93 @@ def test_archive_classification_rejects_one_illegal_trace_change(
     assert not is_archive_failure(events), (
         f"archive classification should reject the illegal change: {violation}"
     )
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        (b"partial bytes\n", "partial bytes\n"),
+        ("partial text\n", "partial text\n"),
+        (None, ""),
+        (b"partial \xff output\n", "partial \ufffd output\n"),
+    ],
+    ids=["bytes", "text", "no-output", "invalid-utf8"],
+)
+def test_run_act_retains_partial_output_and_reraises_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    output: bytes | str | None,
+    expected: str,
+) -> None:
+    """Retain partial combined output without replacing the timeout exception."""
+    failure = subprocess.TimeoutExpired("act", 1200, output=output)
+
+    def timed_out_run(
+        _command: list[str], **_kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        """Model a subprocess timeout carrying its partial combined output."""
+        raise failure
+
+    monkeypatch.setattr(act_integration, "docker_environment", dict)
+    monkeypatch.setattr(act_integration, "container_daemon_socket", lambda _: None)
+    monkeypatch.setattr(subprocess, "run", timed_out_run)
+    project = cast("CopierProject", SimpleNamespace(path=tmp_path))
+    artifact_dir = tmp_path / "artefacts"
+
+    with pytest.raises(subprocess.TimeoutExpired, match="timed out") as caught:
+        run_act(project, artifact_dir=artifact_dir)
+
+    assert caught.value is failure, "run_act should propagate the original timeout"
+    assert (artifact_dir / "act.log").read_text(encoding="utf-8") == expected, (
+        "timeout evidence should retain decoded partial output, including replacements"
+    )
+
+
+@pytest.mark.parametrize("stable_evidence", [False, True], ids=["temporary", "stable"])
+@pytest.mark.parametrize("failure_kind", ["timeout", "other-error"])
+def test_raising_act_retains_coverage_before_propagating_exception(
+    coverage_project: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    stable_evidence: bool,
+    failure_kind: str,
+) -> None:
+    """Export existing coverage when Act raises before creating its evidence directory."""
+    evidence_root = tmp_path / "retained" if stable_evidence else tmp_path
+    if stable_evidence:
+        monkeypatch.setenv("ACT_EVIDENCE_DIR", str(evidence_root))
+    else:
+        monkeypatch.delenv("ACT_EVIDENCE_DIR", raising=False)
+    failure = (
+        subprocess.TimeoutExpired("act", 1200)
+        if failure_kind == "timeout"
+        else RuntimeError("Act seam failure")
+    )
+
+    def raising_act(_project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
+        """Raise before the usual subprocess evidence directory is created."""
+        assert not artifact_dir.exists(), "the caller should handle a missing directory"
+        raise failure
+
+    monkeypatch.setattr(act_integration, "prepare_git_repository", lambda _: None)
+    monkeypatch.setattr(act_integration, "run_act", raising_act)
+    copier = cast(
+        "CopierFixture",
+        SimpleNamespace(copy=lambda *_args, **_kwargs: coverage_project),
+    )
+    expected_message = "timed out" if failure_kind == "timeout" else "Act seam failure"
+    with pytest.raises(type(failure), match=expected_message) as caught:
+        act_integration.test_generated_workflow_runs_with_shared_coverage_action(
+            act_ready=None,
+            copier=copier,
+            tmp_path=tmp_path,
+            name="Evidence",
+            package="evidence",
+            use_rust=False,
+            artifact_dir="pure-artefacts",
+        )
+
+    assert caught.value is failure, "the caller should preserve the original exception"
+    assert (evidence_root / "pure-artefacts" / "coverage.xml").read_bytes() == (
+        coverage_project / "coverage.xml"
+    ).read_bytes(), "coverage should be exported even when Act raises"

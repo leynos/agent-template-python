@@ -40,7 +40,9 @@ def assert_common_make_targets(makefile: str) -> None:
 
         assert_common_make_targets(makefile)
     """
-    assert "lint-python: build" in makefile, "Makefile should expose lint-python"
+    assert re.search(r"^lint-python:[^\n]*\bbuild\b", makefile, re.MULTILINE), (
+        "Makefile should expose lint-python with its build prerequisite"
+    )
     assert "lint: lint-python" in makefile, "lint should delegate to lint-python"
     assert "audit: build" in makefile, "Makefile should expose audit"
     assert "spelling:" in makefile, "Makefile should expose spelling"
@@ -91,6 +93,7 @@ def _parse_makefile_rules(makefile: str) -> dict[str, list[str]]:
 def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     """Assert generated Makefile contracts for both template variants."""
     assert_common_make_targets(makefile)
+    _assert_python_source_discovery_contract(makefile)
     lint_rule = re.search(r"^lint:([^#\n]*)", makefile, flags=re.MULTILINE)
     assert lint_rule is not None, "Makefile should expose the aggregate lint target"
     lint_dependencies = set(lint_rule.group(1).split())
@@ -172,4 +175,54 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
         )
         assert "rust-audit" not in makefile, (
             "expected pure-Python variant to omit Rust audit targets"
+        )
+
+
+def _assert_python_source_discovery_contract(makefile: str) -> None:
+    """Require Python gates to check Git discovery before build tools.
+
+    Parameters
+    ----------
+    makefile : str
+        UTF-8 text of a generated Makefile.
+
+    Returns
+    -------
+    None
+        The helper returns after checking the source-discovery prerequisites.
+
+    Raises
+    ------
+    AssertionError
+        Raised when a guarded target omits the checked prerequisite or when
+        help/build become dependent on Git source discovery.
+    """
+
+    def prerequisites(target: str) -> list[str]:
+        """Return one target's prerequisites before its optional help text."""
+        rule = re.search(
+            rf"^{re.escape(target)}:([^\n]*)", makefile, flags=re.MULTILINE
+        )
+        assert rule is not None, f"Makefile should expose the {target} target"
+        return rule.group(1).split("##", maxsplit=1)[0].split()
+
+    logical_makefile = makefile.replace("\\\n", " ")
+    phony_declarations = re.findall(r"(?m)^\.PHONY:[^\n]*", logical_makefile)
+    assert any(
+        re.search(r"\bcheck-python-sources\b", declaration)
+        for declaration in phony_declarations
+    ), "Python source discovery should be a phony Make target"
+
+    for target in ("all", "fmt", "check-fmt", "lint-python", "typecheck"):
+        target_prerequisites = prerequisites(target)
+        assert target_prerequisites[0] == "check-python-sources", (
+            f"{target} should check Git source discovery before other prerequisites"
+        )
+        assert "build" in target_prerequisites[1:], (
+            f"{target} should preserve its build prerequisite after source discovery"
+        )
+
+    for target in ("help", "build"):
+        assert "check-python-sources" not in prerequisites(target), (
+            f"{target} should remain independent of Git source discovery"
         )

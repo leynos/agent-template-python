@@ -113,6 +113,25 @@ def assert_go_toolchain_contract(
     The Go version may advance independently of this contract as long as its
     explicit major/minor/patch selection is at least Go 1.25.0. The setup
     action ref is checked for full-SHA shape, following ADR-005.
+
+    Parameters
+    ----------
+    workflow_text : str
+        UTF-8 text of a workflow containing Go commands.
+    label : str
+        Description used to identify contract failures.
+    actionlint_step_name : str | None, optional
+        Expected name of the step that installs Actionlint.
+
+    Returns
+    -------
+    None
+        The helper returns when the Go toolchain contract is satisfied.
+
+    Raises
+    ------
+    AssertionError
+        Raised when the workflow violates the Go toolchain contract.
     """
     workflow = parse_yaml_mapping(workflow_text, label)
     jobs = require_mapping(workflow, "jobs", label)

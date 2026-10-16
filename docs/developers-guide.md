@@ -110,6 +110,12 @@ is `make markdownlint`, which runs markdownlint-cli2 and repository-wide
 spelling. The default `make all` includes build, formatting, lint, typecheck,
 tests, and spelling.
 
+With default Git source discovery, `fmt`, `check-fmt`, `lint-python`, and
+`typecheck` validate source discovery and stop with a diagnostic before running
+tools when Git or repository metadata is unavailable. `help` and `build` do not
+depend on source discovery; initialize a generated project with `git init`
+before its first quality-gate run.
+
 Tool revisions are exposed as Makefile variables such as `PYLINT_VERSION` and
 `PYLINT_PYTHON`, so generated projects can override pins without editing target
 recipes.
