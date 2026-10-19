@@ -68,18 +68,18 @@ A pull request from a fork cannot obtain an Ubicloud runner, so it falls back to
 nothing on a public repository, and Dependabot opens many pull requests. The
 expression tests the pull request's author, not `github.actor`, because the
 actor is whoever triggered the run, so a person pushing to a Dependabot branch
-would flip the runner. A push has no pull request, so both values are null and
-the expression selects Ubicloud; a Dependabot pull request therefore builds
-cold on the hosted pool. The larger class is for the disk: the nested act
-containers filled a `standard-2` runner (`ENOSPC`), and on `standard-4` the act
-step used about 10 GB of 83 GB free. An Ubicloud runner is a self-hosted
-just-in-time runner, so GitHub's six-hour cap for hosted jobs does not bound
-it; the job states its own `timeout-minutes: 45`, about twice its measured 21
-minutes. `tests/test_parent_runner_placement.py` evaluates the expression for a
-push, a same-repository pull request, a fork and a Dependabot pull request,
-rejects a literal label, inverted arms, another label, another condition, a
-missing Dependabot arm and an actor test, and asserts an exact inventory of the
-jobs that can land on Ubicloud with their ceilings.
+would flip the runner. A push has no pull request, so both values are empty
+strings (falsy) and the expression selects Ubicloud; a Dependabot pull request
+therefore builds cold on the hosted pool. The larger class is for the disk: the
+nested act containers filled a `standard-2` runner (`ENOSPC`), and on
+`standard-4` the act step used about 10 GB of 83 GB free. An Ubicloud runner is
+a self-hosted just-in-time runner, so GitHub's six-hour cap for hosted jobs
+does not bound it; the job states its own `timeout-minutes: 45`, about twice
+its measured 21 minutes. `tests/test_parent_runner_placement.py` evaluates the
+expression for a push, a same-repository pull request, a fork and a Dependabot
+pull request, rejects a literal label, inverted arms, another label, another
+condition, a missing Dependabot arm and an actor test, and asserts an exact
+inventory of the jobs that can land on Ubicloud with their ceilings.
 
 ## Makefile Template
 
