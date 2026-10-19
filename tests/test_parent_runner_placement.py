@@ -26,8 +26,9 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 
 HOSTED_LABEL = "ubuntu-latest"
 FORK_CONDITION = "github.event.pull_request.head.repo.fork"
-#: The pull request's author, not `github.actor`: the actor changes when
-#: someone re-runs a job or pushes to the branch, which would flip the runner.
+#: The pull request's author, not `github.actor`: the actor is whoever
+#: triggered the run, so a person pushing to a Dependabot branch would flip
+#: the runner.
 DEPENDABOT_CONDITION = "github.event.pull_request.user.login == 'dependabot[bot]'"
 HOSTED_CONDITION = f"({FORK_CONDITION} || {DEPENDABOT_CONDITION})"
 
