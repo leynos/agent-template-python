@@ -35,12 +35,12 @@ jobs:
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
 
       - name: Set up Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@126d02e32a07c2b049e8b68fff09298526e5971a
+        uses: leynos/shared-actions/.github/actions/setup-rust@2aed718022775671809f8c85a2c10547dfb1ae13
         with:
           toolchain: stable
 
       - name: Install Whitaker for rendered Rust projects
-        uses: leynos/shared-actions/.github/actions/install-whitaker@126d02e32a07c2b049e8b68fff09298526e5971a
+        uses: leynos/shared-actions/.github/actions/install-whitaker@2aed718022775671809f8c85a2c10547dfb1ae13
         with:
           cranelift: true
 
@@ -56,7 +56,7 @@ jobs:
       - name: Install mdtablefix
         # `make check-fmt` runs `mdtablefix --check --git`; 0.6.0 is the
         # first release with `--check` and `--git`.
-        uses: leynos/shared-actions/.github/actions/install-mdtablefix@126d02e32a07c2b049e8b68fff09298526e5971a
+        uses: leynos/shared-actions/.github/actions/install-mdtablefix@2aed718022775671809f8c85a2c10547dfb1ae13
         with:
           version: "0.6.1"
 
