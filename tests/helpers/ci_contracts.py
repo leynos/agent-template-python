@@ -708,10 +708,14 @@ def mdtablefix_install_version(workflow_text: str, label: str) -> str:
     """
     jobs = require_mapping(parse_yaml_mapping(workflow_text, label), "jobs", label)
     versions = [
-        str(step.get("with", {}).get("version"))
+        step.get("with", {}).get("version")
         for job in jobs.values()
         for step in job.get("steps", [])
         if isinstance(step, dict) and "install-mdtablefix@" in str(step.get("uses", ""))
     ]
     assert len(versions) == 1, f"expected {label} to install mdtablefix once"
-    return versions[0]
+    version = versions[0]
+    assert isinstance(version, str) and version.strip(), (
+        f"expected {label} to give its mdtablefix install a non-empty version"
+    )
+    return version
