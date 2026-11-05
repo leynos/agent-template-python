@@ -620,8 +620,8 @@ def _assert_act_validation_workflow_contracts(
     assert "ACT_VERSION: v0.2.84" in act_validation_workflow, (
         "expected generated act-validation workflow to pin act"
     )
-    assert "permissions:\n  contents: read" in act_validation_workflow, (
-        "expected generated act-validation workflow to restrict GITHUB_TOKEN"
+    assert_contents_read_only(
+        act_validation_workflow, "generated act-validation workflow"
     )
     assert "MARKDOWNLINT_CLI2_VERSION: 0.22.1" in act_validation_workflow, (
         "expected generated act-validation workflow to pin markdownlint-cli2"
@@ -673,3 +673,45 @@ def _checkout_steps_disable_credentials(steps: list[Any]) -> bool:
         and step["with"].get("persist-credentials") is False
         for step in checkout_steps
     )
+
+
+def assert_contents_read_only(workflow_text: str, label: str) -> None:
+    """Assert the workflow restricts ``GITHUB_TOKEN`` to repository reads.
+
+    Parameters
+    ----------
+    workflow_text
+        Workflow YAML to parse.
+    label
+        Human-readable workflow label used in failure messages.
+    """
+    permissions = parse_yaml_mapping(workflow_text, label).get("permissions")
+    assert permissions == {"contents": "read"}, (
+        f"expected {label} to restrict GITHUB_TOKEN to contents reads"
+    )
+
+
+def mdtablefix_install_version(workflow_text: str, label: str) -> str:
+    """Return the version the workflow's mdtablefix install step requests.
+
+    Parameters
+    ----------
+    workflow_text
+        Workflow YAML to parse.
+    label
+        Human-readable workflow label used in failure messages.
+
+    Returns
+    -------
+    str
+        The ``version`` input of the single install-mdtablefix step.
+    """
+    jobs = require_mapping(parse_yaml_mapping(workflow_text, label), "jobs", label)
+    versions = [
+        str(step.get("with", {}).get("version"))
+        for job in jobs.values()
+        for step in job.get("steps", [])
+        if isinstance(step, dict) and "install-mdtablefix@" in str(step.get("uses", ""))
+    ]
+    assert len(versions) == 1, f"expected {label} to install mdtablefix once"
+    return versions[0]
