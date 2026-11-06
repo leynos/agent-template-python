@@ -19,6 +19,10 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 
 from tests.conftest import MINIMUM_ACT_VERSION, _parse_act_version
+from tests.helpers.ci_contracts import (
+    assert_contents_read_only,
+    mdtablefix_install_version,
+)
 from tests.helpers.generated_files import (
     parse_toml_file,
     parse_yaml_mapping,
@@ -789,3 +793,60 @@ jobs:
           with-ratchet: 'true'
 {coverage_inputs}\
 """
+
+
+_MDTABLEFIX_ACTION = (
+    "leynos/shared-actions/.github/actions/install-mdtablefix@" + "a" * 40
+)
+
+
+def _install_workflow(*versions: str | None) -> str:
+    """Build a workflow text with one mdtablefix install step per version."""
+    steps = []
+    for version in versions:
+        step = f"      - uses: {_MDTABLEFIX_ACTION}\n"
+        if version is not None:
+            step += f"        with:\n          version: '{version}'\n"
+        steps.append(step)
+    return "jobs:\n  build:\n    steps:\n" + "".join(steps)
+
+
+def test_mdtablefix_install_version_reads_the_parsed_input() -> None:
+    """A single install step yields its version whatever the quoting."""
+    assert mdtablefix_install_version(_install_workflow("0.6.1"), "fixture") == "0.6.1"
+
+
+@pytest.mark.parametrize(
+    "workflow",
+    [
+        pytest.param(_install_workflow(None), id="missing-version"),
+        pytest.param(_install_workflow(""), id="empty-version"),
+        pytest.param(_install_workflow("0.6.1", "0.6.1"), id="duplicate-install"),
+        pytest.param("jobs:\n  build:\n    steps: []\n", id="no-install"),
+    ],
+)
+def test_mdtablefix_install_version_rejects_unusable_installs(workflow: str) -> None:
+    """Missing, empty and duplicate installs fail rather than compare equal."""
+    with pytest.raises(AssertionError):
+        mdtablefix_install_version(workflow, "fixture")
+
+
+@pytest.mark.parametrize(
+    ("permissions", "holds"),
+    [
+        ("permissions:\n  contents: read\n", True),
+        ("permissions:\n  contents: write\n", False),
+        ("permissions:\n  contents: read\n  actions: write\n", False),
+        ("", False),
+    ],
+)
+def test_assert_contents_read_only_checks_the_parsed_mapping(
+    permissions: str, holds: bool
+) -> None:
+    """Only a top-level permissions mapping of contents: read is accepted."""
+    workflow = permissions + "jobs: {}\n"
+    if holds:
+        assert_contents_read_only(workflow, "fixture")
+    else:
+        with pytest.raises(AssertionError):
+            assert_contents_read_only(workflow, "fixture")

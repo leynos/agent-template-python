@@ -8,8 +8,10 @@ from pathlib import Path
 import pytest
 
 from tests.helpers.ci_contracts import (
+    assert_contents_read_only,
     assert_coverage_publication_contract,
     assert_go_toolchain_contract,
+    mdtablefix_install_version,
 )
 from tests.helpers.generated_files import (
     parse_yaml_mapping,
@@ -175,9 +177,7 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
         "expected parent Act workflow to upload evidence after template tests"
     )
 
-    assert "permissions:\n  contents: read" in ci_workflow, (
-        "expected parent CI to restrict GITHUB_TOKEN to repository contents reads"
-    )
+    assert_contents_read_only(ci_workflow, "parent CI")
     assert "MBAKE_VERSION: 1.4.6" in ci_workflow, "expected parent CI to pin mbake"
     assert _NPM_MARKDOWNLINT_CLI2_INSTALL not in ci_workflow, (
         "expected parent CI not to install markdownlint-cli2 through npm, because "
@@ -206,8 +206,10 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
         "expected parent CI to install mdtablefix pinned to a full "
         "40-character commit SHA"
     )
-    assert 'version: "0.6.1"' in ci_workflow, (
-        "expected parent CI to pin mdtablefix at 0.6.0 or later"
+    assert mdtablefix_install_version(
+        ci_workflow, "parent CI"
+    ) == mdtablefix_install_version(act_workflow, "parent act-validation workflow"), (
+        "expected parent CI and the act-validation workflow to pin one mdtablefix"
     )
     assert "make check-fmt\n" in ci_workflow, (
         "expected parent CI to run the formatting gate"
@@ -222,9 +224,7 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "make test WITH_ACT=1" not in ci_workflow, (
         "expected parent CI to leave act validation to a separate workflow"
     )
-    assert "permissions:\n  contents: read" in act_workflow, (
-        "expected parent act-validation workflow to restrict GITHUB_TOKEN"
-    )
+    assert_contents_read_only(act_workflow, "parent act-validation workflow")
     assert "ACT_VERSION:" in act_workflow, (
         "expected parent act-validation workflow to declare an act version"
     )
