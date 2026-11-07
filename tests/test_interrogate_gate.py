@@ -5,7 +5,10 @@ repository owns (interrogate itself skips some path prefixes, so a new file
 should appear in the verbose report), at a threshold of 100, with a guard that
 fails on any `MISSED` row (interrogate rounds its percentage to one decimal, so
 the threshold alone can pass a lone gap in a large repository). These tests read
-the recipe and also run the target against a stub tool, so a deleted flag, a
+the Makefile's declarations (the `lint` prerequisite, the `.PHONY` entry, the
+pin, the flags and the targets), run the target against a stub tool, and run
+the real pinned tool over generated packages (clean, one undocumented
+function, and one gap beside 4,000 documented functions), so a deleted flag, a
 dropped prerequisite or a guard that stops failing breaks a test rather than
 silently restoring the gap.
 
@@ -181,12 +184,11 @@ def _make_value(path: Path) -> str:
 def _make_interrogate(*assignments: str) -> subprocess.CompletedProcess[str]:
     """Run `make interrogate` with the given variable assignments.
 
-    A parent Make's flags and a caller's `UV`, `UV_GATE` or `INTERROGATE*`
-    overrides, and the `PYTHON_*` target lists a Makefile may read, would
-    change what the target runs, so those variables are removed from the
-    child environment (other variables, such as `UV_GATE_ALLOW_ONLINE`, are
-    kept). The target's own prerequisites (the environment build) are treated
-    as up to date: the tests drive the recipe, not the build.
+    A parent Make's flags and a caller's `UV` or `INTERROGATE*` overrides would
+    change what the target runs, so those variables are removed from the child
+    environment (other variables are kept). This Makefile's `interrogate`
+    target has no prerequisites, so none are skipped; the same helper skips
+    them in sibling repositories whose target depends on an environment build.
 
     Returns
     -------
