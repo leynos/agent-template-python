@@ -9,6 +9,7 @@ contract assertions directly.
 from __future__ import annotations
 
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -501,7 +502,13 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     """
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
-    assert ".PHONY: help check-fmt fmt lint spelling test typecheck" in makefile, (
+    phony = {
+        name
+        for line in re.findall(r"^\.PHONY:(.*)$", makefile, re.MULTILINE)
+        for name in line.split()
+    }
+    gate_targets = {"help", "check-fmt", "fmt", "lint", "spelling", "test", "typecheck"}
+    assert gate_targets <= phony, (
         "expected parent Makefile to mark documented gate targets as phony"
     )
     assert "check-fmt: ## Verify template test formatting" in makefile, (
@@ -510,13 +517,14 @@ def test_parent_makefile_test_target_uses_requisite_pytest_command() -> None:
     assert "$(UV) ruff format --check tests/" in makefile, (
         "expected parent Makefile check-fmt target to run Ruff formatting checks"
     )
-    assert "lint: ## Run template test lint checks" in makefile, (
-        "expected parent Makefile to expose a documented lint target"
-    )
+    lint_line = re.search(r"^lint:([^\n]*)$", makefile, re.MULTILINE)
+    assert (
+        lint_line is not None and "## Run template test lint checks" in lint_line[1]
+    ), "expected parent Makefile to expose a documented lint target"
     assert "$(UV) ruff check tests/" in makefile, (
         "expected parent Makefile lint target to run Ruff checks"
     )
-    assert "$(UV) --with interrogate interrogate --fail-under 100 tests/" in makefile, (
+    assert "interrogate" in lint_line[1].split("##")[0].split(), (
         "expected parent Makefile lint target to enforce docstring coverage"
     )
     assert "typecheck: ## Run template test type checks" in makefile, (

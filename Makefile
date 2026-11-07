@@ -1,4 +1,4 @@
-.PHONY: help check-fmt fmt lint spelling test typecheck
+.PHONY: help check-fmt fmt lint spelling test typecheck interrogate
 
 MAKEFLAGS += --no-print-directory
 
@@ -36,9 +36,32 @@ fmt: ## Format parent tests and Markdown sources
 	$(MDTABLEFIX) --in-place $(MDTABLEFIX_SELECT) $(MDTABLEFIX_RULES)
 	$(MDLINT) --fix "**/*.md"
 
-lint: ## Run template test lint checks
+# Interrogate measures docstring presence over the Python files it scans under
+# INTERROGATE_TARGETS: the parent tests and the tests the template ships (the
+# `.jinja` sources are not Python files, so they are not scanned). Interrogate
+# skips some path prefixes by default, so check a new file against the verbose
+# report, and add a new Python directory to the targets.
+INTERROGATE_VERSION ?= 1.7.0
+INTERROGATE_TARGETS ?= tests template/tests
+# Level 2 prints a MISSED row per undocumented definition, which the
+# `interrogate` target fails on: the rounded percentage alone can pass a lone gap.
+INTERROGATE_FLAGS ?= -vv --fail-under 100
+INTERROGATE ?= uvx --from 'interrogate==$(INTERROGATE_VERSION)' interrogate
+
+# Interrogate rounds its percentage to one decimal, so `--fail-under 100` alone
+# can pass a lone gap in a large codebase; fail on any MISSED row as well.
+interrogate: ## Enforce complete Python docstring coverage
+	@report="$$($(INTERROGATE) $(INTERROGATE_FLAGS) $(INTERROGATE_TARGETS))"; \
+	  status=$$?; \
+	  printf '%s\n' "$$report"; \
+	  test "$$status" -eq 0 || exit "$$status"; \
+	  if printf '%s\n' "$$report" | grep -q '| *MISSED *|'; then \
+	    printf '%s\n' 'interrogate: undocumented definitions remain; see the MISSED rows above' >&2; \
+	    exit 1; \
+	  fi
+
+lint: interrogate ## Run template test lint checks
 	$(UV) ruff check tests/
-	$(UV) --with interrogate interrogate --fail-under 100 tests/
 
 spelling: ## Enforce en-GB-oxendict spelling
 	$(TYPOS_CONFIG_BUILDER) gate --repository . --scope all

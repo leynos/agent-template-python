@@ -66,6 +66,11 @@ jobs:
       - name: Check formatting
         run: make check-fmt
 
+      # CI does not run `make lint` (it needs the full Ruff run), so the
+      # docstring-coverage gate runs as its own step.
+      - name: Check docstring coverage
+        run: make interrogate
+
       - name: Lint Markdown
         # The upstream action rather than an installation of our own: its
         # release carries the linter's whole dependency graph, so nothing is
