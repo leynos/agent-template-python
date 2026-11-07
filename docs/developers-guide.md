@@ -12,8 +12,15 @@ template itself.
 - `make help` — lists all `##`-annotated targets.
 - `make check-fmt` — runs Ruff formatting checks against the parent template
   test suite.
-- `make lint` — runs Ruff lint checks and `interrogate --fail-under 100` against
-  the `tests/` directory in the parent template test suite.
+- `make lint` — runs `make interrogate` and Ruff lint checks against the parent
+  template test suite. `make interrogate` requires 100% docstring coverage over
+  `tests/` and `template/tests/` (the `.jinja` sources are not Python files, so
+  it does not scan them), prints every definition, and fails on any `MISSED`
+  row, because interrogate rounds its percentage to one decimal and so can pass
+  a lone gap in a large codebase. Interrogate 1.7.0 skips any path under a
+  target whose name begins with `.tox`, `.venv`, `venv`, `.git` or `.hg`;
+  `tests/test_interrogate_gate.py` fails if a tracked Python file sits under
+  such a name inside a target. CI runs `make interrogate` as its own step.
 - `make typecheck` — runs `ty check` against the parent template test suite,
   supplying the test dependencies, including Hypothesis, through `uvx`. The
   `ty` version is pinned (`ty@0.0.56`) because unpinned installations broke
