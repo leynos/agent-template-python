@@ -51,12 +51,12 @@ jobs:
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
 
       - name: Set up Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@6ca3d5217016143c5857d23a63eb649ea5fcd538
+        uses: leynos/shared-actions/.github/actions/setup-rust@0eabb6bc07148981de5da395e30cd78d83f5c7c2
         with:
           toolchain: stable
 
       - name: Install Whitaker for rendered Rust projects
-        uses: leynos/shared-actions/.github/actions/install-whitaker@6ca3d5217016143c5857d23a63eb649ea5fcd538
+        uses: leynos/shared-actions/.github/actions/install-whitaker@0eabb6bc07148981de5da395e30cd78d83f5c7c2
         with:
           cranelift: true
 
@@ -85,7 +85,7 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Install mdtablefix
-        uses: leynos/shared-actions/.github/actions/install-mdtablefix@6ca3d5217016143c5857d23a63eb649ea5fcd538
+        uses: leynos/shared-actions/.github/actions/install-mdtablefix@0eabb6bc07148981de5da395e30cd78d83f5c7c2
         with:
           version: '0.6.1'
 
