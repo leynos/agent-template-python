@@ -2,11 +2,11 @@
 
 ## Status
 
-Accepted. Supersedes [ADR-003](adr-003-shared-oxford-spelling-base.md).
+Accepted. Supersedes [ADR-003](adr-0003-shared-oxford-spelling-base.md).
 
 ## Context
 
-[ADR-003](adr-003-shared-oxford-spelling-base.md) kept generated projects on
+[ADR-003](adr-0003-shared-oxford-spelling-base.md) kept generated projects on
 the estate's en-GB-oxendict policy by vendoring a generator that refreshed a
 cached copy of the shared dictionary, merged it with a local overlay, and wrote
 a tracked `typos.toml` that continuous integration (CI) drift checked. Both
