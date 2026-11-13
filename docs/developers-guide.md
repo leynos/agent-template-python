@@ -235,8 +235,8 @@ calls into `leynos/shared-actions`. Contract tests that assert a caller's exact
 commit SHA create a lockstep dependency: every time Dependabot opens a bump PR,
 the test fails until a human edits the pinned constant to match. That defeats
 the purpose of automated dependency updates and turns a routine bump into a
-manual chore. [ADR-005](adr-005-assert-workflow-shape-not-shas.md) records this
-decision.
+manual chore. [ADR-005](adrs/adr-0005-assert-workflow-shape-not-shas.md)
+records this decision.
 
 Contract tests may still verify the *shape* of a reusable-workflow caller. They
 must not verify the specific SHA value.
@@ -266,10 +266,10 @@ as a test assertion on the SHA string.
 
 ## Shared Spelling Configuration
 
-[ADR-006](adr-006-shared-typos-config-builder-gate.md) records the shared
+[ADR-006](adrs/adr-0006-shared-typos-config-builder-gate.md) records the shared
 `typos-config-builder` gate, superseding the vendored generator of
-[ADR-003](adr-003-shared-oxford-spelling-base.md). Both the parent and the
-generated project keep `.typos-oxendict-base.toml` and
+[ADR-003](adrs/adr-0003-shared-oxford-spelling-base.md). Both the parent and
+the generated project keep `.typos-oxendict-base.toml` and
 `.typos-oxendict-base.json` untracked. Generic Oxford stems belong in
 `leynos/agent-helper-scripts`; repository-only accepted words, patterns, and
 file exclusions belong in `typos.local.toml`.

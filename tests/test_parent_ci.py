@@ -24,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Dependabot owns these pins; contract tests assert the action path and that
 # it is pinned to a full 40-hex commit SHA, but not which SHA. See
-# docs/adr-005-assert-workflow-shape-not-shas.md.
+# docs/adrs/adr-0005-assert-workflow-shape-not-shas.md.
 _INSTALL_MDTABLEFIX_USES_RE = re.compile(
     r"^\s*uses: leynos/shared-actions/\.github/actions/install-mdtablefix@"
     r"[0-9a-f]{40}$",
