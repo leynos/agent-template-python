@@ -68,8 +68,10 @@ def test_trim_rejects_a_workflow_missing_a_required_step(missing: str) -> None:
     """A renamed or removed required step fails loudly instead of trimming away."""
     names = [name for name in FULL_STEPS if name != missing]
 
-    with pytest.raises(AssertionError, match="lacks coverage-job steps"):
+    with pytest.raises(AssertionError, match="lacks coverage-job steps") as caught:
         trim_ci_workflow(_workflow(names))
+
+    assert missing in str(caught.value), "expected the failure to name the missing step"
 
 
 def test_trim_tolerates_a_pure_variant_without_the_rust_setup_step() -> None:
