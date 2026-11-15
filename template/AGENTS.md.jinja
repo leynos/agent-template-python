@@ -340,7 +340,8 @@ project:
   each step is a helper whose name says what it does and whose signature
   declares what it consumes and produces. Prefer this over long inline
   sequences, even when the inline code is straight-line. Whitaker's
-  `bumpy_road_function` lint enforces this shape.
+  `bumpy_road_function` lint flags the commonest departure from it: separate
+  clusters of conditional logic sharing one function body.
 - Where a function has too many parameters, group related parameters in
   meaningfully named structs.
 - Keep returned error types semantically focused and small. If a necessary
