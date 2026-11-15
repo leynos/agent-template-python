@@ -84,7 +84,9 @@
 - For non-trivial work, prepare or update a self-contained ExecPlan using the
   available planning guidance. Identify the outcome, relevant roadmap and
   design references, prerequisites, scope exclusions, and observable acceptance
-  criteria. Signpost relevant documentation and skills.
+  criteria. Signpost relevant documentation and skills. Where the repository
+  has no ExecPlan guidance, roadmap, or design document for the work, state the
+  outcome, scope, and acceptance criteria in the PR description instead.
 - Identify affected behavioural contracts, invariants, and failure modes before
   choosing the implementation. Use these to pressure-test the proposed API and
   verification strategy.
@@ -279,13 +281,15 @@
 {% if use_rust %}
 ## Rust specific guidance
 
-This repository is written in Rust and uses Cargo for building and dependency
-management. Contributors should follow these best practices when working on the
-project:
+This repository is a Python project with a Rust extension in `rust_extension/`,
+built with Cargo and maturin. Contributors should follow these best practices
+when working on the project:
 
 - Run `make check-fmt`, `make lint`, and `make test` before committing. These
-  targets wrap the following commands, so contributors understand the exact
-  behaviour and policy enforced:
+  targets wrap the following commands, shown with the Makefile's defaults so
+  contributors understand the behaviour and policy enforced. The Makefile
+  selects `$(CARGO)` and accepts overrides such as `CLIPPY_FLAGS` and
+  `TEST_FLAGS`:
   - `make check-fmt` executes:
 
     ```sh
@@ -309,7 +313,7 @@ project:
   - `make test` executes:
 
     ```makefile
-    TEST_CMD := $(if $(shell cargo nextest --version 2>/dev/null),nextest run,test)
+    TEST_CMD := $(if $(shell $(CARGO) nextest --version 2>/dev/null),nextest run,test)
     RUSTFLAGS="$(RUST_FLAGS)" cargo $(TEST_CMD) --manifest-path rust_extension/Cargo.toml --all-targets --all-features
     RUSTFLAGS="$(RUST_FLAGS)" cargo test --doc --manifest-path rust_extension/Cargo.toml --all-features
     ```
@@ -323,7 +327,7 @@ project:
 
     ```sh
     pip-audit
-    cargo audit
+    cd rust_extension && cargo audit
     ```
 
     checking Python dependencies and Rust extension dependencies for known
@@ -477,10 +481,11 @@ project:
   dependency embedded in the production signature. Where injection looks
   impossible the signature is wrong; correct the signature.
 - **Subprocess isolation is the sole exemption.** End-to-end behavioural tests
-  invoking the application binary through `assert_cmd` may configure the
-  environment via `Command::env`/`Command::env_clear`, because the mutation is
-  confined to the child process. A test manipulating the environment in-process
-  does not qualify, whatever layer it claims to occupy.
+  invoking the application binary through `assert_cmd`, or a child Python
+  process that imports the extension, may configure the environment via
+  `Command::env`/`Command::env_clear` or the subprocess's environment, because
+  the mutation is confined to the child process. A test manipulating the
+  environment in-process does not qualify, whatever layer it claims to occupy.
 
 ### Dependency management
 
