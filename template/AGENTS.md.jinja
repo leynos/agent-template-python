@@ -22,10 +22,11 @@
 - **Use consistent spelling and grammar.** Comments must use en-GB-oxendict
   ("-ize" / "-yse" / "-our") spelling and grammar, with the exception of
   references to external APIs. See [Spelling](#spelling).
-- **Illustrate with clear examples.** Documentation for public functions must
-  include clear examples demonstrating their usage and outcome. A private
-  helper needs only a one-line summary docstring. Test documentation should
-  omit examples where the example serves only to reiterate the test logic.
+- **Illustrate with clear examples.** Documentation for public, re-exported, or
+  cross-module functions must include clear examples demonstrating their usage
+  and outcome. A private helper used only within its own module needs only a
+  one-line summary docstring. Test documentation should omit examples where the
+  example serves only to reiterate the test logic.
 - **Keep file size manageable.** No single code file may be longer than 400
   lines. Long switch statements or dispatch tables should be broken up by
   feature and constituents colocated with targets. Large blocks of test data
