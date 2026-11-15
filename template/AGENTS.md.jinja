@@ -22,10 +22,10 @@
 - **Use consistent spelling and grammar.** Comments must use en-GB-oxendict
   ("-ize" / "-yse" / "-our") spelling and grammar, with the exception of
   references to external APIs. See [Spelling](#spelling).
-- **Illustrate with clear examples.** Function documentation must include clear
-  examples demonstrating the usage and outcome of the function. Test
-  documentation should omit examples where the example serves only to reiterate
-  the test logic.
+- **Illustrate with clear examples.** Documentation for public functions must
+  include clear examples demonstrating their usage and outcome. A private
+  helper needs only a one-line summary docstring. Test documentation should
+  omit examples where the example serves only to reiterate the test logic.
 - **Keep file size manageable.** No single code file may be longer than 400
   lines. Long switch statements or dispatch tables should be broken up by
   feature and constituents colocated with targets. Large blocks of test data
@@ -210,8 +210,10 @@
     class/object than their own.
   - **Shotgun surgery:** A single change requiring small modifications in many
     different classes or functions.
-- **Abstraction / port / helper policy:** Before implementing an abstraction,
-  port, or extracted helper, the agent must:
+- **Abstraction / port / helper policy:** This policy exists so that the same
+  behaviour is not built twice without anyone noticing. Before implementing an
+  abstraction, a port, or a shared helper (anything public, re-exported, or
+  called from more than one module), the agent must:
   1. Sweep the repository and approved dependencies for equivalent behaviour.
      Reuse it unless demonstrably unsuitable. New abstractions must simplify
      the current change or have a concrete reuse case.
@@ -220,6 +222,12 @@
   3. Record the decision in the appropriate architecture, design, or
      developers-guide document using `docs/contents.md` as the index to select
      the correct location.
+
+  A private helper (a leading-underscore function in Python, a non-`pub` item
+  in Rust) extracted so that one function tells a story needs only step 1: its
+  name, its signature, and a one-line docstring or doc comment say the rest.
+  When a second module needs it, promote it under this policy rather than
+  copying it.
 - **Post-commit review:** After committing a functional change or bug fix (that
   meets all quality gates), review the changed code and surrounding areas using
   the heuristics above.
