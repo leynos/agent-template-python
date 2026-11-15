@@ -220,6 +220,15 @@ workflow, remove those two Makefile lines and the `$(ACT_TEST_ENV)` reference
 in the `test` recipe, and drop the contents entry for the act guide. Nothing
 else depends on them, because rendered projects have no act-marked tests.
 
+For Rust-enabled projects the same update widens the rendered coverage jobs to
+all targets, all features, and doctests, so the pull request job stays the
+project's only Rust test execution. The shared coverage action's ratchet
+baseline does not distinguish scope: the first main run after the update
+compares against the baseline measured with the narrower scope. If the wider
+scope measures more than the ratchet's one percentage point tolerance below it,
+the ratchet fails and the baseline must be reset by an intentional run on main.
+Python baselines are unaffected.
+
 The act checks deliberately omit the rendered project's dependency audit and
 Markdown lint. `make audit` needs the network and vulnerability databases, so
 the rendered CI and the weekly `audit.yml` run it on GitHub; the rendered CI
