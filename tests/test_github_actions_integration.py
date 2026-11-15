@@ -94,9 +94,11 @@ def trim_ci_workflow(workflow: str) -> str:
     """Reduce a rendered CI workflow to the steps the coverage job needs.
 
     The outer ``make test`` already renders each variant and runs its formatting,
-    lint, type-check and audit targets once.  A real act run only has to prove
-    that the shared coverage action's inputs and outputs work end to end, so the
-    tool installation, lint and audit steps are dropped.
+    lint, type-check and test targets once (``make all``); the dependency audit
+    and Markdown lint run in the rendered project's own CI on GitHub.  A real
+    act run only has to prove that the shared coverage action's inputs and
+    outputs work end to end (it does not verify every output), so the tool
+    installation, lint and audit steps are dropped.
 
     Parameters
     ----------
