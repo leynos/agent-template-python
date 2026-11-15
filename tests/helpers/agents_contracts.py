@@ -45,6 +45,42 @@ def _assert_agents_contracts(agents: str) -> None:
     )
 
 
+def _assert_agents_function_guidance(*, agents: str, use_rust: bool) -> None:
+    """Assert the function-structure guidance renders for the chosen variant.
+
+    The shared code-style bullet appears in every render. The Rust bullet,
+    including the Whitaker sentence, appears only when the Rust extension is
+    enabled, as do the Rust-only polish rules. Checks use short phrases over
+    whitespace-normalized text so that reflowing does not break them.
+    """
+    flat = " ".join(agents.split())
+    assert "**Functions tell a story.** A function reads as a sequence" in flat, (
+        "expected generated AGENTS.md to carry the shared 'Functions tell a "
+        "story' code-style bullet"
+    )
+    assert "Polonius" not in agents, (
+        "expected generated AGENTS.md to omit Rust-template Polonius guidance"
+    )
+    assert "orphan" not in agents, (
+        "expected generated AGENTS.md to omit the orphan-rule clause"
+    )
+    assert "repository-layout" not in agents, (
+        "expected generated AGENTS.md to avoid links to docs it does not ship"
+    )
+    assert agents.count("Functions tell a story") == (2 if use_rust else 1), (
+        "expected the Rust-section 'Functions tell a story' bullet only when "
+        "the Rust extension is enabled"
+    )
+    assert ("`bumpy_road_function` lint" in flat) is use_rust, (
+        "expected the Whitaker bumpy_road_function sentence only when the Rust "
+        "extension is enabled"
+    )
+    assert ("Every `assert!`" in flat) is use_rust, (
+        "expected Rust assertion-diagnostics guidance only when the Rust "
+        "extension is enabled"
+    )
+
+
 def _assert_agents_make_targets_mirror_makefile(
     *, agents: str, makefile: str, package_name: str, use_rust: bool
 ) -> None:
@@ -147,13 +183,10 @@ def _assert_documented_command_flags(
                 ],
                 "test": [
                     *command_contracts["test"],
+                    ("AGENTS.md", "nextest --version"),
                     (
                         "AGENTS.md",
-                        "cargo nextest run --manifest-path rust_extension/Cargo.toml",
-                    ),
-                    (
-                        "AGENTS.md",
-                        "cargo test --manifest-path rust_extension/Cargo.toml",
+                        "cargo $(TEST_CMD) --manifest-path rust_extension/Cargo.toml",
                     ),
                     (
                         "AGENTS.md",

@@ -14,6 +14,7 @@ from typing import Any
 
 from tests.helpers.agents_contracts import (
     _assert_agents_contracts,
+    _assert_agents_function_guidance,
     _assert_agents_make_targets_mirror_makefile,
 )
 from tests.helpers.ci_contracts import (
@@ -125,6 +126,7 @@ def assert_generated_tooling_contracts(
         python_version=python_version,
     )
     _assert_agents_contracts(agents)
+    _assert_agents_function_guidance(agents=agents, use_rust=use_rust)
     _assert_agents_make_targets_mirror_makefile(
         agents=agents,
         makefile=makefile,
