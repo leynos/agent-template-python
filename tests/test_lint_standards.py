@@ -132,4 +132,4 @@ def test_native_entrypoint_keeps_unused_rust_helpers_reportable(
     assert failed.returncode != 0, "An unused sibling must still block the gate"
     assert "unused_sibling" in output, output
     assert "SKY-U001" in output, output
-    assert "unused function: _native_boundary_rs" not in output, output
+    assert "unused function: native_module" not in output, output
