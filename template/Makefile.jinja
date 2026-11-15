@@ -34,7 +34,9 @@ DF12_PYTHON_LINTS = git+https://github.com/leynos/df12-python-lints.git@$(DF12_P
 DF12_PYLINT_MESSAGES = R9101,C9102,R9103,R9104,C9105,C9106,C9107,R9108,R9109,R9110,R9111,R9112,C9112
 DF12_PYLINT = $(UV_ENV) $(UV) tool run --python $(LINT_PYTHON) --from 'pylint==$(PYLINT_VERSION)' --with '$(DF12_PYTHON_LINTS)' pylint --disable=all --load-plugins=df12_python_lints --enable=syntax-error,$(DF12_PYLINT_MESSAGES)
 AMBRLEAKS = $(UV_ENV) $(UV) tool run --python $(LINT_PYTHON) --from '$(DF12_PYTHON_LINTS)' ambrleaks
-SKYLOS = $(UV_ENV) $(UV) tool run --python $(LINT_PYTHON) --from 'df12-python-lints[skylos] @ $(DF12_PYTHON_LINTS)' df12-skylos
+# Skylos pulls in tree-sitter-dart-orchard, which ships only as an sdist, so it
+# must build against interpreter headers; managed Python always provides them.
+SKYLOS = $(UV_ENV) $(UV) tool run --managed-python --python $(LINT_PYTHON) --from 'df12-python-lints[skylos] @ $(DF12_PYTHON_LINTS)' df12-skylos
 DUPLICATION_GATE = $(UV_ENV) $(UV) tool run --python $(LINT_PYTHON) --from '$(DF12_PYTHON_LINTS)' df12-duplication
 {% if (python_version.split('.')[1] | int) == 12 -%}
 # PyPy 3.12 parses every construct up to the project's baseline.
