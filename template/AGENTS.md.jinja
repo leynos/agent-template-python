@@ -433,14 +433,14 @@ project:
   nesting, use an explicit stack or a similar runtime structure.
 - Encapsulate transitions and mandatory finalization in the state owner.
   Prefer semantic transition/result enums over mutating several correlated
-  fields and returning flags; consuming methods should perform required
-  cleanup rather than making callers remember multi-step ceremony. Decide what
-  happens if the owner is dropped or cancelled before its consuming method
-  runs: implement `Drop` for best-effort cleanup, or document that the state is
+  fields and returning flags; consuming methods should perform required cleanup
+  rather than making callers remember multi-step ceremony. Decide what happens
+  if the owner is dropped or cancelled before its consuming method runs:
+  implement `Drop` for best-effort cleanup, or document that the state is
   abandoned, and test that path.
 - Keep genuinely independent booleans as booleans. Introduce an ADT to remove
-  impossible combinations or express domain alternatives, not merely to
-  avoid `bool`.
+  impossible combinations or express domain alternatives, not merely to avoid
+  `bool`.
 - Use `cap_std` and `cap_std::fs_utf8` / `camino` in place of `std::fs` and
   `std::path` for enhanced cross-platform support and capability oriented
   filesystem access.
