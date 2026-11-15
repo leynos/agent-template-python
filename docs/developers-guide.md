@@ -34,9 +34,11 @@ template itself.
 - `make spelling` — runs the shared `typos-config-builder` gate over every
   tracked file, so Markdown and the `*.md.jinja` template sources are both
   checked for en-GB-oxendict spelling.
-- `make test WITH_ACT=1` — sets `RUN_ACT_VALIDATION=1` inside the pytest
-  invocation, enabling the act-backed integration tests that run generated CI
-  workflows locally. Requires `act` and Docker to be available.
+- `make test-act` — runs only the `act`-marked tests with
+  `RUN_ACT_VALIDATION=1`: act parses every rendered workflow, dry-runs the CI
+  job, and executes a trimmed CI job (see `trim_ci_workflow` in
+  `tests/test_github_actions_integration.py`). Requires `act` and Docker.
+  `make test WITH_ACT=1` runs the same tests alongside the full suite.
 
 `uvx` is required; the Makefile aborts with an error if it is not found on
 `PATH`.
@@ -54,9 +56,10 @@ Docker-dependent tests isolated from the standard template test gate:
   `if: github.actor != 'dependabot[bot]'`.
 - `.github/workflows/audit.yml` runs `make audit` on a weekly schedule against
   the default branch.
-- `.github/workflows/act-validation.yml` runs `make test WITH_ACT=1`. It
-  additionally downloads the `act` binary at a pinned `ACT_VERSION`, verifies
-  its SHA-256 checksum before extraction, and confirms Docker availability via
+- `.github/workflows/act-validation.yml` runs `make test-act`, so the rendered
+  projects' lint and test targets are not run a second time under act. It
+  downloads the `act` binary at a pinned `ACT_VERSION`, verifies its SHA-256
+  checksum before extraction, and confirms Docker availability via
   `docker info`. The workflow exposes `ACT_GITHUB_TOKEN: ${{ github.token }}`
   only to the nested act test step so actions requiring `github.token` behave
   like they do on GitHub-hosted runners.
@@ -206,9 +209,9 @@ for the Act archive-phase exception. The output script receives the coverage
 path and artefact suffix as explicit arguments, so Act's duplicate `INPUT_*`
 spellings cannot collide during parameter binding.
 
-`template/.github/workflows/act-validation.yml.jinja` keeps rendered workflow
-validation separate from generated application CI. It installs `act`, verifies
-Docker availability, and runs `make test WITH_ACT=1`.
+Generated projects ship no act-validation workflow. The parent repository
+validates the rendered workflows through act, so a generated project does not
+run its tests twice.
 
 Local Act runs disable only the shared coverage action's artefact publication,
 because the pinned Act 0.2.84 server does not support that upload protocol.

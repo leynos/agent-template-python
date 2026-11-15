@@ -426,8 +426,9 @@ def test_generated_tooling_contracts(
     coverage_main_workflow = read_generated_text(
         project / ".github" / "workflows" / "coverage-main.yml"
     )
-    act_validation_workflow = read_generated_text(
-        project / ".github" / "workflows" / "act-validation.yml"
+    assert not (project / ".github" / "workflows" / "act-validation.yml").exists(), (
+        "expected generated projects to ship no act-validation workflow; the "
+        "template's own tests exercise the rendered workflows through act"
     )
     release_workflow = read_generated_text(
         project / ".github" / "workflows" / "release.yml"
@@ -449,7 +450,6 @@ def test_generated_tooling_contracts(
         makefile=makefile,
         ci_workflow=ci_workflow,
         coverage_main_workflow=coverage_main_workflow,
-        act_validation_workflow=act_validation_workflow,
         release_workflow=release_workflow,
         build_wheels_workflow=build_wheels_workflow,
         build_wheels_action=build_wheels_action,

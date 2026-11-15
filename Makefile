@@ -1,4 +1,4 @@
-.PHONY: help check-fmt fmt lint spelling test typecheck interrogate
+.PHONY: help check-fmt fmt lint spelling test test-act typecheck interrogate
 
 MAKEFLAGS += --no-print-directory
 
@@ -26,6 +26,9 @@ MDTABLEFIX_RULES = --wrap --renumber --breaks --ellipsis --fences
 
 test: ## Run template tests
 	$(ACT_TEST_ENV) $(UV) --with hypothesis --with pytest-copier --with pyyaml --with syrupy --with make-parser pytest tests/
+
+test-act: ## Run only the act-backed workflow checks (needs act and Docker)
+	RUN_ACT_VALIDATION=1 $(UV) --with hypothesis --with pytest-copier --with pyyaml --with syrupy --with make-parser pytest -m act -v tests/
 
 check-fmt: ## Verify template test formatting
 	$(UV) ruff format --check tests/
