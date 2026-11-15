@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
@@ -78,7 +79,72 @@ def prepare_git_repository(project: CopierProject) -> None:
         subprocess.run(command, cwd=project.path, check=True, capture_output=True)
 
 
-def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
+COVERAGE_JOB_STEPS = (
+    "Check out repository",
+    "Set up Python",
+    "Install uv",
+    "Set up Rust",
+    "Install code",
+    GENERATE_COVERAGE_STEP,
+)
+STEP_HEADER = re.compile(r"^ {6}- name: (?P<name>.+?)\s*$")
+
+
+def trim_ci_workflow(workflow: str) -> str:
+    """Reduce a rendered CI workflow to the steps the coverage job needs.
+
+    The outer ``make test`` already renders each variant and runs its formatting,
+    lint, type-check and test targets once (``make all``); the dependency audit
+    and Markdown lint run in the rendered project's own CI on GitHub.  A real
+    act run only has to prove that the shared coverage action's inputs and
+    outputs work end to end (it does not verify every output), so the tool
+    installation, lint and audit steps are dropped.
+
+    Parameters
+    ----------
+    workflow
+        Rendered ``ci.yml`` text.
+
+    Returns
+    -------
+    str
+        The workflow with every step outside ``COVERAGE_JOB_STEPS`` removed.
+        Text without step headers is returned unchanged.
+
+    Raises
+    ------
+    AssertionError
+        Raised when a step the coverage job needs is missing, which means the
+        template renamed it and this list must follow.
+
+    Examples
+    --------
+    Keep only the coverage steps before running act::
+
+        trimmed = trim_ci_workflow(ci_yml.read_text(encoding="utf-8"))
+    """
+    kept: list[str] = []
+    seen: set[str] = set()
+    keep_block = True
+    for line in workflow.splitlines(keepends=True):
+        header = STEP_HEADER.match(line)
+        if header:
+            name = header.group("name").strip("'\"")
+            seen.add(name)
+            keep_block = name in COVERAGE_JOB_STEPS
+        if keep_block:
+            kept.append(line)
+    if not seen:
+        return workflow
+    missing = [name for name in COVERAGE_JOB_STEPS if name not in seen]
+    required = [name for name in missing if name != "Set up Rust"]
+    assert not required, f"rendered ci.yml lacks coverage-job steps: {required}"
+    return "".join(kept)
+
+
+def run_act(
+    project: CopierProject, *, artifact_dir: Path, dry_run: bool = False
+) -> tuple[int, str]:
     """Run the generated CI workflow through act.
 
     Parameters
@@ -88,6 +154,9 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
         executed.
     artifact_dir
         Directory where act should write workflow artefacts.
+    dry_run
+        Whether to pass ``--dryrun``, so act resolves the workflow, its jobs
+        and the actions they use without executing any step.
 
     Returns
     -------
@@ -123,6 +192,8 @@ def run_act(project: CopierProject, *, artifact_dir: Path) -> tuple[int, str]:
         "--json",
         "-b",
     ]
+    if dry_run:
+        command.append("--dryrun")
     docker_host = container_daemon_socket(env)
     if docker_host is not None:
         command.extend(["--container-daemon-socket", docker_host])
@@ -571,7 +642,10 @@ def test_generated_workflow_runs_with_shared_coverage_action(
     use_rust: bool,
     artifact_dir: str,
 ) -> None:
-    """Validate a generated CI workflow through act.
+    """Validate the shared coverage action through act on a trimmed workflow.
+
+    Only the steps the coverage job needs run (see ``trim_ci_workflow``); the
+    rendered project's lint and test targets run once in the outer suite.
 
     Parameters
     ----------
@@ -615,6 +689,10 @@ def test_generated_workflow_runs_with_shared_coverage_action(
         package_name=package,
         use_rust=use_rust,
     )
+    ci_workflow = project / ".github" / "workflows" / "ci.yml"
+    ci_workflow.write_text(
+        trim_ci_workflow(ci_workflow.read_text(encoding="utf-8")), encoding="utf-8"
+    )
     prepare_git_repository(project)
 
     evidence_root = os.environ.get("ACT_EVIDENCE_DIR")
@@ -638,3 +716,85 @@ def test_generated_workflow_runs_with_shared_coverage_action(
             "Rust workflow should pass the Rust extension manifest to coverage"
         )
     assert_act_result(project, code, logs, use_rust=use_rust)
+
+
+@pytest.mark.parametrize(
+    ("name", "package", "use_rust"),
+    [("WiringPure", "wiring_pure", False), ("WiringRust", "wiring_rust", True)],
+)
+@pytest.mark.act
+def test_generated_workflows_parse_and_resolve_under_act(
+    act_ready: None,
+    copier: CopierFixture,
+    tmp_path: Path,
+    name: str,
+    package: str,
+    use_rust: bool,
+) -> None:
+    """Check the rendered workflows' wiring through act without running steps.
+
+    ``act --list`` parses every rendered workflow, and a dry run of the CI job
+    resolves its steps and the actions they use. Neither executes a step, so the
+    full CI job is not run a second time.
+
+    Parameters
+    ----------
+    act_ready
+        Fixture that skips the test unless act validation is explicitly enabled
+        and a compatible runtime is reachable.
+    copier
+        ``pytest-copier`` fixture used to render the template.
+    tmp_path
+        Temporary directory for the rendered project and act artefacts.
+    name
+        Project name passed to the Copier template.
+    package
+        Package name passed to the Copier template.
+    use_rust
+        Whether to render the Rust-extension variant.
+
+    Returns
+    -------
+    None
+        The test passes when every rendered workflow parses and the CI job
+        resolves in a dry run.
+
+    Raises
+    ------
+    AssertionError
+        Raised when act cannot parse a workflow or the dry run fails.
+
+    Examples
+    --------
+    Run this parametrized test with local act validation enabled::
+
+        RUN_ACT_VALIDATION=1 python -m pytest -m act -v
+    """
+    project = copier.copy(
+        tmp_path / package,
+        project_name=name,
+        package_name=package,
+        use_rust=use_rust,
+    )
+    prepare_git_repository(project)
+    listed = subprocess.run(
+        ["act", "--list"],
+        cwd=project.path,
+        env=docker_environment(),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=120,
+    )
+    assert listed.returncode == 0, f"act --list failed:\n{listed.stdout}{listed.stderr}"
+    workflows = sorted(
+        path.name for path in (project / ".github" / "workflows").glob("*.yml")
+    )
+    unlisted = [file for file in workflows if file not in listed.stdout]
+    assert not unlisted, f"act did not list rendered workflows: {unlisted}"
+
+    code, logs = run_act(project, artifact_dir=tmp_path / "artefacts", dry_run=True)
+    assert code == 0, act_failure_diagnostic(code, logs)
+    assert GENERATE_COVERAGE_STEP in logs, (
+        "the dry run should resolve the shared coverage step"
+    )

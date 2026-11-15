@@ -121,9 +121,6 @@
   - Formatting is correct and validated.
 - **For Python files:**
   - **Testing:** Passes all relevant unit and behavioural tests (`make test`).
-    Use `make test WITH_ACT=1` when local GitHub Actions workflow validation
-    should run through `act`; this sets `RUN_ACT_VALIDATION=1` for the pytest
-    invocation.
   - **Linting:** Passes lint checks (`make lint`).
   - **Formatting:** Adheres to formatting standards (`make check-fmt`; use
     `make fmt` to apply fixes).
@@ -149,8 +146,7 @@
       `ty` 0.0.56 and Ruff 0.16.8 run in isolated Python 3.14 tools.
       `make lint-actions` validates workflows and actions with actionlint,
       action-validator, yamllint 1.38.0, and shellcheck.
-    - `make test` runs `pytest -v -n $(PYTEST_XDIST_WORKERS)` and honours
-      `WITH_ACT=1` through `RUN_ACT_VALIDATION=1`.
+    - `make test` runs `pytest -v -n $(PYTEST_XDIST_WORKERS)`.
     - `make audit` runs `pip-audit`.
   - Temporary lint suppressions must include a link to the planned fix or
     implementation that will remove the suppression.

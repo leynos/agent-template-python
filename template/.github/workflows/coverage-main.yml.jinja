@@ -61,6 +61,11 @@ jobs:
           with-ratchet: 'true'
 {% if use_rust %}
           cargo-manifest: rust_extension/Cargo.toml
+          # Match the pull request gate's Rust scope so the ratchet baseline
+          # measures the same code.
+          all-targets: 'true'
+          all-features: 'true'
+          doctests: 'true'
 {% endif %}
 
       - name: Upload coverage data to CodeScene

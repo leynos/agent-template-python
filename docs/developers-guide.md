@@ -34,9 +34,11 @@ template itself.
 - `make spelling` — runs the shared `typos-config-builder` gate over every
   tracked file, so Markdown and the `*.md.jinja` template sources are both
   checked for en-GB-oxendict spelling.
-- `make test WITH_ACT=1` — sets `RUN_ACT_VALIDATION=1` inside the pytest
-  invocation, enabling the act-backed integration tests that run generated CI
-  workflows locally. Requires `act` and Docker to be available.
+- `make test-act` — runs only the `act`-marked tests with
+  `RUN_ACT_VALIDATION=1`: act parses every rendered workflow, dry-runs the CI
+  job, and executes a trimmed CI job (see `trim_ci_workflow` in
+  `tests/test_github_actions_integration.py`). Requires `act` and Docker.
+  `make test WITH_ACT=1` runs the same tests alongside the full suite.
 
 `uvx` is required; the Makefile aborts with an error if it is not found on
 `PATH`.
@@ -54,9 +56,10 @@ Docker-dependent tests isolated from the standard template test gate:
   `if: github.actor != 'dependabot[bot]'`.
 - `.github/workflows/audit.yml` runs `make audit` on a weekly schedule against
   the default branch.
-- `.github/workflows/act-validation.yml` runs `make test WITH_ACT=1`. It
-  additionally downloads the `act` binary at a pinned `ACT_VERSION`, verifies
-  its SHA-256 checksum before extraction, and confirms Docker availability via
+- `.github/workflows/act-validation.yml` runs `make test-act`, so the rendered
+  projects' lint and test targets are not run a second time under act. It
+  downloads the `act` binary at a pinned `ACT_VERSION`, verifies its SHA-256
+  checksum before extraction, and confirms Docker availability via
   `docker info`. The workflow exposes `ACT_GITHUB_TOKEN: ${{ github.token }}`
   only to the nested act test step so actions requiring `github.token` behave
   like they do on GitHub-hosted runners.
@@ -181,17 +184,17 @@ tools are installed only when the Rust extension is enabled. The scheduled
 `.github/workflows/audit.yml` workflow audits the default branch weekly as the
 compensating control.
 
-The parent workflows, generated CI, and Act-validation workflow provision Go
-1.27 before invoking Actionlint 1.7.12, whose minimum is Go 1.25. They disable
-Go module caching because the projects have no Go module, and add `GOPATH/bin`
-to `GITHUB_PATH` after installation. Stable Rust/Cargo is provisioned for the
-`mdtablefix` `cargo-binstall` installer in both pure-Python and Rust-enabled
-projects. These workflow prerequisites do not change the selected
-`python_version` application baseline. For Rust-enabled projects, the Rust lint
-and test cache uses the `rust_extension -> target` workspace and retains the
-cargo-nextest, cargo-audit, and Whitaker tool-cache directories; this
-Rust-specific cache configuration and the Rust lint and test tools are only
-included when the extension is enabled.
+The parent CI workflow and generated CI provision Go 1.27 before invoking
+Actionlint 1.7.12, whose minimum is Go 1.25. They disable Go module caching
+because the projects have no Go module, and add `GOPATH/bin` to `GITHUB_PATH`
+after installation. Stable Rust/Cargo is provisioned for the `mdtablefix`
+`cargo-binstall` installer in both pure-Python and Rust-enabled projects. These
+workflow prerequisites do not change the selected `python_version` application
+baseline. For Rust-enabled projects, the Rust lint and test cache uses the
+`rust_extension -> target` workspace and retains the cargo-nextest,
+cargo-audit, and Whitaker tool-cache directories; this Rust-specific cache
+configuration and the Rust lint and test tools are only included when the
+extension is enabled.
 
 The shared coverage action runs Python coverage through xdist-backed SlipCover
 support. Generated pytest discovery is therefore constrained to the top-level
@@ -206,9 +209,49 @@ for the Act archive-phase exception. The output script receives the coverage
 path and artefact suffix as explicit arguments, so Act's duplicate `INPUT_*`
 spellings cannot collide during parameter binding.
 
-`template/.github/workflows/act-validation.yml.jinja` keeps rendered workflow
-validation separate from generated application CI. It installs `act`, verifies
-Docker availability, and runs `make test WITH_ACT=1`.
+Generated projects ship no act-validation workflow. The parent repository
+validates the rendered workflows through act, so a generated project does not
+run its tests twice.
+
+Migration: a project rendered before this change keeps the old
+`.github/workflows/act-validation.yml`, the `WITH_ACT` and `ACT_TEST_ENV` lines
+in its `Makefile`, and the act documentation. After `copier update`, delete the
+workflow, remove those two Makefile lines and the `$(ACT_TEST_ENV)` reference
+in the `test` recipe, and drop the contents entry for the act guide. Nothing
+else depends on them, because rendered projects have no act-marked tests.
+
+For Rust-enabled projects the same update widens the rendered coverage jobs to
+all targets, all features, and doctests, so the pull request job stays the
+project's only test execution. The shared coverage action's ratchet baseline
+does not name the coverage scope, so the first main run after the update
+compares the wider measurement with the baseline stored from the narrower one.
+A baseline above 85% only warns on a drop that stays at or above 85% once
+[leynos/shared-actions#695](https://github.com/leynos/shared-actions/pull/695)
+lands and the project's pinned `generate-coverage` revision (a Dependabot
+update) includes it; a baseline at or below 85% still fails when the
+measurement falls more than one percentage point below it. A run that fails the
+ratchet saves no baseline, and turning the ratchet off does not reset one
+either: in the action (`.github/actions/generate-coverage/action.yml` at
+shared-actions `163e3749`) the `Restore baselines`, `Ratchet coverage` and
+`Save baselines` steps all run only when `inputs.with-ratchet == 'true'` (lines
+271-290, 458-474 and 476-509), so a main push with `with-ratchet: 'false'`
+stores nothing new. The reset the action does support is a new baseline path.
+In the upgrade pull request, set
+`baseline-rust-file: .coverage-baseline.rust-all` on the coverage step in both
+the CI and `coverage-main` workflows. `actions/cache` versions an entry by its
+path list, so the changed list no longer matches the stored entry and nothing
+is restored; the `Ensure baseline files` step (lines 291-300) then creates the
+missing files as `0`. The reset therefore covers the Python baseline too, since
+both files share one entry: the ratchet passes, and the next push to main saves
+fresh Rust and Python measurements that guard later runs. The action publishes
+only on a push to main (`Save baselines`, lines 476-509), so a manual dispatch
+publishes nothing; an update that fires no push event needs a job restricted to
+main that sets `publish-baseline: always`.
+
+The act checks deliberately omit the rendered project's dependency audit and
+Markdown lint. `make audit` needs the network and vulnerability databases, so
+the rendered CI and the weekly `audit.yml` run it on GitHub; the rendered CI
+also lints Markdown there. Act would only repeat them.
 
 Local Act runs disable only the shared coverage action's artefact publication,
 because the pinned Act 0.2.84 server does not support that upload protocol.

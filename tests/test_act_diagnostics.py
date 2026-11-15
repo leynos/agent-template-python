@@ -795,6 +795,12 @@ def test_raising_act_retains_coverage_before_propagating_exception(
         monkeypatch.setenv("ACT_EVIDENCE_DIR", str(evidence_root))
     else:
         monkeypatch.delenv("ACT_EVIDENCE_DIR", raising=False)
+    workflow_dir = coverage_project / ".github" / "workflows"
+    workflow_dir.mkdir(parents=True)
+    (workflow_dir / "ci.yml").write_text(
+        "uses: leynos/shared-actions/.github/actions/generate-coverage@fixture\n",
+        encoding="utf-8",
+    )
     failure = (
         subprocess.TimeoutExpired("act", 1200)
         if failure_kind == "timeout"

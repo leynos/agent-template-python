@@ -142,4 +142,9 @@ jobs:
           with-ratchet: 'true'
 {% if use_rust %}
           cargo-manifest: rust_extension/Cargo.toml
+          # Match `make test`'s Rust scope (all targets, all features,
+          # doctests): this job is the pull request's only test execution.
+          all-targets: 'true'
+          all-features: 'true'
+          doctests: 'true'
 {% endif -%}

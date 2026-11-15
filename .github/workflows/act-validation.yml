@@ -29,7 +29,6 @@ jobs:
     timeout-minutes: 45
     env:
       ACT_VERSION: v0.2.84
-      MBAKE_VERSION: 1.4.6
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
@@ -41,26 +40,10 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Set up Go for Actionlint
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        with:
-          go-version: '1.27.x'
-          cache: false
-
       - name: Install uv
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
 
-      - name: Set up Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@0eabb6bc07148981de5da395e30cd78d83f5c7c2
-        with:
-          toolchain: stable
-
-      - name: Install Whitaker for rendered Rust projects
-        uses: leynos/shared-actions/.github/actions/install-whitaker@0eabb6bc07148981de5da395e30cd78d83f5c7c2
-        with:
-          cranelift: true
-
-      - name: Install template test tools
+      - name: Install act
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -75,20 +58,6 @@ jobs:
           printf '%s  %s\n' "${act_sha256}" "${act_archive}" | sha256sum -c -
           sudo tar -xzf "${act_archive}" -C /usr/local/bin act
 
-      - name: Install documentation tooling
-        run: |
-          uv tool install "mbake==${MBAKE_VERSION}"
-          sudo apt-get update
-          sudo apt-get install -y shellcheck
-          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-          npm install -g @action-validator/core@0.6.0 @action-validator/cli@0.6.0
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-
-      - name: Install mdtablefix
-        uses: leynos/shared-actions/.github/actions/install-mdtablefix@0eabb6bc07148981de5da395e30cd78d83f5c7c2
-        with:
-          version: '0.6.1'
-
       - name: Check Docker runtime
         run: docker info
 
@@ -96,7 +65,7 @@ jobs:
         env:
           ACT_GITHUB_TOKEN: ${{ github.token }}
           ACT_EVIDENCE_DIR: ${{ runner.temp }}/act-evidence
-        run: make test WITH_ACT=1
+        run: make test-act
 
       - name: Upload Act diagnostic logs
         if: always()

@@ -31,10 +31,13 @@ target uses `uvx` to provide `pytest-copier`, `pyyaml`, `syrupy`, and
 make test
 ```
 
-Run `make test WITH_ACT=1` to include the act-backed workflow integration tests
-when `act` and Docker are available. Parent repository CI runs this mode in a
-separate act-validation workflow so rendered in-template GitHub workflows do
-not hold up the normal template test workflow.
+Run `make test-act` to run only the act-backed workflow checks when `act` and
+Docker are available; `make test WITH_ACT=1` runs them alongside the full
+suite. Parent repository CI runs `make test-act` in a separate act-validation
+workflow. The act checks parse every rendered workflow, dry-run the CI job, and
+execute a trimmed CI job (checkout, toolchain set-up, build and the shared
+coverage action) for real. The rendered project's own lint and test targets run
+once, in the normal template test workflow, so they are not repeated under act.
 
 Generated projects install and run their own tooling. The baseline Python
 version is the selected `python_version` and cannot be lower than 3.12. Ruff

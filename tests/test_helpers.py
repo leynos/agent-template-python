@@ -400,11 +400,30 @@ def test_ci_coverage_action_contract_validates_rust_manifest_edge() -> None:
             coverage_inputs=(
                 "          artefact-name-suffix: helper-pkg\n"
                 "          cargo-manifest: rust_extension/Cargo.toml\n"
+                "          all-targets: 'true'\n          all-features: 'true'\n"
+                "          doctests: 'true'\n"
             ),
         ),
         package_name="helper_pkg",
         use_rust=True,
     )
+
+    with pytest.raises(
+        AssertionError,
+        match="expected Rust variant coverage to enable doctests",
+    ):
+        assert_ci_coverage_action_contract(
+            ci_workflow=_ci_workflow(
+                persist_credentials="false",
+                coverage_inputs=(
+                    "          artefact-name-suffix: helper-pkg\n"
+                    "          cargo-manifest: rust_extension/Cargo.toml\n"
+                    "          all-targets: 'true'\n          all-features: 'true'\n"
+                ),
+            ),
+            package_name="helper_pkg",
+            use_rust=True,
+        )
 
 
 def test_ci_coverage_action_contract_accepts_any_pinned_sha_rejects_branch_ref() -> (
@@ -708,11 +727,15 @@ def test_coverage_main_workflow_contract_requires_rust_setup() -> None:
         f"@{_TEST_ACTION_SHA}\n"
     )
     rust_manifest = "          cargo-manifest: rust_extension/Cargo.toml\n"
+    rust_scope = (
+        "          all-targets: 'true'\n          all-features: 'true'\n"
+        "          doctests: 'true'\n"
+    )
     workflow = _coverage_main_workflow(
         guard="env.CS_ACCESS_TOKEN != ''", rust_setup=rust_setup
     ).replace(
         "          with-ratchet: 'true'\n",
-        "          with-ratchet: 'true'\n" + rust_manifest,
+        "          with-ratchet: 'true'\n" + rust_manifest + rust_scope,
     )
     assert_coverage_main_workflow_contract(
         coverage_main_workflow=workflow,
