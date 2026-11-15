@@ -222,12 +222,25 @@ else depends on them, because rendered projects have no act-marked tests.
 
 For Rust-enabled projects the same update widens the rendered coverage jobs to
 all targets, all features, and doctests, so the pull request job stays the
-project's only Rust test execution. The shared coverage action's ratchet
-baseline does not distinguish scope: the first main run after the update
-compares against the baseline measured with the narrower scope. If the wider
-scope measures more than the ratchet's one percentage point tolerance below it,
-the ratchet fails and the baseline must be reset by an intentional run on main.
-Python baselines are unaffected.
+project's only test execution. The shared coverage action's ratchet baseline
+does not name the coverage scope, so the first main run after the update
+compares the wider measurement with the baseline stored from the narrower one.
+A baseline above 85% only warns on a drop that stays at or above 85% once
+[leynos/shared-actions#695](https://github.com/leynos/shared-actions/pull/695)
+lands; a baseline at or below 85% still fails when the measurement falls more
+than one percentage point below it. A run that fails the ratchet saves no
+baseline, and turning the ratchet off does not reset one either: in the action
+(`.github/actions/generate-coverage/action.yml` at shared-actions `163e3749`)
+the `Restore baselines`, `Ratchet coverage` and `Save baselines` steps all run
+only when `inputs.with-ratchet == 'true'` (lines 271-290, 458-474 and 476-509),
+so a main push with `with-ratchet: 'false'` stores nothing new. The reset the
+action does support is a new baseline path. In the upgrade pull request, set
+`baseline-rust-file: .coverage-baseline.rust-all` on the coverage step in both
+the CI and `coverage-main` workflows. The `Ensure baseline files` step (lines
+291-300) creates the missing file as `0`, so the ratchet passes and the first
+main run saves the new measurement; the old file is ignored. Leave
+`baseline-python-file` alone: the action caches both files in one entry, and
+the Python baseline carries over unchanged.
 
 The act checks deliberately omit the rendered project's dependency audit and
 Markdown lint. `make audit` needs the network and vulnerability databases, so
