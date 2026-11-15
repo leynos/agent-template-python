@@ -433,15 +433,17 @@ when working on the project:
   at compile time, because the caller chooses a small, finite sequence of
   operations, typestate may make illegal call sequences unrepresentable. When
   it depends on runtime input, such as a parser token, frame, socket event,
-  channel event or scheduler decision, prefer a runtime ADT; for unbounded
-  nesting, use an explicit stack or a similar runtime structure.
-- Encapsulate transitions and mandatory finalization in the state owner.
-  Prefer semantic transition/result enums over mutating several correlated
-  fields and returning flags; consuming methods should perform required cleanup
-  rather than making callers remember multi-step ceremony. Decide what happens
-  if the owner is dropped or cancelled before its consuming method runs:
-  implement `Drop` for best-effort cleanup, or document that the state is
-  abandoned, and test that path.
+  channel event or a scheduler's choice at runtime, prefer a runtime ADT; for
+  unbounded nesting, use an explicit stack or a similar runtime structure.
+- Encapsulate transitions and mandatory finalization in the state owner. Prefer
+  semantic transition/result enums over mutating several correlated fields and
+  returning flags; consuming methods should perform required cleanup rather
+  than making callers remember multi-step ceremony. Decide what happens if the
+  owner is dropped before its consuming method runs. `Drop` is synchronous and
+  best-effort, so it cannot await asynchronous cleanup: give an async owner an
+  explicit async close method and treat a drop as abandonment. Cancelling a
+  future that borrows the owner leaves the owner in place, so keep its state
+  valid at every await point. Test both paths.
 - Keep genuinely independent booleans as booleans. Introduce an ADT to remove
   impossible combinations or express domain alternatives, not merely to avoid
   `bool`.
