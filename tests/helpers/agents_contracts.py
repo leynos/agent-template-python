@@ -147,13 +147,10 @@ def _assert_documented_command_flags(
                 ],
                 "test": [
                     *command_contracts["test"],
+                    ("AGENTS.md", "nextest --version"),
                     (
                         "AGENTS.md",
-                        "cargo nextest run --manifest-path rust_extension/Cargo.toml",
-                    ),
-                    (
-                        "AGENTS.md",
-                        "cargo test --manifest-path rust_extension/Cargo.toml",
+                        "cargo $(TEST_CMD) --manifest-path rust_extension/Cargo.toml",
                     ),
                     (
                         "AGENTS.md",
