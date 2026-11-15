@@ -184,17 +184,17 @@ tools are installed only when the Rust extension is enabled. The scheduled
 `.github/workflows/audit.yml` workflow audits the default branch weekly as the
 compensating control.
 
-The parent workflows, generated CI, and Act-validation workflow provision Go
-1.27 before invoking Actionlint 1.7.12, whose minimum is Go 1.25. They disable
-Go module caching because the projects have no Go module, and add `GOPATH/bin`
-to `GITHUB_PATH` after installation. Stable Rust/Cargo is provisioned for the
-`mdtablefix` `cargo-binstall` installer in both pure-Python and Rust-enabled
-projects. These workflow prerequisites do not change the selected
-`python_version` application baseline. For Rust-enabled projects, the Rust lint
-and test cache uses the `rust_extension -> target` workspace and retains the
-cargo-nextest, cargo-audit, and Whitaker tool-cache directories; this
-Rust-specific cache configuration and the Rust lint and test tools are only
-included when the extension is enabled.
+The parent CI workflow and generated CI provision Go 1.27 before invoking
+Actionlint 1.7.12, whose minimum is Go 1.25. They disable Go module caching
+because the projects have no Go module, and add `GOPATH/bin` to `GITHUB_PATH`
+after installation. Stable Rust/Cargo is provisioned for the `mdtablefix`
+`cargo-binstall` installer in both pure-Python and Rust-enabled projects. These
+workflow prerequisites do not change the selected `python_version` application
+baseline. For Rust-enabled projects, the Rust lint and test cache uses the
+`rust_extension -> target` workspace and retains the cargo-nextest,
+cargo-audit, and Whitaker tool-cache directories; this Rust-specific cache
+configuration and the Rust lint and test tools are only included when the
+extension is enabled.
 
 The shared coverage action runs Python coverage through xdist-backed SlipCover
 support. Generated pytest discovery is therefore constrained to the top-level
@@ -212,6 +212,18 @@ spellings cannot collide during parameter binding.
 Generated projects ship no act-validation workflow. The parent repository
 validates the rendered workflows through act, so a generated project does not
 run its tests twice.
+
+Migration: a project rendered before this change keeps the old
+`.github/workflows/act-validation.yml`, the `WITH_ACT` and `ACT_TEST_ENV` lines
+in its `Makefile`, and the act documentation. After `copier update`, delete the
+workflow, remove those two Makefile lines and the `$(ACT_TEST_ENV)` reference
+in the `test` recipe, and drop the contents entry for the act guide. Nothing
+else depends on them, because rendered projects have no act-marked tests.
+
+The act checks deliberately omit the rendered project's dependency audit and
+Markdown lint. `make audit` needs the network and vulnerability databases, so
+the rendered CI and the weekly `audit.yml` run it on GitHub; the rendered CI
+also lints Markdown there. Act would only repeat them.
 
 Local Act runs disable only the shared coverage action's artefact publication,
 because the pinned Act 0.2.84 server does not support that upload protocol.
