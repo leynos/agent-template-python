@@ -114,8 +114,12 @@ The generated `lint` aggregate runs these targets:
   docstring coverage across `$(PYTHON_TARGETS)`, baseline Pylint, the DF12
   Python Lints v0.4.0 Pylint plugin, and Ambrleaks against `tests/`.
 - `dead-code` runs Skylos against the repository and Vulture against test
-  sources. `duplication` installs and runs the pinned Nose-based detector
-  against the configured duplication families.
+  sources. Skylos runs under `uv tool run --managed-python`, because its
+  `tree-sitter-dart-orchard` dependency is source-only and needs interpreter
+  headers (`Python.h`) plus a C compiler; a system Python without development
+  headers, such as the one in the act image, cannot build it. Offline machines
+  need a preinstalled managed Python 3.14. `duplication` installs and runs the
+  pinned Nose-based detector against the configured duplication families.
 - `lint-actions` runs yamllint, Actionlint, action-validator, and shellcheck
   against workflows and local actions.
 - `lint-rust` exists only when `use_rust` is enabled and runs rustdoc, Clippy,
