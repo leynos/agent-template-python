@@ -330,6 +330,11 @@ def assert_ci_coverage_action_contract(
         assert coverage_inputs.get("cargo-manifest") == "rust_extension/Cargo.toml", (
             "expected Rust variant to pass the extension manifest to coverage"
         )
+        for scope_input in ("all-targets", "all-features", "doctests"):
+            assert coverage_inputs.get(scope_input) == "true", (
+                f"expected Rust variant coverage to enable {scope_input}, because "
+                "it is the pull request's only Rust test execution"
+            )
     else:
         assert "cargo-manifest" not in coverage_inputs, (
             "expected pure-Python variant to omit Rust coverage inputs"
@@ -448,6 +453,11 @@ def assert_coverage_main_workflow_contract(
         assert generate_inputs.get("cargo-manifest") == "rust_extension/Cargo.toml", (
             "expected Rust variant coverage-main to pass the extension manifest"
         )
+        for scope_input in ("all-targets", "all-features", "doctests"):
+            assert generate_inputs.get(scope_input) == "true", (
+                f"expected Rust variant coverage-main to enable {scope_input}, so "
+                "the baseline measures the pull request gate's scope"
+            )
         assert "leynos/shared-actions/.github/actions/setup-rust" in (
             coverage_main_workflow
         ), "expected Rust variant coverage-main to set up Rust"
