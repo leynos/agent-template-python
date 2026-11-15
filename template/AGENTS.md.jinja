@@ -214,7 +214,7 @@
 - **Abstraction / port / helper policy:** This policy exists so that the same
   behaviour is not built twice without anyone noticing. Before implementing an
   abstraction, a port, or a shared helper (anything public, re-exported, or
-  called from more than one module), the agent must:
+  called from outside its own module), the agent must:
   1. Sweep the repository and approved dependencies for equivalent behaviour.
      Reuse it unless demonstrably unsuitable. New abstractions must simplify
      the current change or have a concrete reuse case.
@@ -227,7 +227,7 @@
   A private helper (a leading-underscore function in Python, a non-`pub` item
   in Rust) extracted so that one function tells a story needs only step 1: its
   name, its signature, and a one-line docstring or doc comment say the rest.
-  When a second module needs it, promote it under this policy rather than
+  When another module needs it, promote it under this policy rather than
   copying it.
 - **Post-commit review:** After committing a functional change or bug fix (that
   meets all quality gates), review the changed code and surrounding areas using
