@@ -311,7 +311,7 @@ strict = true
 {% if use_rust %}
 [[tool.skylos.dead_code.entrypoints]]
 type = "function"
-name = "_{{ package_name }}_rs"
+name = "native_module"
 path = "rust_extension/src/lib.rs"
 reason = "CPython calls this PyO3 module initializer when importlib.import_module loads the native extension; the static scan does not model PyO3's native export."
 {% endif %}

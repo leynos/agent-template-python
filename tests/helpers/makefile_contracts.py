@@ -101,17 +101,8 @@ def _assert_makefile_contracts(*, makefile: str, use_rust: bool) -> None:
     assert required_gates <= lint_dependencies, (
         f"aggregate lint omitted required gates: {required_gates - lint_dependencies}"
     )
-    assert "WITH_ACT ?= 0" in makefile, (
-        "expected generated Makefile to default act validation off"
-    )
-    assert "ACT_TEST_ENV =" in makefile, (
-        "expected generated Makefile to map WITH_ACT to pytest environment"
-    )
-    assert "RUN_ACT_VALIDATION=1" in makefile, (
-        "expected generated Makefile to enable act validation for pytest"
-    )
-    assert "$(UV_ENV) $(ACT_TEST_ENV) $(UV) run pytest" in makefile, (
-        "expected generated test target to include the act test environment"
+    assert "WITH_ACT" not in makefile, (
+        "expected generated Makefile to carry no act validation switch"
     )
     assert "PYTHON_TARGETS ?=" in makefile, (
         "expected generated Makefile to define Python target selection"

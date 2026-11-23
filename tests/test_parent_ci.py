@@ -11,7 +11,6 @@ from tests.helpers.ci_contracts import (
     assert_contents_read_only,
     assert_coverage_publication_contract,
     assert_go_toolchain_contract,
-    mdtablefix_install_version,
 )
 from tests.helpers.generated_files import (
     parse_yaml_mapping,
@@ -59,7 +58,7 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     None
         The test passes when the parent CI workflow runs normal tests and the
         separate act-validation workflow installs act prerequisites before
-        running ``make test WITH_ACT=1``.
+        running only the act-backed tests with ``make test-act``.
     """
     ci_workflow = read_generated_text(REPO_ROOT / ".github" / "workflows" / "ci.yml")
     act_workflow = read_generated_text(
@@ -70,11 +69,6 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
         "parent CI workflow",
         actionlint_step_name="Install template test tools",
     )
-    assert_go_toolchain_contract(
-        act_workflow,
-        "parent Act workflow",
-        actionlint_step_name="Install documentation tooling",
-    )
     act_jobs = require_mapping(
         parse_yaml_mapping(act_workflow, "parent Act workflow"),
         "jobs",
@@ -82,17 +76,10 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     )
     act_job = require_mapping(act_jobs, "act-validation", "parent Act workflow jobs")
     act_steps = require_sequence(act_job, "steps", "parent Act workflow job")
-    actionlint_indices = [
-        index
-        for index, step in enumerate(act_steps)
-        if isinstance(step, dict)
-        and step.get("name") == "Install documentation tooling"
-        and "actionlint" in str(step.get("run", ""))
-    ]
     test_indices = [
         index
         for index, step in enumerate(act_steps)
-        if isinstance(step, dict) and "make test WITH_ACT=1" in str(step.get("run", ""))
+        if isinstance(step, dict) and "make test-act" in str(step.get("run", ""))
     ]
     evidence_test_steps = [
         step
@@ -166,13 +153,7 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert log_inputs.get("if-no-files-found") == "warn", (
         "expected missing logs to warn without weakening strict coverage upload"
     )
-    assert len(actionlint_indices) == 1, (
-        "expected parent Act workflow to install Actionlint once"
-    )
     assert len(test_indices) == 1, "expected parent Act workflow to run tests once"
-    assert actionlint_indices[0] < test_indices[0], (
-        "expected parent Act workflow to install Actionlint before tests"
-    )
     assert evidence_upload_indices[0] > test_indices[0], (
         "expected parent Act workflow to upload evidence after template tests"
     )
@@ -206,11 +187,6 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
         "expected parent CI to install mdtablefix pinned to a full "
         "40-character commit SHA"
     )
-    assert mdtablefix_install_version(
-        ci_workflow, "parent CI"
-    ) == mdtablefix_install_version(act_workflow, "parent act-validation workflow"), (
-        "expected parent CI and the act-validation workflow to pin one mdtablefix"
-    )
     assert "make check-fmt\n" in ci_workflow, (
         "expected parent CI to run the formatting gate"
     )
@@ -237,27 +213,6 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
     assert "sha256sum -c -" in act_workflow, (
         "expected parent act-validation workflow to verify the act archive checksum"
     )
-    assert _NPM_MARKDOWNLINT_CLI2_INSTALL not in act_workflow, (
-        "expected parent act-validation workflow not to install markdownlint-cli2 "
-        "through npm, because the pinned markdownlint-cli2 action provides it"
-    )
-    assert "MARKDOWNLINT_CLI2_VERSION" not in act_workflow, (
-        "expected parent act-validation workflow not to pin markdownlint-cli2 "
-        "itself, because the pinned markdownlint-cli2 action carries its own version"
-    )
-    assert _MARKDOWNLINT_CLI2_ACTION_USES_RE.search(act_workflow), (
-        "expected parent act-validation workflow to lint Markdown through "
-        "markdownlint-cli2-action pinned to a full 40-character commit SHA"
-    )
-    assert 'uv tool install "mbake==${MBAKE_VERSION}"' in act_workflow, (
-        "expected parent act-validation workflow to install pinned mbake"
-    )
-    assert "uv tool install mdformat-all" not in act_workflow, (
-        "expected parent act-validation workflow not to install mdformat-all through uv"
-    )
-    assert _INSTALL_MDTABLEFIX_USES_RE.search(act_workflow), (
-        "expected act-validation to install pinned mdtablefix before generated gates"
-    )
     assert "docker info" in act_workflow, (
         "expected parent act-validation workflow to verify Docker before act tests"
     )
@@ -265,8 +220,11 @@ def test_parent_ci_splits_application_and_act_validation_tests() -> None:
         "expected parent act-validation workflow to expose github.token only to "
         "nested act tests"
     )
-    assert "make test WITH_ACT=1" in act_workflow, (
-        "expected parent act-validation workflow to run parent tests with act enabled"
+    assert "make test-act" in act_workflow, (
+        "expected parent act-validation workflow to run only the act-backed tests"
+    )
+    assert "make test WITH_ACT=1" not in act_workflow, (
+        "expected parent act-validation workflow not to re-run the full suite"
     )
 
 

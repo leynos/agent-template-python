@@ -78,9 +78,6 @@ actions under `.github/`.
   extension is enabled.
 - `.github/workflows/audit.yml` runs `make audit` against the default branch
   weekly as the compensating control for the Dependabot CI bypass.
-- `.github/workflows/act-validation.yml` runs rendered workflow validation in a
-  separate workflow. It installs `act`, checks Docker availability, and runs
-  `make test WITH_ACT=1` outside the coverage path.
 - `.github/workflows/release.yml` publishes wheels when a `v*.*.*` tag is
   pushed. It builds a pure Python wheel, creates a GitHub release with
   generated release notes, downloads wheel artefacts, and uploads them to the

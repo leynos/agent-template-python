@@ -13,13 +13,7 @@ from tests.helpers.makefile_contracts import _parse_makefile_rules
 
 
 def _assert_agents_contracts(agents: str) -> None:
-    """Assert generated assistant guidance documents act-enabled testing."""
-    assert "make test WITH_ACT=1" in agents, (
-        "expected generated AGENTS.md to document act-enabled test runs"
-    )
-    assert "RUN_ACT_VALIDATION=1" in agents, (
-        "expected generated AGENTS.md to describe the pytest act environment"
-    )
+    """Assert generated assistant guidance documents the testing contracts."""
     assert "meaningful, reviewer-useful contracts" in agents, (
         "expected generated AGENTS.md to require meaningful snapshot contracts"
     )
@@ -147,13 +141,10 @@ def _assert_documented_command_flags(
                 ],
                 "test": [
                     *command_contracts["test"],
+                    ("AGENTS.md", "nextest --version"),
                     (
                         "AGENTS.md",
-                        "cargo nextest run --manifest-path rust_extension/Cargo.toml",
-                    ),
-                    (
-                        "AGENTS.md",
-                        "cargo test --manifest-path rust_extension/Cargo.toml",
+                        "cargo $(TEST_CMD) --manifest-path rust_extension/Cargo.toml",
                     ),
                     (
                         "AGENTS.md",

@@ -11,8 +11,8 @@ fn hello() -> &'static str {
     "hello from Rust"
 }
 
-#[pymodule]
-fn _{{ package_name }}_rs(module: &Bound<'_, PyModule>) -> PyResult<()> {
+#[pymodule(name = "_{{ package_name }}_rs")]
+fn native_module(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(hello, module)?)?;
     Ok(())
 }

@@ -330,6 +330,11 @@ def assert_ci_coverage_action_contract(
         assert coverage_inputs.get("cargo-manifest") == "rust_extension/Cargo.toml", (
             "expected Rust variant to pass the extension manifest to coverage"
         )
+        for scope_input in ("all-targets", "all-features", "doctests"):
+            assert coverage_inputs.get(scope_input) == "true", (
+                f"expected Rust variant coverage to enable {scope_input}, because "
+                "it is the pull request's only Rust test execution"
+            )
     else:
         assert "cargo-manifest" not in coverage_inputs, (
             "expected pure-Python variant to omit Rust coverage inputs"
@@ -448,6 +453,11 @@ def assert_coverage_main_workflow_contract(
         assert generate_inputs.get("cargo-manifest") == "rust_extension/Cargo.toml", (
             "expected Rust variant coverage-main to pass the extension manifest"
         )
+        for scope_input in ("all-targets", "all-features", "doctests"):
+            assert generate_inputs.get(scope_input) == "true", (
+                f"expected Rust variant coverage-main to enable {scope_input}, so "
+                "the baseline measures the pull request gate's scope"
+            )
         assert "leynos/shared-actions/.github/actions/setup-rust" in (
             coverage_main_workflow
         ), "expected Rust variant coverage-main to set up Rust"
@@ -574,89 +584,6 @@ def _assert_ci_workflow_contracts(
         )
         assert "cargo-audit" not in ci_workflow, (
             "expected pure-Python CI to omit Rust audit installation"
-        )
-
-
-def _assert_act_validation_workflow_contracts(
-    *, act_validation_workflow: str, use_rust: bool
-) -> None:
-    """Assert generated act-validation workflow contracts."""
-    assert_go_toolchain_contract(
-        act_validation_workflow,
-        "Act Validation workflow",
-        actionlint_step_name="Install Actionlint",
-    )
-    workflow = parse_yaml_mapping(act_validation_workflow, "Act Validation workflow")
-    jobs = require_mapping(workflow, "jobs", "Act Validation workflow")
-    act_validation = require_mapping(
-        jobs, "act-validation", "Act Validation workflow jobs"
-    )
-    steps = require_sequence(
-        act_validation, "steps", "Act Validation workflow act-validation job"
-    )
-    actionlint_indices = [
-        index
-        for index, step in enumerate(steps)
-        if isinstance(step, dict) and step.get("name") == "Install Actionlint"
-    ]
-    test_indices = [
-        index
-        for index, step in enumerate(steps)
-        if isinstance(step, dict)
-        and step.get("name") == "Run tests with act validation"
-    ]
-    assert len(actionlint_indices) == 1, (
-        "expected generated act-validation workflow to install Actionlint once"
-    )
-    assert len(test_indices) == 1, (
-        "expected generated act-validation workflow to run tests once"
-    )
-    assert actionlint_indices[0] < test_indices[0], (
-        "expected generated act-validation workflow to install Actionlint before tests"
-    )
-    assert "name: Act Validation" in act_validation_workflow, (
-        "expected generated act-validation workflow to be named"
-    )
-    assert "ACT_VERSION: v0.2.84" in act_validation_workflow, (
-        "expected generated act-validation workflow to pin act"
-    )
-    assert_contents_read_only(
-        act_validation_workflow, "generated act-validation workflow"
-    )
-    assert "MARKDOWNLINT_CLI2_VERSION: 0.22.1" in act_validation_workflow, (
-        "expected generated act-validation workflow to pin markdownlint-cli2"
-    )
-    assert "MBAKE_VERSION: 1.4.6" in act_validation_workflow, (
-        "expected generated act-validation workflow to pin mbake"
-    )
-    assert "act_Linux_x86_64.tar.gz" in act_validation_workflow, (
-        "expected generated act-validation workflow to install act"
-    )
-    assert "${ACT_VERSION}/${act_archive}" in act_validation_workflow, (
-        "expected generated act-validation workflow to build the act URL from ACT_VERSION"
-    )
-    assert "sha256sum -c -" in act_validation_workflow, (
-        "expected generated act-validation workflow to verify the act archive checksum"
-    )
-    assert 'npm install -g "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}"' in (
-        act_validation_workflow
-    ), "expected generated act-validation workflow to install pinned markdownlint-cli2"
-    assert 'uv tool install "mbake==${MBAKE_VERSION}"' in act_validation_workflow, (
-        "expected generated act-validation workflow to install pinned mbake"
-    )
-    assert "docker info" in act_validation_workflow, (
-        "expected generated act-validation workflow to verify Docker"
-    )
-    assert "make test WITH_ACT=1" in act_validation_workflow, (
-        "expected generated act-validation workflow to run act-enabled tests"
-    )
-    if use_rust:
-        assert "leynos/shared-actions/.github/actions/setup-rust" in (
-            act_validation_workflow
-        ), "expected Rust variant act-validation workflow to set up Rust"
-    else:
-        assert "setup-rust" not in act_validation_workflow, (
-            "expected pure-Python act-validation workflow to omit Rust setup"
         )
 
 
