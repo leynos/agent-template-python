@@ -8,6 +8,16 @@ on:
 permissions:
   contents: read
 
+# A push to a pull request supersedes the run already in flight, and there is
+# nothing left to learn from the superseded one. Cancellation is conditioned
+# on the event so a push to `main`, a schedule, or a dispatch, none of which
+# has a successor waiting, always runs to completion. A run without a pull
+# request number groups by its run ID: a shared group would let GitHub replace
+# a pending run for an earlier push to `main`.
+concurrency:
+  group: ${{ "{{" }} github.workflow {{ "}}" }}-${{ "{{" }} github.event.pull_request.number || github.run_id {{ "}}" }}
+  cancel-in-progress: ${{ "{{" }} github.event_name == 'pull_request' {{ "}}" }}
+
 jobs:
   lint-test:
     runs-on: ubuntu-latest
