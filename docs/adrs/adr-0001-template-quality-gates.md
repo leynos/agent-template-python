@@ -67,7 +67,7 @@ mdtablefix in both generated variants. The Rust lint and test cache uses the
 `rust_extension -> target` workspace and remains conditional on the Rust
 extension. Existing generated projects that record a Python baseline below 3.12
 must update that answer before applying the next applicable template release;
-see the [migration guide](migrating-to-python-3.12.md).
+see the [migration guide](../migrating-to-python-3.12.md).
 
 ## Addendum (2026-10-16): composite-action validation boundary
 
